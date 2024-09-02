@@ -4,6 +4,8 @@
 
 This backtesting engine is a personal project to explore financial data with C++
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
+
 [Sonarcloud Analysis](https://sonarcloud.io/project/overview?id=mccaffers_backtesting-engine-cpp)
 
 ### How to use
