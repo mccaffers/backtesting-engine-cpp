@@ -17,6 +17,13 @@ jobs:
       with:
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
+    - name: Set up Python 3.8 for gcovr
+      uses: actions/setup-python@v5
+      with: 
+        python-version: 3.8
+    - name: install gcovr 5.0
+      run: |
+      pip install gcovr==5.0 # 5.1 is not supported by sonarcloud
     - name: Install sonar-scanner and build-wrapper
       uses: sonarsource/sonarcloud-github-c-cpp@v2
     - name: Run build-wrapper
