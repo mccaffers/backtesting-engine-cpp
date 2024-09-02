@@ -7,8 +7,18 @@ set(CMAKE_CXX_STANDARD 20)
 # Include directories
 include_directories(include)
 
+# Include directories
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/Strategies
+)
+
 # Add source files
-file(GLOB SOURCES "src/*.cpp" "src/FileManagement/*.cpp")
+file(GLOB_RECURSE SOURCES 
+    "src/*.cpp"
+    "src/Strategies/*.cpp"
+    "src/FileManagement/*.cpp"
+)
 
 # Add the executable
 add_executable(MyProgram ${SOURCES})
