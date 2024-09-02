@@ -7,6 +7,8 @@ SimpleMovingAverageStrategy::SimpleMovingAverageStrategy(int period, double thre
 bool SimpleMovingAverageStrategy::shouldTrade(const std::vector<PriceRecord>& priceHistory) {
     if (priceHistory.size() < period) return false;
 
+    // Using the std:accumlate library, I'm working out the sum of ask prices from a range of
+    // PriceRecord objects
     auto start = priceHistory.end() - period;
     auto end = priceHistory.end();
 

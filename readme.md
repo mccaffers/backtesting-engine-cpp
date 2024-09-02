@@ -10,19 +10,25 @@ This backtesting engine is a personal project to explore financial data with C++
 
 ```bash
 project/
+.
 ├── CMakeLists.txt
 ├── include
+│   ├── Account.h
 │   ├── CSVParser.h
-│   └── PriceRecord.h
+│   ├── PriceRecord.h
+│   ├── Strategies
+│   │   └── SimpleMovingAverageStrategy.h
+│   └── Strategy.h
 ├── readme.md
 ├── resources
-│   └── EURUSD
-│       └── 2020.csv
 ├── run.sh
 └── src
+    ├── Account.cpp
     ├── FileManagement
     │   ├── CSVParser.cpp
     │   └── PriceRecord.cpp
+    ├── Strategies
+    │   └── SimpleMovingAverageStrategy.cpp
     └── program.cpp
 ```
 
