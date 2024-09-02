@@ -28,7 +28,8 @@ add_library(MyProjectLib STATIC ${SOURCES})
 add_executable(MyProgram src/program.cpp)
 target_link_libraries(MyProgram MyProjectLib)
 
-# Google Test
+# GoogleTest is Google's C++ testing and mocking framework
+# https://github.com/google/googletest
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -43,7 +44,6 @@ enable_testing()
 # Test sources
 set(TEST_SOURCES
     tests/PriceRecordTest.cpp
-    # Add other test files here as you create them
 )
 
 # Test executable

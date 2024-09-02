@@ -31,7 +31,7 @@ else
     exit 1
 fi
 
-# Step 6: Run the executable from the root directory
+# Step 6: Run the tests for now (/executable) from the root directory
 ./"$BUILD_DIR/$EXECUTABLE_NAME"Tests
 # ./"$BUILD_DIR/$EXECUTABLE_NAME"
 
