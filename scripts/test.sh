@@ -34,6 +34,4 @@ fi
 # Step 6: Run the tests for now (/executable) from the root directory
 ./"$BUILD_DIR/$EXECUTABLE_NAME"Tests
 
-cd ./"$BUILD_DIR/" 
-ctest
-gcovr --sonarqube > ../coverage.xml
+rm -rf "$BUILD_DIR" 
