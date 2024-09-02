@@ -25,7 +25,7 @@ jobs:
       run: |
         pip install gcovr==5.0 # 5.1 is not supported by sonarcloud
     - name: Install sonar-scanner and build-wrapper
-      uses: sonarsource/sonarcloud-github-c-cpp@v2
+      uses: SonarSource/sonarcloud-github-c-cpp@v3
     - name: Run build-wrapper
       run: |
       # here goes your compilation wrapped with build-wrapper; See https://docs.sonarcloud.io/advanced-setup/languages/c-c-objective-c/#analysis-steps-using-build-wrapper for more information
