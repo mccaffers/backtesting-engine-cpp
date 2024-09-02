@@ -39,5 +39,4 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} # Put the name of your token here
       run: |
         sonar-scanner \
-        --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
         --define sonar.coverageReportPaths=coverage.xml
