@@ -58,11 +58,11 @@ include(GoogleTest)
 gtest_discover_tests(MyProgramTests)
 
 # Coverage target
-if(CMAKE_COMPILER_IS_GNUCXX)
-    include(CodeCoverage)
-    setup_target_for_coverage_lcov(
-        NAME coverage
-        EXECUTABLE ctest -j ${PROCESSOR_COUNT}
-        DEPENDENCIES MyProgramTests
-    )
-endif()
+# if(CMAKE_COMPILER_IS_GNUCXX)
+#     include(CodeCoverage)
+#     setup_target_for_coverage_lcov(
+#         NAME coverage
+#         EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+#         DEPENDENCIES MyProgramTests
+#     )
+# endif()
