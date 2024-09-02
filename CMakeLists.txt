@@ -12,14 +12,22 @@ include_directories(
 )
 
 # Source files
-set(SOURCES
-    src/PriceRecord.cpp
-    src/Account.cpp
-    src/CSVParser.cpp
-    src/Strategies/SimpleMovingAverageStrategy.cpp
-    src/Strategies/RandomStrategy.cpp
-    src/FileManagement/CSVStream.cpp
+# file(GLOB SOURCES
+#     src/*.cpp
+#     src/Account.cpp
+#     src/CSVParser.cpp
+#     src/Strategies/SimpleMovingAverageStrategy.cpp
+#     src/Strategies/RandomStrategy.cpp
+#     src/FileManagement/CSVStream.cpp
+# )
+
+# Source files using GLOB, but explicitly excluding test files
+file(GLOB_RECURSE SOURCES
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/Strategies/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/FileManagement/*.cpp"
 )
+# list(FILTER SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
 
 # Create a library of your project's code
 add_library(MyProjectLib STATIC ${SOURCES})
@@ -41,8 +49,9 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 # Test sources
-set(TEST_SOURCES
-    tests/PriceRecordTest.cpp
+# file(GLOB SOURCES
+file(GLOB_RECURSE TEST_SOURCES
+    "${CMAKE_SOURCE_DIR}/tests/*.cpp"
 )
 
 # Test executable
