@@ -15,8 +15,17 @@ int main() {
     else std::cout << "pre-standard C++." << __cplusplus;
     std::cout << "\n";
 
+    // Get the file path from the environment variable
+    const char* filePath = std::getenv("DATA_FILE_PATH");
+
+    // Check if the environment variable is set
+    if (filePath == nullptr) {
+        std::cerr << "Error: DATA_FILE_PATH environment variable is not set." << std::endl;
+        return 1;
+    }
+
    CSVParser parser;
-    std::vector<PriceRecord> records = parser.parseFile("resources/EURUSD/2020.csv");
+    std::vector<PriceRecord> records = parser.parseFile(filePath);
 
     for (const auto& record : records) {
         std::cout << "UTC: " << record.getUTC()

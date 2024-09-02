@@ -3,6 +3,7 @@
 # Variables
 BUILD_DIR="build"
 EXECUTABLE_NAME="MyProgram"
+export DATA_FILE_PATH="resources/EURUSD/2020.csv"
 
 # Step 1: Create a build directory if it doesn't exist
 if [ ! -d "$BUILD_DIR" ]; then
