@@ -16,7 +16,7 @@ private:
     std::vector<Trade> tradeHistory;
 
 public:
-    Account(double initialBalance);
+    explicit Account(double initialBalance); // Compliant, using C++11 "explicit" keyword for conversion function
     void executeTrade(const std::string& timestamp, double price, bool isBuy);
     double getBalance() const;
     const std::vector<Trade>& getTradeHistory() const;

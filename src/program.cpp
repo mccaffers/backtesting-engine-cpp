@@ -5,7 +5,9 @@
 #include "PriceRecord.h"
 #include "Strategy.h"
 #include "Account.h"
-#include "SimpleMovingAverageStrategy.h"
+#include "CSVStream.h"
+#include "RandomStrategy.h"
+
 
 int main() {
 
@@ -39,25 +41,35 @@ int main() {
     //               << std::endl;
     // }
 
-    // Create a strategy
-    std::unique_ptr<Strategy> strategy = std::make_unique<SimpleMovingAverageStrategy>(10, 0.01);
+    CSVStream csvStream(filePath);
+    csvStream.start();
 
-    // Create an account with initial balance of 10000
+    std::unique_ptr<Strategy> strategy = std::make_unique<RandomStrategy>(0.3);
     Account account(10000.0);
 
-    // Simulate trading
-    for (size_t i = 10; i < records.size(); ++i) {
-        std::vector<PriceRecord> priceHistory(records.begin() + i - 10, records.begin() + i + 1);
-        
-        if (strategy->shouldTrade(priceHistory)) {
-            // For simplicity, we're always buying in this example
-            account.executeTrade(records[i].getUTC(), records[i].getAskPrice(), true);
-            std::cout << "Executed trade at " << records[i].getUTC() << " for price " << records[i].getAskPrice() << std::endl;
+    std::vector<PriceRecord> priceHistory;
+    const size_t historySize = 100; // Adjust based on strategy needs
+
+    while (!csvStream.isFinished()) {
+        try {
+            PriceRecord record = csvStream.getNext();
+            priceHistory.push_back(record);
+            if (priceHistory.size() > historySize) {
+                priceHistory.erase(priceHistory.begin());
+            }
+
+            if (strategy->shouldTrade(priceHistory)) {
+                account.executeTrade(record.getUTC(), record.getAskPrice(), true);
+                std::cout << "Executed trade at " << record.getUTC() 
+                          << " for price " << record.getAskPrice() << std::endl;
+            }
+        } catch (const std::runtime_error& e) {
+            break;
         }
     }
 
-    // Print final account balance and trade history
     std::cout << "Final account balance: " << account.getBalance() << std::endl;
+    
     std::cout << "Trade history:" << std::endl;
     for (const auto& trade : account.getTradeHistory()) {
         std::cout << "Time: " << trade.timestamp 
