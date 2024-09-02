@@ -32,9 +32,10 @@ else
 fi
 
 # Step 6: Run the executable from the root directory
-./"$BUILD_DIR/$EXECUTABLE_NAME"
+./"$BUILD_DIR/$EXECUTABLE_NAME"Tests
+# ./"$BUILD_DIR/$EXECUTABLE_NAME"
 
-# # Step 7: Clean up by removing the build directory
+# # # Step 7: Clean up by removing the build directory
 rm -rf "$BUILD_DIR"
 
 # # Optional: Print a success message
