@@ -6,6 +6,10 @@ This backtesting engine is a personal project to explore financial data with C++
 
 [Sonarcloud Analysis](https://sonarcloud.io/project/overview?id=mccaffers_backtesting-engine-cpp)
 
+### How to use
+
+Run `sh run.sh`, which will create the build folder using CMake and then run the program.
+
 ### Project Structure
 
 ```bash
