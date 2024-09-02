@@ -7,11 +7,15 @@ on:
   pull_request:
       types: [opened, synchronize, reopened]
 name: Main Workflow
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
-    env:
-      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
     steps:
     - uses: actions/checkout@v3
       with:
@@ -26,11 +30,15 @@ jobs:
         pip install gcovr==5.0 # 5.1 is not supported by sonarcloud
     - name: Install sonar-scanner and build-wrapper
       uses: SonarSource/sonarcloud-github-c-cpp@v3
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+    #  See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: cmake -S ${{github.workspace}}/src -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
     - name: Run build-wrapper
       run: |
       # here goes your compilation wrapped with build-wrapper; See https://docs.sonarcloud.io/advanced-setup/languages/c-c-objective-c/#analysis-steps-using-build-wrapper for more information
       # build-preparation steps
-      # build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} build-command
+      build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
     - name: Build and run tests
       run: sh ${PWD}/scripts/test.sh
     - name: Run sonar-scanner
@@ -39,4 +47,5 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} # Put the name of your token here
       run: |
         sonar-scanner \
+        --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
         --define sonar.coverageReportPaths=coverage.xml
