@@ -4,6 +4,8 @@
 
 This backtesting engine is a personal project to explore financial data with C++
 
+[Sonarcloud Analysis](https://sonarcloud.io/project/overview?id=mccaffers_backtesting-engine-cpp)
+
 ### Project Structure
 
 ```bash
