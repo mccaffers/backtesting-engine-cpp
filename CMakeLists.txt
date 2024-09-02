@@ -28,8 +28,7 @@ add_library(MyProjectLib STATIC ${SOURCES})
 add_executable(MyProgram src/program.cpp)
 target_link_libraries(MyProgram MyProjectLib)
 
-# GoogleTest is Google's C++ testing and mocking framework
-# https://github.com/google/googletest
+# GoogleTest
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -50,5 +49,20 @@ set(TEST_SOURCES
 add_executable(MyProgramTests ${TEST_SOURCES})
 target_link_libraries(MyProgramTests MyProjectLib gtest gtest_main)
 
-# Add the test
-add_test(NAME MyProgramTests COMMAND MyProgramTests)
+# Coverage flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+
+# Add tests to CTest
+include(GoogleTest)
+gtest_discover_tests(MyProgramTests)
+
+# Coverage target
+if(CMAKE_COMPILER_IS_GNUCXX)
+    include(CodeCoverage)
+    setup_target_for_coverage_lcov(
+        NAME coverage
+        EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+        DEPENDENCIES MyProgramTests
+    )
+endif()
