@@ -36,3 +36,4 @@ fi
 
 cd ./"$BUILD_DIR/" 
 ctest
+gcovr --sonarqube > ../coverage.xml
