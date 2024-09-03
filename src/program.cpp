@@ -61,7 +61,8 @@ int main() {
             if (strategy->shouldTrade(priceHistory)) {
                 account.executeTrade(record.getUTC(), record.getAskPrice(), true);
                 std::cout << "Executed trade at " << record.getUTC() 
-                          << " for price " << record.getAskPrice() << std::endl;
+                          << " for price " << record.getAskPrice() 
+                          << " " << account.getBalance() << std::endl;
             }
         } catch (const std::runtime_error& e) {
             break;
@@ -70,12 +71,12 @@ int main() {
 
     std::cout << "Final account balance: " << account.getBalance() << std::endl;
     
-    std::cout << "Trade history:" << std::endl;
-    for (const auto& trade : account.getTradeHistory()) {
-        std::cout << "Time: " << trade.timestamp 
-                  << ", Price: " << trade.price 
-                  << ", Action: " << (trade.isBuy ? "Buy" : "Sell") << std::endl;
-    }
+    // std::cout << "Trade history:" << std::endl;
+    // for (const auto& trade : account.getTradeHistory()) {
+    //     std::cout << "Time: " << trade.timestamp 
+    //               << ", Price: " << trade.price 
+    //               << ", Action: " << (trade.isBuy ? "Buy" : "Sell") << std::endl;
+    // }
 
     return 0;
 }
