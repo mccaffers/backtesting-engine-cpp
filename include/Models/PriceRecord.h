@@ -5,12 +5,16 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
 
 class PriceRecord {
 private:
     std::chrono::system_clock::time_point timestamp;
     double askPrice;
     double bidPrice;
+
+    // Helper function to parse UTC string
+    static std::chrono::system_clock::time_point parseUTC(const std::string& utc);
 
 public:
     // Constructor
@@ -22,9 +26,6 @@ public:
     double getAskPrice() const;
     double getBidPrice() const;
 
-private:
-    // Helper function to parse UTC string
-    static std::chrono::system_clock::time_point parseUTC(const std::string& utc);
 };
 
 #endif
