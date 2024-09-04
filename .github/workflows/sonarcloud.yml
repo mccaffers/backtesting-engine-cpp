@@ -21,6 +21,10 @@ jobs:
       with:
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
+    - name: Check compiler version
+      run: |
+        g++ --version
+        cmake --version
     - name: Set up Python 3.8 for gcovr
       uses: actions/setup-python@v5
       with: 
