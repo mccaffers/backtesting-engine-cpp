@@ -19,6 +19,8 @@ set(SOURCES
     src/Strategies/RandomStrategy.cpp
     src/Account.cpp
     src/CSVParser.cpp
+    src/Utilities/Utils.cpp
+
 )
 
 # Create a library of your project's code
