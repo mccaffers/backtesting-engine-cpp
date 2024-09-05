@@ -1,33 +1,7 @@
+#!/bin/bash
+
 # Variables
-BUILD_DIR="build"
-EXECUTABLE_NAME="MyProgram"
-
-# Get the current execution directory
-EXEC_DIR="$(pwd)"
-
-# Check for prod.env in the .env directory relative to the current execution directory
-if [ -f "$EXEC_DIR/.env/prod.env" ]; then
-    echo "Using Production Environment Variables"
-    ENV_FILE="$EXEC_DIR/.env/prod.env"
-else
-    echo "Using Demo Environment Variables"
-    ENV_FILE="$EXEC_DIR/.env/demo.env"
-fi
-
-# You can now use $ENV_FILE which contains the full path to the environment file
-echo "Full path to env file: $ENV_FILE"
-
-# Now import the selected .env file
-set -a
-while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip comments and empty lines
-    [[ $line =~ ^[[:space:]]*#.*$ ]] && continue
-    [[ -z "$line" ]] && continue
-    
-    # Export the variable
-    export "$line"
-done < "$ENV_FILE"
-set +a
+EXECUTABLE_NAME="BacktestingEngine"
 
 # Step 1: Create a build directory if it doesn't exist
 if [ ! -d "$BUILD_DIR" ]; then

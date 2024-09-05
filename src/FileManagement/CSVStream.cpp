@@ -1,13 +1,28 @@
 #include "CSVStream.h"
 #include <sstream>
 #include <thread>
+#include <iostream>
 
-CSVStream::CSVStream(const std::string& filename) : file(filename) {}
+CSVStream::CSVStream(const std::string& filename) : file(filename) {
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        fileOpenSuccessful = false;
+    } else {
+        fileOpenSuccessful = true;
+    }
+}
 
 void CSVStream::start() {
+
+    if (!fileOpenSuccessful) {
+        std::cerr << "Cannot start processing. File was not opened successfully." << std::endl;
+        return;
+    }
+
     std::thread([this]() {
         std::string line;
         std::getline(file, line); // Skip header
+        std::cout << "Header line: " << line << std::endl;
 
         while (std::getline(file, line)) {
             std::stringstream ss(line);
