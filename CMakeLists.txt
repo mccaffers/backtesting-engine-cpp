@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.30)
 project(MyProject)
 
 # Set the C++ standard
@@ -21,8 +21,8 @@ set(SOURCES
     src/Account.cpp
     src/CSVParser.cpp
     src/Utilities/Utils.cpp
-
 )
+
 
 # Create a library of your project's code
 add_library(MyProjectLib STATIC ${SOURCES})

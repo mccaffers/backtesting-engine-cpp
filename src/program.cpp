@@ -18,6 +18,8 @@ int main() {
         return 1;
     }
 
+    std::cout << "File " << filePath << std::endl;
+
     CSVStream csvStream(filePath);
     csvStream.start();
 
