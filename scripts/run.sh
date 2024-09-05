@@ -1,26 +1,32 @@
 #!/bin/bash
+current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Variables
-BUILD_DIR="build"
-EXECUTABLE_NAME="MyProgram"
-export DATA_FILE_PATH="resources/EURUSD/2020.csv"
+clean_flag=false
 
-# Step 1: Create a build directory if it doesn't exist
-if [ ! -d "$BUILD_DIR" ]; then
-    mkdir "$BUILD_DIR"
+# Loop through all arguments
+for arg in "$@"
+do
+    case $arg in
+        --clean)
+        clean_flag=true
+        shift # Remove --clean from processing
+        ;;
+        *)
+        # Unknown option
+        ;;
+    esac
+done
+
+if [ "$clean_flag" = true ] ; then
+    echo "Clean flag is set. Performing cleanup..."
+    source $current_dir/clean.sh
+    # Add your cleanup code here
+else
+    echo "Clean flag is not set. Skipping cleanup."
 fi
 
-# Step 2: Navigate to the build directory
-cd "$BUILD_DIR" || exit
-
-# Step 3: Run CMake to configure the project
-cmake ..
-
-# Step 4: Compile the project
-cmake --build .
-
-# Step 5: Navigate back to the root directory
-cd ..
+# Build the source code
+source $current_dir/build.sh
 
 # Debug: Check if the executable exists
 if [ -f "$BUILD_DIR/$EXECUTABLE_NAME" ]; then
@@ -31,11 +37,7 @@ else
     exit 1
 fi
 
+
 # Step 6: Run the tests for now (/executable) from the root directory
 ./"$BUILD_DIR/$EXECUTABLE_NAME"
 
-# # # Step 7: Clean up by removing the build directory
-rm -rf "$BUILD_DIR"
-
-# # Optional: Print a success message
-echo "Build, run, and cleanup complete!"
