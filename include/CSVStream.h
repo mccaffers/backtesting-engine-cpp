@@ -21,6 +21,7 @@ private:
     std::mutex mtx;                  ///< Mutex for thread-safe access to the buffer
     std::condition_variable cv;      ///< Condition variable for synchronizing producer and consumer
     bool done = false;               ///< Flag indicating whether all data has been read
+    bool fileOpenSuccessful = false;
 
 public:
     /**

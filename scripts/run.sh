@@ -1,32 +1,12 @@
 #!/bin/bash
+# This executes the run script
+
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-clean_flag=false
-
-# Loop through all arguments
-for arg in "$@"
-do
-    case $arg in
-        --clean)
-        clean_flag=true
-        shift # Remove --clean from processing
-        ;;
-        *)
-        # Unknown option
-        ;;
-    esac
-done
-
-if [ "$clean_flag" = true ] ; then
-    echo "Clean flag is set. Performing cleanup..."
-    source $current_dir/clean.sh
-    # Add your cleanup code here
-else
-    echo "Clean flag is not set. Skipping cleanup."
-fi
-
 # Build the source code
+source $current_dir/clean.sh
 source $current_dir/build.sh
+source $current_dir/environment.sh
 
 # Debug: Check if the executable exists
 if [ -f "$BUILD_DIR/$EXECUTABLE_NAME" ]; then
