@@ -28,7 +28,6 @@ set(SOURCES
     src/Utilities/Utils.cpp
 )
 
-
 # Create a library of your project's code
 add_library(BacktestingEngineLib STATIC ${SOURCES})
 
