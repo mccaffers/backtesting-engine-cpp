@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
       types: [opened, synchronize, reopened]
-name: Main Workflow
+name: Build
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
