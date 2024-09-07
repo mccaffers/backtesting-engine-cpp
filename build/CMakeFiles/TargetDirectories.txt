@@ -1,0 +1,4 @@
+/Users/ryan/dev/cpp/backtesting-engine-cpp/build/CMakeFiles/BacktestingEngineLib.dir
+/Users/ryan/dev/cpp/backtesting-engine-cpp/build/CMakeFiles/BacktestingEngine.dir
+/Users/ryan/dev/cpp/backtesting-engine-cpp/build/CMakeFiles/edit_cache.dir
+/Users/ryan/dev/cpp/backtesting-engine-cpp/build/CMakeFiles/rebuild_cache.dir
