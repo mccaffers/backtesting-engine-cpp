@@ -1,0 +1,2 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libBacktestingEngineLib.a CMakeFiles/BacktestingEngineLib.dir/source/main.cpp.o CMakeFiles/BacktestingEngineLib.dir/source/tests/main_test.cpp.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libBacktestingEngineLib.a

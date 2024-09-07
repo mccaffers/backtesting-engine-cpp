@@ -1,5 +1,6 @@
 #!/bin/bash
 
+BUILD_DIR="build"
 # Variables
 EXECUTABLE_NAME="BacktestingEngine"
 

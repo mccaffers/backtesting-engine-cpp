@@ -4,9 +4,9 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Build the source code
+source $current_dir/environment.sh
 source $current_dir/clean.sh
 source $current_dir/build.sh
-source $current_dir/environment.sh
 
 # Debug: Check if the executable exists
 if [ -f "$BUILD_DIR/$EXECUTABLE_NAME" ]; then
