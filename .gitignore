@@ -34,3 +34,4 @@
 build
 .env/prod.env
 TestResult
+.DS_Store
