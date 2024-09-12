@@ -25,6 +25,7 @@ jobs:
       run: >
           xcodebuild 
           -scheme tests 
+          -destination 'platform=macOS' 
           -resultBundlePath TestResult/ 
           -enableCodeCoverage YES 
           -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
