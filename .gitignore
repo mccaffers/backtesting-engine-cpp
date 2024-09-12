@@ -33,3 +33,4 @@
 
 build
 .env/prod.env
+TestResult
