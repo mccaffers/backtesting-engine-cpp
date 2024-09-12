@@ -24,7 +24,6 @@ jobs:
     - name: Run tests
       run: >
           xcodebuild \
-          -project backtesting-engine-cpp.xcodeproj \
           -scheme tests \
           -resultBundlePath TestResult/ \
           -enableCodeCoverage YES \
