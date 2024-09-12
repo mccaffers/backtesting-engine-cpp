@@ -1,5 +1,11 @@
+// Backtesting Engine in C++
+//
+// (c) 2024 Ryan McCaffery | https://mccaffers.com
+// This code is licensed under MIT license (see LICENSE.txt for details)
+// ---------------------------------------
+
 #import <XCTest/XCTest.h>
-#import "main.hpp"
+#import "application.hpp"
 
 @interface tests : XCTestCase
 @end
@@ -18,7 +24,7 @@
   // This is an example of a functional test case.
   // Use XCTAssert and related functions to verify your tests produce the correct results.
   std::vector<int> numbers = {-1, -2, 3, 4, -5};
-  XCTAssert(Main().addNumbers(numbers) == -1);
+  XCTAssert(Application().addNumbers(numbers) == -1);
 }
 
 @end

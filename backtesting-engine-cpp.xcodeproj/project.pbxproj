@@ -7,9 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		940A61132C92CE210083FEB8 /* ConfigManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61112C92CE210083FEB8 /* ConfigManager.cpp */; };
+		940A61142C92CE210083FEB8 /* ConfigManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61112C92CE210083FEB8 /* ConfigManager.cpp */; };
+		940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
+		940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
 		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5AE2C8C5B99007D9CC6 /* tests.mm */; };
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
+		948A9CEE2C906AFE00E23669 /* 2020.csv in Resources */ = {isa = PBXBuildFile; fileRef = 948A9CED2C906AFE00E23669 /* 2020.csv */; };
+		948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* Application.cpp */; };
+		948A9CFE2C906C9C00E23669 /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* Application.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +32,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		940A61112C92CE210083FEB8 /* ConfigManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ConfigManager.cpp; sourceTree = "<group>"; };
+		940A61122C92CE210083FEB8 /* ConfigManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ConfigManager.hpp; sourceTree = "<group>"; };
+		940A61152C92CE960083FEB8 /* ServiceA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ServiceA.cpp; sourceTree = "<group>"; };
+		940A61162C92CE960083FEB8 /* ServiceA.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ServiceA.hpp; sourceTree = "<group>"; };
 		944D0DC82C8C3704004DD0FC /* LICENSE.MD */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.MD; sourceTree = "<group>"; };
 		944D0DC92C8C3704004DD0FC /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		944D0DCA2C8C3704004DD0FC /* clean.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clean.sh; sourceTree = "<group>"; };
@@ -35,12 +46,35 @@
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "random-indices-sp500-variable.svg"; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		944D0DDB2C8C394A004DD0FC /* main.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = main.hpp; sourceTree = "<group>"; };
-		944D0DDC2C8C3962004DD0FC /* main_test.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_test.cpp; sourceTree = "<group>"; };
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5A32C8C5AD0007D9CC6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5AE2C8C5B99007D9CC6 /* tests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tests.mm; sourceTree = "<group>"; };
+		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
+		948A9CCE2C906A5600E23669 /* OhlcObject.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OhlcObject.h; sourceTree = "<group>"; };
+		948A9CCF2C906A5600E23669 /* PriceRecord.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PriceRecord.h; sourceTree = "<group>"; };
+		948A9CD12C906A5600E23669 /* EnvironmentStrategyFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EnvironmentStrategyFactory.h; sourceTree = "<group>"; };
+		948A9CD22C906A5600E23669 /* IStrategy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IStrategy.h; sourceTree = "<group>"; };
+		948A9CD32C906A5600E23669 /* IStrategyFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IStrategyFactory.h; sourceTree = "<group>"; };
+		948A9CD42C906A5600E23669 /* RandomStrategy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RandomStrategy.h; sourceTree = "<group>"; };
+		948A9CD52C906A5600E23669 /* Strategies.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Strategies.h; sourceTree = "<group>"; };
+		948A9CD72C906A5600E23669 /* Account.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Account.h; sourceTree = "<group>"; };
+		948A9CD82C906A5600E23669 /* Application.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Application.h; sourceTree = "<group>"; };
+		948A9CD92C906A5600E23669 /* CSVParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSVParser.h; sourceTree = "<group>"; };
+		948A9CDA2C906A5600E23669 /* CSVStream.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSVStream.h; sourceTree = "<group>"; };
+		948A9CDB2C906A5600E23669 /* Utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
+		948A9CDD2C906A5600E23669 /* CSVStream.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CSVStream.cpp; sourceTree = "<group>"; };
+		948A9CDF2C906A5600E23669 /* PriceRecord.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PriceRecord.cpp; sourceTree = "<group>"; };
+		948A9CE12C906A5600E23669 /* EnvironmentStrategyFactory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = EnvironmentStrategyFactory.cpp; sourceTree = "<group>"; };
+		948A9CE22C906A5600E23669 /* Strategies.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Strategies.cpp; sourceTree = "<group>"; };
+		948A9CE42C906A5600E23669 /* Utils.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utils.cpp; sourceTree = "<group>"; };
+		948A9CE62C906A5600E23669 /* Account.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Account.cpp; sourceTree = "<group>"; };
+		948A9CE72C906A5600E23669 /* Application.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Application.cpp; sourceTree = "<group>"; };
+		948A9CE82C906A5600E23669 /* CSVParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CSVParser.cpp; sourceTree = "<group>"; };
+		948A9CE92C906A5600E23669 /* Program.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Program.cpp; sourceTree = "<group>"; };
+		948A9CED2C906AFE00E23669 /* 2020.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = 2020.csv; sourceTree = "<group>"; };
+		948A9CFB2C906C9C00E23669 /* Application.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Application.cpp; sourceTree = "<group>"; };
+		948A9CFC2C906C9C00E23669 /* Application.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Application.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,13 +98,17 @@
 		944D0DB52C8C36C0004DD0FC = {
 			isa = PBXGroup;
 			children = (
+				948A9CEB2C906A5600E23669 /* _prototype */,
+				944D0DD22C8C3704004DD0FC /* images */,
 				944D0DCE2C8C3704004DD0FC /* scripts */,
 				9470B5A22C8C5AD0007D9CC6 /* source */,
 				9470B5AD2C8C5B99007D9CC6 /* tests */,
+				948A9CEC2C906ADB00E23669 /* resources */,
 				944D0DCF2C8C3704004DD0FC /* sonar-project.properties */,
 				944D0DD32C8C3704004DD0FC /* CMakeLists.txt */,
 				944D0DC82C8C3704004DD0FC /* LICENSE.MD */,
 				944D0DD02C8C3704004DD0FC /* README.md */,
+				948A9CCD2C906A5600E23669 /* CONVENTIONS.md */,
 				944D0DBF2C8C36C0004DD0FC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -104,22 +142,14 @@
 			path = images;
 			sourceTree = "<group>";
 		};
-		944D0DD52C8C3807004DD0FC /* tests */ = {
-			isa = PBXGroup;
-			children = (
-				944D0DDC2C8C3962004DD0FC /* main_test.cpp */,
-			);
-			path = tests;
-			sourceTree = "<group>";
-		};
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
 				94DE4F772C8C3E7C00FE48FF /* include */,
-				944D0DD52C8C3807004DD0FC /* tests */,
-				944D0DD22C8C3704004DD0FC /* images */,
-				944D0DDB2C8C394A004DD0FC /* main.hpp */,
 				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
+				948A9CFB2C906C9C00E23669 /* Application.cpp */,
+				940A61112C92CE210083FEB8 /* ConfigManager.cpp */,
+				940A61152C92CE960083FEB8 /* ServiceA.cpp */,
 			);
 			path = source;
 			sourceTree = "<group>";
@@ -132,9 +162,112 @@
 			path = tests;
 			sourceTree = "<group>";
 		};
+		948A9CD02C906A5600E23669 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CCE2C906A5600E23669 /* OhlcObject.h */,
+				948A9CCF2C906A5600E23669 /* PriceRecord.h */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		948A9CD62C906A5600E23669 /* Strategies */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CD12C906A5600E23669 /* EnvironmentStrategyFactory.h */,
+				948A9CD22C906A5600E23669 /* IStrategy.h */,
+				948A9CD32C906A5600E23669 /* IStrategyFactory.h */,
+				948A9CD42C906A5600E23669 /* RandomStrategy.h */,
+				948A9CD52C906A5600E23669 /* Strategies.h */,
+			);
+			path = Strategies;
+			sourceTree = "<group>";
+		};
+		948A9CDC2C906A5600E23669 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CD02C906A5600E23669 /* Models */,
+				948A9CD62C906A5600E23669 /* Strategies */,
+				948A9CD72C906A5600E23669 /* Account.h */,
+				948A9CD82C906A5600E23669 /* Application.h */,
+				948A9CD92C906A5600E23669 /* CSVParser.h */,
+				948A9CDA2C906A5600E23669 /* CSVStream.h */,
+				948A9CDB2C906A5600E23669 /* Utils.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		948A9CDE2C906A5600E23669 /* FileManagement */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CDD2C906A5600E23669 /* CSVStream.cpp */,
+			);
+			path = FileManagement;
+			sourceTree = "<group>";
+		};
+		948A9CE02C906A5600E23669 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CDF2C906A5600E23669 /* PriceRecord.cpp */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		948A9CE32C906A5600E23669 /* Strategies */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CE12C906A5600E23669 /* EnvironmentStrategyFactory.cpp */,
+				948A9CE22C906A5600E23669 /* Strategies.cpp */,
+			);
+			path = Strategies;
+			sourceTree = "<group>";
+		};
+		948A9CE52C906A5600E23669 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CE42C906A5600E23669 /* Utils.cpp */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		948A9CEA2C906A5600E23669 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CDE2C906A5600E23669 /* FileManagement */,
+				948A9CE02C906A5600E23669 /* Models */,
+				948A9CE32C906A5600E23669 /* Strategies */,
+				948A9CE52C906A5600E23669 /* Utilities */,
+				948A9CE62C906A5600E23669 /* Account.cpp */,
+				948A9CE72C906A5600E23669 /* Application.cpp */,
+				948A9CE82C906A5600E23669 /* CSVParser.cpp */,
+				948A9CE92C906A5600E23669 /* Program.cpp */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		948A9CEB2C906A5600E23669 /* _prototype */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CDC2C906A5600E23669 /* include */,
+				948A9CEA2C906A5600E23669 /* src */,
+			);
+			path = _prototype;
+			sourceTree = "<group>";
+		};
+		948A9CEC2C906ADB00E23669 /* resources */ = {
+			isa = PBXGroup;
+			children = (
+				948A9CED2C906AFE00E23669 /* 2020.csv */,
+			);
+			path = resources;
+			sourceTree = "<group>";
+		};
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				940A61162C92CE960083FEB8 /* ServiceA.hpp */,
+				948A9CFC2C906C9C00E23669 /* Application.hpp */,
+				940A61122C92CE210083FEB8 /* ConfigManager.hpp */,
 			);
 			path = include;
 			sourceTree = "<group>";
@@ -222,6 +355,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				948A9CEE2C906AFE00E23669 /* 2020.csv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,7 +366,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
+				940A61132C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
+				940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,8 +377,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
 				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
+				948A9CFE2C906C9C00E23669 /* Application.cpp in Sources */,
+				940A61142C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
