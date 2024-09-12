@@ -23,13 +23,13 @@ jobs:
       run: sudo xcode-select -switch /Applications/Xcode_15.2.app && /usr/bin/xcodebuild -version
     - name: Run tests
       run: >
-          xcodebuild \
-          -scheme tests \
-          -resultBundlePath TestResult/ \
-          -enableCodeCoverage YES \
-          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" \
-          clean build test \
-          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+          xcodebuild 
+          -scheme tests 
+          -resultBundlePath TestResult/ 
+          -enableCodeCoverage YES 
+          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
+          clean build test 
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO 
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
     - name: Convert coverage report to sonarqube format
       run: >
