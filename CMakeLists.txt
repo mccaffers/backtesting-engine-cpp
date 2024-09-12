@@ -11,7 +11,7 @@ set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 
 # Include directories
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/source/include
 )
 
 # Collect all .cpp files in the src directory
