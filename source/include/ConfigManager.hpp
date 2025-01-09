@@ -5,16 +5,17 @@
 // ---------------------------------------
 #pragma once
 #include <iostream>
+#include <memory>
 
 class ConfigManager {
 private:
-    static std::shared_ptr<ConfigManager> instance;
-    std::string config;
-
-    ConfigManager() : config("Default Configuration") {}
+  static std::shared_ptr<ConfigManager> instance;  // Shared pointer to the single instance
+  std::string config;  // Stores the configuration
+  ConfigManager() : config("Default Configuration") {}  // Private constructor
 
 public:
     static std::shared_ptr<ConfigManager> getInstance() {
+      
         if (!instance) {
             instance = std::shared_ptr<ConfigManager>(new ConfigManager());
         }

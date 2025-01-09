@@ -16,21 +16,34 @@ env:
 jobs:
 
   build:
+    name: Build & Test
     runs-on: macos-14
     steps:
     - uses: actions/checkout@v4
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+    - name: Install packages
+      run: >
+          bash ./.github/workflows/brew.sh
+    - name: Build libraries
+      run: >
+          bash ./.github/workflows/build.sh
     - name: Select Xcode  
       run: sudo xcode-select -switch /Applications/Xcode_15.2.app && /usr/bin/xcodebuild -version
     - name: Run tests
       run: >
-          xcodebuild \
-          -project backtesting-engine-cpp.xcodeproj \
-          -scheme tests \
-          -resultBundlePath TestResult/ \
-          -enableCodeCoverage YES \
-          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" \
-          clean build test \
-          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+          xcodebuild 
+          -scheme tests 
+          -destination 'platform=macOS' 
+          -resultBundlePath TestResult/ 
+          -enableCodeCoverage YES 
+          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
+          HEADER_SEARCH_PATHS="./external/libpqxx/include/pqxx/internal ./external/libpqxx/include/ .//external/libpqxx/build/include/" \
+          LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/" \
+          OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib/pkgconfig -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14 -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pgxs -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pkgconfig"
+          clean build test  
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
     - name: Convert coverage report to sonarqube format
       run: >
@@ -54,6 +67,9 @@ jobs:
         run: |
           g++ --version
           cmake --version
+      - name: Build libraries
+        run: >
+            bash ./.github/workflows/build.sh
       - name: Set up Python 3.8 for gcovr
         uses: actions/setup-python@v5
         with: 

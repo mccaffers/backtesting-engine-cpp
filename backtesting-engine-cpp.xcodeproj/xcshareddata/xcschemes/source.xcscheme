@@ -30,7 +30,8 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:tests">
+            reference = "container:tests"
+            default = "YES">
          </TestPlanReference>
       </TestPlans>
    </TestAction>
@@ -55,6 +56,12 @@
             ReferencedContainer = "container:backtesting-engine-cpp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "ewogICJSVU5fSUQiOiAiaWQiLAogICJTWU1CT0xTIjogIkVVUlVTRCIsCiAgIkxBU1RfTU9OVEhTIjogNiwKICAiU1RSQVRFR1kiOiB7CiAgICAgICJVVUlEIjogIiIsCiAgICAgICJUUkFESU5HX1ZBUklBQkxFUyI6IHsKICAgICAgICAgICJTVFJBVEVHWSI6ICJPSExDX1JTSSIsCiAgICAgICAgICAiU1RPUF9ESVNUQU5DRV9JTl9QSVBTIjogIjEiLAogICAgICAgICAgIkxJTUlUX0RJU1RBTkNFX0lOX1BJUFMiOiAiMSIsCiAgICAgICAgICAiVFJBRElOR19TSVpFIjogIjEiCiAgICAgIH0sCiAgICAgICJPSExDX1ZBUklBQkxFUyI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgICAiT0hMQ19DT1VOVCI6IDYwLAogICAgICAgICAgICAgICJPSExDX01JTlVURVMiOiAxMDAKICAgICAgICAgIH0KICAgICAgXSwKICAgICAgIk9ITENfUlNJX1ZBUklBQkxFUyI6IHsKICAgICAgICAgICJSU0lfTE9ORyI6ICI2MCIsCiAgICAgICAgICAiUlNJX1NIT1JUIjogIjQwIgogICAgICB9CiAgfQp9Cg=="
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
