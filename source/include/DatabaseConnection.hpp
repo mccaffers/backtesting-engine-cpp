@@ -15,7 +15,7 @@ public:
   DatabaseConnection() {
     // Convert your connection string format to libpqxx format
     connection_string =
-    "host=100.85.44.114 "
+    "host=localhost"
     "port=8812 "
     "dbname=qdb "
     "user=admin "
