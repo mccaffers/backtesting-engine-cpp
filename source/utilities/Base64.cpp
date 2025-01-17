@@ -20,6 +20,15 @@ static const int B64index[256] =
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
 };
 
+std::string Base64::checkInput(const std::string& base64_input) {
+    std::string result = base64_input;
+    result.erase(
+        std::remove_if(result.begin(), result.end(), ::isspace),
+        result.end()
+    );
+    return result;
+}
+
 // Code adapted from Stack Overflow https://stackoverflow.com/a/37109258/20806857
 const std::string Base64::b64encode(const void* data, const size_t &len)
 {
