@@ -7,6 +7,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>  // for std::remove_if, std::all_of
+#include <cstring>   // for strchr
+#include <string>    // for std::string
 
 class Base64 {
 public:
