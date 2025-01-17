@@ -6,9 +6,9 @@ json='{
       "UUID": "",
       "TRADING_VARIABLES": {
           "STRATEGY": "OHLC_RSI",
-          "STOP_DISTANCE_IN_PIPS": "1",
-          "LIMIT_DISTANCE_IN_PIPS": "1",
-          "TRADING_SIZE": "1"
+          "STOP_DISTANCE_IN_PIPS": 1,
+          "LIMIT_DISTANCE_IN_PIPS": 1,
+          "TRADING_SIZE": 1
       },
       "OHLC_VARIABLES": [
           {
@@ -17,8 +17,8 @@ json='{
           }
       ],
       "OHLC_RSI_VARIABLES": {
-          "RSI_LONG": "60",
-          "RSI_SHORT": "40"
+          "RSI_LONG": 60,
+          "RSI_SHORT": 40
       }
   }
 }'

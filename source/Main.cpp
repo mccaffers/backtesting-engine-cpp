@@ -14,16 +14,15 @@
 #include "Base64.hpp"
 #include <string>
 #include <json.hpp>
-
-
+#include "StrategyConfiguration.hpp"
 
 using json = nlohmann::json;
 
 int main(int argc, const char * argv[]) {
 
   // Ingest parameters
-  std::string output = Base64::b64decode(Base64::checkInput(argv[1]));
-//  std::cout << Base64::b64decode(output);
+  std::string output = Base64::b64decode(argv[1]);
+  
   json j;
   try
   {
@@ -34,8 +33,11 @@ int main(int argc, const char * argv[]) {
       std::cerr << "parse error at byte " << ex.byte << std::endl;
   }
   
-  std::cout << j;
+//  std::cout << j;
+  auto config = j.get<strategy::Configuration>();
+  std::cout << config.RUN_ID << std::endl;
   
+//  std::string value = j["LAST_MONTHS"];
   
   // Throughput of tick data
   // Strategy makes a decision, returns trade YES/NO
