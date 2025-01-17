@@ -15,4 +15,5 @@ public:
   static std::string b64encode(const std::string& str);
   static std::string b64decode(const std::string& str64);
   static bool isValidBase64(const std::string& input);
+  static std::string checkInput(const std::string& base64_input);
 };

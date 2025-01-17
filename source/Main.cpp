@@ -15,22 +15,14 @@
 #include <string>
 #include <json.hpp>
 
-std::string checkInput(std::string base64_input){
-       // Remove any whitespace from the input
-      base64_input.erase(
-          std::remove_if(base64_input.begin(), base64_input.end(), ::isspace),
-          base64_input.end()
-      );
-  
-  return base64_input;
-};
+
 
 using json = nlohmann::json;
 
 int main(int argc, const char * argv[]) {
 
   // Ingest parameters
-  std::string output = Base64::b64decode(checkInput(argv[1]));
+  std::string output = Base64::b64decode(Base64::checkInput(argv[1]));
 //  std::cout << Base64::b64decode(output);
   json j;
   try
