@@ -28,6 +28,7 @@ add_subdirectory(external/libpqxx)
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/source/include
+    ${CMAKE_SOURCE_DIR}/external 
 )
 
 # Collect all .cpp files in the src directory
