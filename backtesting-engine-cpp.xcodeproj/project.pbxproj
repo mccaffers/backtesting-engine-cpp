@@ -13,8 +13,8 @@
 		940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
 		94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
 		94280BA42D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
-		94685CD22D384BD800863D04 /* StrategyConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */; };
-		94685CD32D384BD800863D04 /* StrategyConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */; };
+		94685CD22D384BD800863D04 /* StrategyConfiguration.hpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.hpp */; };
+		94685CD32D384BD800863D04 /* StrategyConfiguration.hpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.hpp */; };
 		9470B5A42C8C5AD0007D9CC6 /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* Main.cpp */; };
 		9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5AE2C8C5B99007D9CC6 /* tests.mm */; };
 		9470B5B62C8C5BFD007D9CC6 /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* Main.cpp */; };
@@ -57,7 +57,7 @@
 		944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "random-indices-sp500-variable.svg"; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		94685CCE2D384A8B00863D04 /* json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = json.hpp; sourceTree = "<group>"; };
-		94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StrategyConfiguration.cpp; sourceTree = "<group>"; };
+		94685CD12D384BD800863D04 /* StrategyConfiguration.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = StrategyConfiguration.hpp; sourceTree = "<group>"; };
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5A32C8C5AD0007D9CC6 /* Main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Main.cpp; sourceTree = "<group>"; };
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1319,7 +1319,7 @@
 		94685CD02D384BA500863D04 /* models */ = {
 			isa = PBXGroup;
 			children = (
-				94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */,
+				94685CD12D384BD800863D04 /* StrategyConfiguration.hpp */,
 			);
 			path = models;
 			sourceTree = "<group>";
@@ -3535,7 +3535,7 @@
 				948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* Main.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */,
-				94685CD32D384BD800863D04 /* StrategyConfiguration.cpp in Sources */,
+				94685CD32D384BD800863D04 /* StrategyConfiguration.hpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* DatabaseConnection.cpp in Sources */,
 				940A61132C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 				940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */,
@@ -3551,7 +3551,7 @@
 				940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* Main.cpp in Sources */,
 				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
-				94685CD22D384BD800863D04 /* StrategyConfiguration.cpp in Sources */,
+				94685CD22D384BD800863D04 /* StrategyConfiguration.hpp in Sources */,
 				948A9CFE2C906C9C00E23669 /* Application.cpp in Sources */,
 				940A61142C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 			);

@@ -40,5 +40,5 @@ add_library(BacktestingEngineLib STATIC ${SOURCES})
 target_link_libraries(BacktestingEngineLib pqxx)
 
 # Main executable
-add_executable(BacktestingEngine source/main.cpp)
+add_executable(BacktestingEngine source/Main.cpp)
 target_link_libraries(BacktestingEngine BacktestingEngineLib)
