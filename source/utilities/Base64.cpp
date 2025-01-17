@@ -1,3 +1,9 @@
+// Backtesting Engine in C++
+//
+// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// This code is licensed under MIT license (see LICENSE.txt for details)
+// ---------------------------------------
+
 #include "Base64.hpp"
 
 static const char* B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -14,6 +20,7 @@ static const int B64index[256] =
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
 };
 
+// Code adapted from Stack Overflow https://stackoverflow.com/a/37109258/20806857
 const std::string Base64::b64encode(const void* data, const size_t &len)
 {
     std::string result((len + 2) / 3 * 4, '=');
@@ -80,4 +87,18 @@ std::string Base64::b64encode(const std::string& str)
 std::string Base64::b64decode(const std::string& str64)
 {
     return b64decode(str64.c_str(), str64.size());
+}
+
+bool Base64::isValidBase64(const std::string& input) {
+    // Check if string length is valid (multiple of 4)
+    if (input.length() % 4 != 0) {
+        return false;
+    }
+    
+    // Check if all characters are valid base64 characters
+    return std::all_of(input.begin(), input.end(),
+        [](char c) {
+            const char* valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+            return strchr(valid, c) != nullptr;
+        });
 }

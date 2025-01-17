@@ -13,9 +13,11 @@
 		940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
 		94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
 		94280BA42D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
-		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
+		94685CD22D384BD800863D04 /* StrategyConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */; };
+		94685CD32D384BD800863D04 /* StrategyConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */; };
+		9470B5A42C8C5AD0007D9CC6 /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* Main.cpp */; };
 		9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5AE2C8C5B99007D9CC6 /* tests.mm */; };
-		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
+		9470B5B62C8C5BFD007D9CC6 /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* Main.cpp */; };
 		948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* Application.cpp */; };
 		948A9CFE2C906C9C00E23669 /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* Application.cpp */; };
 		94CD8B992D2DCDD800041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B982D2DCDD800041BBA /* libpqxx-7.10.a */; };
@@ -54,8 +56,10 @@
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "random-indices-sp500-variable.svg"; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		94685CCE2D384A8B00863D04 /* json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = json.hpp; sourceTree = "<group>"; };
+		94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StrategyConfiguration.cpp; sourceTree = "<group>"; };
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
-		9470B5A32C8C5AD0007D9CC6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		9470B5A32C8C5AD0007D9CC6 /* Main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Main.cpp; sourceTree = "<group>"; };
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5AE2C8C5B99007D9CC6 /* tests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tests.mm; sourceTree = "<group>"; };
 		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
@@ -1247,12 +1251,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		94280BA72D2FC29F00F1CF56 /* Utilities */ = {
+		94280BA72D2FC29F00F1CF56 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
 				94280BA22D2FC00200F1CF56 /* Base64.cpp */,
 			);
-			path = Utilities;
+			path = utilities;
 			sourceTree = "<group>";
 		};
 		944D0DB52C8C36C0004DD0FC = {
@@ -1304,16 +1308,33 @@
 			path = images;
 			sourceTree = "<group>";
 		};
+		94685CCF2D384A8B00863D04 /* nlohmann */ = {
+			isa = PBXGroup;
+			children = (
+				94685CCE2D384A8B00863D04 /* json.hpp */,
+			);
+			path = nlohmann;
+			sourceTree = "<group>";
+		};
+		94685CD02D384BA500863D04 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				94685CD12D384BD800863D04 /* StrategyConfiguration.cpp */,
+			);
+			path = models;
+			sourceTree = "<group>";
+		};
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
 				94DE4F772C8C3E7C00FE48FF /* include */,
-				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
+				9470B5A32C8C5AD0007D9CC6 /* Main.cpp */,
 				948A9CFB2C906C9C00E23669 /* Application.cpp */,
 				940A61112C92CE210083FEB8 /* ConfigManager.cpp */,
 				940A61152C92CE960083FEB8 /* ServiceA.cpp */,
 				94CD8B9F2D2E8CE500041BBA /* DatabaseConnection.cpp */,
-				94280BA72D2FC29F00F1CF56 /* Utilities */,
+				94685CD02D384BA500863D04 /* models */,
+				94280BA72D2FC29F00F1CF56 /* utilities */,
 			);
 			path = source;
 			sourceTree = "<group>";
@@ -1857,6 +1878,7 @@
 		94CD849E2D2D22C900041BBA /* external */ = {
 			isa = PBXGroup;
 			children = (
+				94685CCF2D384A8B00863D04 /* nlohmann */,
 				94CD849D2D2D22C900041BBA /* libpqxx */,
 			);
 			path = external;
@@ -3511,8 +3533,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */,
-				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
+				9470B5A42C8C5AD0007D9CC6 /* Main.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */,
+				94685CD32D384BD800863D04 /* StrategyConfiguration.cpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* DatabaseConnection.cpp in Sources */,
 				940A61132C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 				940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */,
@@ -3526,8 +3549,9 @@
 				94CD8BA12D2E8CE500041BBA /* DatabaseConnection.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* Base64.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */,
-				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
+				9470B5B62C8C5BFD007D9CC6 /* Main.cpp in Sources */,
 				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
+				94685CD22D384BD800863D04 /* StrategyConfiguration.cpp in Sources */,
 				948A9CFE2C906C9C00E23669 /* Application.cpp in Sources */,
 				940A61142C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 			);
@@ -3659,6 +3683,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/nlohmann",
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
@@ -3681,6 +3706,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/nlohmann",
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
