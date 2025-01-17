@@ -13,7 +13,7 @@
 #include "DatabaseConnection.hpp"
 #include "Base64.hpp"
 #include <string>
-#include <json.hpp>
+#include <nlohmann/json.hpp> 
 #include "StrategyConfiguration.hpp"
 
 using json = nlohmann::json;
