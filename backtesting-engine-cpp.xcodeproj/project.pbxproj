@@ -11,6 +11,8 @@
 		940A61142C92CE210083FEB8 /* ConfigManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61112C92CE210083FEB8 /* ConfigManager.cpp */; };
 		940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
 		940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* ServiceA.cpp */; };
+		941B549A2D3BBADE00E3BF64 /* strategy_variables.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* strategy_variables.cpp */; };
+		941B549B2D3BBADE00E3BF64 /* strategy_variables.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* strategy_variables.cpp */; };
 		94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
 		94280BA42D2FC00200F1CF56 /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* Base64.cpp */; };
 		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
@@ -43,9 +45,16 @@
 		940A61122C92CE210083FEB8 /* ConfigManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ConfigManager.hpp; sourceTree = "<group>"; };
 		940A61152C92CE960083FEB8 /* ServiceA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ServiceA.cpp; sourceTree = "<group>"; };
 		940A61162C92CE960083FEB8 /* ServiceA.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ServiceA.hpp; sourceTree = "<group>"; };
+		941B54902D3BBA4900E3BF64 /* ohlc_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ohlc_variables.hpp; sourceTree = "<group>"; };
+		941B54912D3BBA5600E3BF64 /* ohlc_rsi_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ohlc_rsi_variables.hpp; sourceTree = "<group>"; };
+		941B54922D3BBA6500E3BF64 /* trading_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trading_variables.hpp; sourceTree = "<group>"; };
+		941B54932D3BBA7300E3BF64 /* strategy_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = strategy_variables.hpp; sourceTree = "<group>"; };
+		941B54942D3BBA8300E3BF64 /* strategy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = strategy.hpp; sourceTree = "<group>"; };
+		941B54972D3BBAA200E3BF64 /* configuration.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = configuration.hpp; sourceTree = "<group>"; };
+		941B54992D3BBADD00E3BF64 /* strategy_variables.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = strategy_variables.cpp; sourceTree = "<group>"; };
+		941B549C2D3BBFB900E3BF64 /* strategy_head.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = strategy_head.hpp; sourceTree = "<group>"; };
 		94280BA12D2FC00200F1CF56 /* Base64.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Base64.hpp; sourceTree = "<group>"; };
 		94280BA22D2FC00200F1CF56 /* Base64.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Base64.cpp; sourceTree = "<group>"; };
-		944698842D3A53DF0070E30F /* StrategyConfiguration.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = StrategyConfiguration.hpp; sourceTree = "<group>"; };
 		944D0DC82C8C3704004DD0FC /* LICENSE.MD */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.MD; sourceTree = "<group>"; };
 		944D0DC92C8C3704004DD0FC /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		944D0DCA2C8C3704004DD0FC /* clean.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clean.sh; sourceTree = "<group>"; };
@@ -1251,6 +1260,27 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		941B548F2D3BBA3B00E3BF64 /* strategy */ = {
+			isa = PBXGroup;
+			children = (
+				941B54972D3BBAA200E3BF64 /* configuration.hpp */,
+				941B54942D3BBA8300E3BF64 /* strategy.hpp */,
+				941B54932D3BBA7300E3BF64 /* strategy_variables.hpp */,
+				941B54922D3BBA6500E3BF64 /* trading_variables.hpp */,
+				941B54912D3BBA5600E3BF64 /* ohlc_rsi_variables.hpp */,
+				941B54902D3BBA4900E3BF64 /* ohlc_variables.hpp */,
+			);
+			path = strategy;
+			sourceTree = "<group>";
+		};
+		941B54982D3BBAD800E3BF64 /* strategy */ = {
+			isa = PBXGroup;
+			children = (
+				941B54992D3BBADD00E3BF64 /* strategy_variables.cpp */,
+			);
+			path = strategy;
+			sourceTree = "<group>";
+		};
 		94280BA72D2FC29F00F1CF56 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
@@ -1319,6 +1349,7 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				941B54982D3BBAD800E3BF64 /* strategy */,
 				94DE4F772C8C3E7C00FE48FF /* include */,
 				9470B5A32C8C5AD0007D9CC6 /* Main.cpp */,
 				948A9CFB2C906C9C00E23669 /* Application.cpp */,
@@ -3421,7 +3452,8 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
-				944698842D3A53DF0070E30F /* StrategyConfiguration.hpp */,
+				941B548F2D3BBA3B00E3BF64 /* strategy */,
+				941B549C2D3BBFB900E3BF64 /* strategy_head.hpp */,
 				94280BA12D2FC00200F1CF56 /* Base64.hpp */,
 				940A61162C92CE960083FEB8 /* ServiceA.hpp */,
 				948A9CFC2C906C9C00E23669 /* Application.hpp */,
@@ -3527,6 +3559,7 @@
 				948A9CFD2C906C9C00E23669 /* Application.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* Main.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* Base64.cpp in Sources */,
+				941B549B2D3BBADE00E3BF64 /* strategy_variables.cpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* DatabaseConnection.cpp in Sources */,
 				940A61132C92CE210083FEB8 /* ConfigManager.cpp in Sources */,
 				940A61172C92CE960083FEB8 /* ServiceA.cpp in Sources */,
@@ -3539,6 +3572,7 @@
 			files = (
 				94CD8BA12D2E8CE500041BBA /* DatabaseConnection.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* Base64.cpp in Sources */,
+				941B549A2D3BBADE00E3BF64 /* strategy_variables.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* ServiceA.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* Main.cpp in Sources */,
 				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
