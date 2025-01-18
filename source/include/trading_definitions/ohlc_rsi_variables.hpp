@@ -7,7 +7,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 
-namespace strategy {
+namespace trading_definitions {
 struct OHLCRSIVariables {
     int RSI_LONG;
     int RSI_SHORT;

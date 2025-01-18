@@ -9,7 +9,7 @@
 #include <nlohmann/json.hpp>
 #include "strategy.hpp"
 
-namespace strategy {
+namespace trading_definitions {
 struct Configuration {
   std::string RUN_ID;
   std::string SYMBOLS;

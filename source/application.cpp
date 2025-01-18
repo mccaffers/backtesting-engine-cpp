@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "Application.hpp"
+#include "application.hpp"
 
 int Application::addNumbers(const std::vector<int>& numbers) {
   int sum = 0;

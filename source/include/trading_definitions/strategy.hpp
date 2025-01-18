@@ -12,7 +12,8 @@
 #include "ohlc_variables.hpp"
 #include "strategy_variables.hpp"
 
-namespace strategy {
+namespace trading_definitions {
+
 struct Strategy {
     std::string UUID;
     TradingVariables TRADING_VARIABLES;

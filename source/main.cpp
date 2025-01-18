@@ -4,18 +4,22 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
+// std headers
 #include <iostream>
 #include <vector>
 #include <memory>
-#include "ConfigManager.hpp"
-#include "Application.hpp"
-#include "ServiceA.hpp"
-#include "DatabaseConnection.hpp"
-#include "Base64.hpp"
 #include <string>
-#include <nlohmann/json.hpp> 
-#include "strategy_head.hpp"  // For everything
 
+// external headers
+#include <nlohmann/json.hpp>
+
+// backtesting engine headers
+#include "configManager.hpp"
+#include "application.hpp"
+#include "serviceA.hpp"
+#include "databaseConnection.hpp"
+#include "base64.hpp"
+#include "trading_definitions.hpp"  // For everything
 
 using json = nlohmann::json;
 
@@ -35,7 +39,7 @@ int main(int argc, const char * argv[]) {
   }
   
 //  std::cout << j;
-  auto config = j.get<strategy::Configuration>();
+  auto config = j.get<trading_definitions::Configuration>();
   std::cout << config.RUN_ID << std::endl;
   
 //  std::string value = j["LAST_MONTHS"];

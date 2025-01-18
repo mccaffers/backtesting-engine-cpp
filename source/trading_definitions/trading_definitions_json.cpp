@@ -1,6 +1,6 @@
 #include "strategy_variables.hpp"
 
-namespace strategy {
+namespace trading_definitions {
 
 void to_json(nlohmann::json& j, const StrategyVariables& s) {
     if (s.OHLC_RSI_VARIABLES) {

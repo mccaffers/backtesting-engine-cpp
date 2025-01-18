@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "ConfigManager.hpp"
+#include "configManager.hpp"
 #include <iostream>
 
 std::shared_ptr<ConfigManager> ConfigManager::instance = nullptr;
