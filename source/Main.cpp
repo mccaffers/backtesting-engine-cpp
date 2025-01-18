@@ -14,7 +14,8 @@
 #include "Base64.hpp"
 #include <string>
 #include <nlohmann/json.hpp> 
-#include "StrategyConfiguration.hpp"
+#include "strategy_head.hpp"  // For everything
+
 
 using json = nlohmann::json;
 
