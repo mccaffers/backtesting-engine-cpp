@@ -7,7 +7,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 
-namespace strategy {
+namespace trading_definitions {
 struct OHLCVariables {
     int OHLC_COUNT;
     int OHLC_MINUTES;

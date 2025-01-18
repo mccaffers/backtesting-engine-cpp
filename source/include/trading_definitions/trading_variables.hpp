@@ -8,7 +8,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
-namespace strategy {
+namespace trading_definitions {
 struct TradingVariables {
     std::string STRATEGY;
     double STOP_DISTANCE_IN_PIPS;
