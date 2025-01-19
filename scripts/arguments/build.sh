@@ -1,5 +1,5 @@
 json='{
-  "RUN_ID": "id",
+  "RUN_ID": "UNIQUE_IDENTIFER",
   "SYMBOLS": "EURUSD",
   "LAST_MONTHS": 6,
   "STRATEGY": {

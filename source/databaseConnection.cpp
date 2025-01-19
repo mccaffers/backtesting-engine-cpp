@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "DatabaseConnection.hpp"
+#include "databaseConnection.hpp"
 #include <pqxx/pqxx>
 
 void DatabaseConnection::executeQuery(const std::string& query) {

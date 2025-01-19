@@ -10,10 +10,12 @@
 #include "ohlc_rsi_variables.hpp"
 
 namespace trading_definitions {
+
 struct StrategyVariables {
     std::optional<OHLCRSIVariables> OHLC_RSI_VARIABLES;
 };
 
 void to_json(nlohmann::json& j, const StrategyVariables& s);
 void from_json(const nlohmann::json& j, StrategyVariables& s);
-} // namespace strategy
+
+}

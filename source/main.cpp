@@ -24,9 +24,23 @@
 using json = nlohmann::json;
 
 int main(int argc, const char * argv[]) {
+  
+    DatabaseConnection db(argv[1]);
+  
+    // Example query - replace with your actual query
+    std::string query = "SELECT * FROM EURUSD LIMIT 5;";
+  
+    db.executeQuery(query);
+  
+    return 0;
+  
+}
 
+int parseJson( const char * argv[]) {
   // Ingest parameters
-  std::string output = Base64::b64decode(argv[1]);
+  std::string output = Base64::b64decode(argv[2]);
+  
+  std::cout << output;
   
   json j;
   try
@@ -66,14 +80,7 @@ int main(int argc, const char * argv[]) {
 //
 //  serviceA.doSomething();
 //  
-//  DatabaseConnection db;
-//      
-//  // Example query - replace with your actual query
-//  std::string query = "SELECT * FROM EURUSD LIMIT 5;";
-//      
-//  db.executeQuery(query);
-//  
-//  return 0;
+
 //}
 
 

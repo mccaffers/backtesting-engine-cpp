@@ -1377,6 +1377,14 @@
 			path = resources;
 			sourceTree = "<group>";
 		};
+		94B8C7932D3D770800E17EB6 /* utilities */ = {
+			isa = PBXGroup;
+			children = (
+				94280BA12D2FC00200F1CF56 /* base64.hpp */,
+			);
+			path = utilities;
+			sourceTree = "<group>";
+		};
 		94BBA4502D2EA2570010E04D /* arguments */ = {
 			isa = PBXGroup;
 			children = (
@@ -3452,9 +3460,9 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				94B8C7932D3D770800E17EB6 /* utilities */,
 				941B548F2D3BBA3B00E3BF64 /* trading_definitions */,
 				941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */,
-				94280BA12D2FC00200F1CF56 /* base64.hpp */,
 				940A61162C92CE960083FEB8 /* serviceA.hpp */,
 				948A9CFC2C906C9C00E23669 /* application.hpp */,
 				940A61122C92CE210083FEB8 /* configManager.hpp */,
@@ -3712,7 +3720,7 @@
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(PROJECT_DIR)/build/external/libpqxx/src",
+					"$(SRCROOT)/build/external/libpqxx/src",
 					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
 				);
 				OTHER_LDFLAGS = "";
@@ -3735,7 +3743,7 @@
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(PROJECT_DIR)/build/external/libpqxx/src",
+					"$(SRCROOT)/build/external/libpqxx/src",
 					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
 				);
 				OTHER_LDFLAGS = "";

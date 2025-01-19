@@ -5,7 +5,7 @@
 // ---------------------------------------
 #pragma once
 #include <iostream>
-#include "ConfigManager.hpp"
+#include "configManager.hpp"
 
 class ServiceA {
 private:

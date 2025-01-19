@@ -12,15 +12,14 @@ private:
   std::string connection_string;
   
 public:
-  DatabaseConnection() {
-    // Convert your connection string format to libpqxx format
-    connection_string =
-    "host=localhost"
-    "port=8812 "
-    "dbname=qdb "
-    "user=admin "
-    "password=quest "
-    "connect_timeout=3";
+  DatabaseConnection(const std::string& endpoint) {
+      connection_string =
+          "host=" + endpoint + " "
+          "port=8812 "
+          "dbname=qdb "
+          "user=admin "
+          "password=quest "
+          "connect_timeout=3";
   }
   
   void executeQuery(const std::string& query);
