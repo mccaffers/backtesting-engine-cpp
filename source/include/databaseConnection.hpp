@@ -23,5 +23,9 @@ public:
   }
   
   void executeQuery(const std::string& query);
+  
+  const std::string& getConnectionString(){
+    return connection_string;
+  }
 
 };

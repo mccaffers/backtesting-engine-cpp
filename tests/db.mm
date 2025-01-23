@@ -4,14 +4,16 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
+// Using the Objective-C Framework to build XCTestCases
+
 #import <XCTest/XCTest.h>
 #import "application.hpp"
 #import "databaseConnection.hpp"
 
-@interface tests : XCTestCase
+@interface dbtests : XCTestCase
 @end
 
-@implementation tests
+@implementation dbtests
 
 - (void)setUp {
     // Put setup code here. This method is called before the invocation of each test method in the class.
@@ -22,11 +24,18 @@
 }
 
 - (void)testExample {
-
-  // This is an example of a functional test case.
-  // Use XCTAssert and related functions to verify your tests produce the correct results.
-  std::vector<int> numbers = {-1, -2, 3, 4, -5};
-  XCTAssert(Application().addNumbers(numbers) == -1);
+  
+  DatabaseConnection db("test");
+  std::string endpoint = "test";
+  std::string connection_string =
+      "host=" + endpoint + " "
+      "port=8812 "
+      "dbname=qdb "
+      "user=admin "
+      "password=quest "
+      "connect_timeout=3";
+  XCTAssertEqual(connection_string,  db.getConnectionString());
+  
   
 }
 
