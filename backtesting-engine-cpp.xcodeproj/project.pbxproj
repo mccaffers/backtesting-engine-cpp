@@ -15,6 +15,7 @@
 		941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* trading_definitions_json.cpp */; };
 		94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* base64.cpp */; };
 		94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* base64.cpp */; };
+		94364CB62D416D8D00F35B55 /* db.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94364CB52D416D8000F35B55 /* db.mm */; };
 		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
 		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5AE2C8C5B99007D9CC6 /* tests.mm */; };
@@ -55,6 +56,7 @@
 		941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trading_definitions.hpp; sourceTree = "<group>"; };
 		94280BA12D2FC00200F1CF56 /* base64.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = base64.hpp; sourceTree = "<group>"; };
 		94280BA22D2FC00200F1CF56 /* base64.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = base64.cpp; sourceTree = "<group>"; };
+		94364CB52D416D8000F35B55 /* db.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = db.mm; sourceTree = "<group>"; };
 		944D0DC82C8C3704004DD0FC /* LICENSE.MD */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.MD; sourceTree = "<group>"; };
 		944D0DC92C8C3704004DD0FC /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		944D0DCA2C8C3704004DD0FC /* clean.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clean.sh; sourceTree = "<group>"; };
@@ -1364,6 +1366,7 @@
 		9470B5AD2C8C5B99007D9CC6 /* tests */ = {
 			isa = PBXGroup;
 			children = (
+				94364CB52D416D8000F35B55 /* db.mm */,
 				9470B5AE2C8C5B99007D9CC6 /* tests.mm */,
 			);
 			path = tests;
@@ -3584,6 +3587,7 @@
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
 				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
+				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
 				948A9CFE2C906C9C00E23669 /* application.cpp in Sources */,
 				940A61142C92CE210083FEB8 /* configManager.cpp in Sources */,
 			);

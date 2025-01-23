@@ -11,6 +11,7 @@
 
 namespace trading_definitions {
 
+// Add in custom parameters
 struct StrategyVariables {
     std::optional<OHLCRSIVariables> OHLC_RSI_VARIABLES;
 };
