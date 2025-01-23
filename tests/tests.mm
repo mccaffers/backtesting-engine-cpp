@@ -4,9 +4,14 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
+
 #import <XCTest/XCTest.h>
 #import "application.hpp"
 #import "databaseConnection.hpp"
+
+// Using the Objective-C Framework to build XCTestCases
+// This code is a mix of Objective-C and C++, commonly referred to as Objective-C++.
+// This is possible because .mm files in Apple's ecosystem allow Objective-C and C++ code to coexist.
 
 @interface tests : XCTestCase
 @end

@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "Base64.hpp"
+#include "base64.hpp"
 
 static const char* B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
