@@ -36,4 +36,5 @@ build
 TestResult
 .DS_Store
 
-*.xcuserstate
+xcuserdata/
+xcuserstate/
