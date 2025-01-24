@@ -41,11 +41,13 @@ make
 ```
 
 Xcode - Link Binary with Libraries (Source & Test)
+
 ````
 ./build/external/libpqxx/src/libpqxx-7.10.a
 ```
 
 Xcode - Headers Path (for libpqxx and nlohmann/json)
+
 ``` 
 "$(SRCROOT)/external/libpqxx/include/pqxx/internal"
 "$(SRCROOT)/external/libpqxx/include/"
@@ -53,6 +55,7 @@ Xcode - Headers Path (for libpqxx and nlohmann/json)
 ```
 
 Xcode - Library Path
+
 ```
 "$(SRCROOT)/external/libpqxx/src"
 "$(SRCROOT)/build/external/libpqxx/src"
@@ -70,32 +73,6 @@ Xcode - Library Path
 ### Run via test via terminal
 
 `sh ./scripts/test.sh`
-
-### Project Structure
-
-```bash
-project/
-.
-├── CMakeLists.txt
-├── include
-│   ├── Account.h
-│   ├── CSVParser.h
-│   ├── PriceRecord.h
-│   ├── Strategies
-│   │   └── SimpleMovingAverageStrategy.h
-│   └── Strategy.h
-├── readme.md
-├── resources
-├── run.sh
-└── src
-    ├── Account.cpp
-    ├── FileManagement
-    │   ├── CSVParser.cpp
-    │   └── PriceRecord.cpp
-    ├── Strategies
-    │   └── SimpleMovingAverageStrategy.cpp
-    └── program.cpp
-```
 
 ### License
 [MIT](https://choosealicense.com/licenses/mit/)
