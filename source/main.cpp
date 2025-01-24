@@ -15,7 +15,6 @@
 
 // backtesting engine headers
 #include "configManager.hpp"
-#include "application.hpp"
 #include "serviceA.hpp"
 #include "databaseConnection.hpp"
 #include "base64.hpp"
@@ -37,9 +36,11 @@ int main(int argc, const char * argv[]) {
 }
 
 int parseJson( const char * argv[]) {
+  
   // Ingest parameters
   std::string output = Base64::b64decode(argv[2]);
   
+  // Debug, console print out
   std::cout << output;
   
   json j;
@@ -51,37 +52,11 @@ int parseJson( const char * argv[]) {
   {
       std::cerr << "parse error at byte " << ex.byte << std::endl;
   }
+
   
-//  std::cout << j;
   auto config = j.get<trading_definitions::Configuration>();
   std::cout << config.RUN_ID << std::endl;
-  
-//  std::string value = j["LAST_MONTHS"];
-  
-  // Throughput of tick data
-  // Strategy makes a decision, returns trade YES/NO
-  // Perform analysis of open trades against tick data
-  
 
   return 0;
 }
-
-//  std::cout << "Hello, World!\n";
-//  std::vector<int> numbers = {-1, -2, 3, 4, -5};
-//  std::cout << Application().addNumbers(numbers) << std::endl;
-//  
-//  auto configManager = ConfigManager::getInstance();
-//  
-//  ServiceA serviceA(configManager);
-//
-//  serviceA.doSomething();
-//
-//  configManager->setConfig("New Configuration");
-//
-//  serviceA.doSomething();
-//  
-
-//}
-
-
 
