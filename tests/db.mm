@@ -5,7 +5,6 @@
 // ---------------------------------------
 
 #import <XCTest/XCTest.h>
-#import "application.hpp"
 #import "databaseConnection.hpp"
 
 // Using the Objective-C Framework to build XCTestCases
