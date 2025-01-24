@@ -18,10 +18,7 @@
 		94364CB62D416D8D00F35B55 /* db.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94364CB52D416D8000F35B55 /* db.mm */; };
 		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
 		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
-		9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5AE2C8C5B99007D9CC6 /* tests.mm */; };
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
-		948A9CFD2C906C9C00E23669 /* application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* application.cpp */; };
-		948A9CFE2C906C9C00E23669 /* application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 948A9CFB2C906C9C00E23669 /* application.cpp */; };
 		94CD8B992D2DCDD800041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B982D2DCDD800041BBA /* libpqxx-7.10.a */; };
 		94CD8B9C2D2DD02A00041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B9A2D2DCF6E00041BBA /* libpqxx-7.10.a */; };
 		94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
@@ -71,11 +68,8 @@
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5A32C8C5AD0007D9CC6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		9470B5AE2C8C5B99007D9CC6 /* tests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tests.mm; sourceTree = "<group>"; };
 		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
 		948A9CED2C906AFE00E23669 /* 2020.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = 2020.csv; sourceTree = "<group>"; };
-		948A9CFB2C906C9C00E23669 /* application.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = application.cpp; sourceTree = "<group>"; };
-		948A9CFC2C906C9C00E23669 /* application.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = application.hpp; sourceTree = "<group>"; };
 		94BBA4512D2EA2640010E04D /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		94CD832A2D2D22C900041BBA /* config.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = config.yml; sourceTree = "<group>"; };
 		94CD832C2D2D22C900041BBA /* codeql.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = codeql.yml; sourceTree = "<group>"; };
@@ -1355,7 +1349,6 @@
 				941B54982D3BBAD800E3BF64 /* trading_definitions */,
 				94280BA72D2FC29F00F1CF56 /* utilities */,
 				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
-				948A9CFB2C906C9C00E23669 /* application.cpp */,
 				940A61112C92CE210083FEB8 /* configManager.cpp */,
 				940A61152C92CE960083FEB8 /* serviceA.cpp */,
 				94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */,
@@ -1367,7 +1360,6 @@
 			isa = PBXGroup;
 			children = (
 				94364CB52D416D8000F35B55 /* db.mm */,
-				9470B5AE2C8C5B99007D9CC6 /* tests.mm */,
 			);
 			path = tests;
 			sourceTree = "<group>";
@@ -3467,7 +3459,6 @@
 				941B548F2D3BBA3B00E3BF64 /* trading_definitions */,
 				941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */,
 				940A61162C92CE960083FEB8 /* serviceA.hpp */,
-				948A9CFC2C906C9C00E23669 /* application.hpp */,
 				940A61122C92CE210083FEB8 /* configManager.hpp */,
 				94CD8B9E2D2E8CE500041BBA /* databaseConnection.hpp */,
 			);
@@ -3567,7 +3558,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				948A9CFD2C906C9C00E23669 /* application.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
 				941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
@@ -3586,9 +3576,7 @@
 				941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
-				9470B5AF2C8C5B99007D9CC6 /* tests.mm in Sources */,
 				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
-				948A9CFE2C906C9C00E23669 /* application.cpp in Sources */,
 				940A61142C92CE210083FEB8 /* configManager.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
