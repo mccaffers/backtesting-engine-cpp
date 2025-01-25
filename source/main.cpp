@@ -48,17 +48,24 @@ int parseJson(const std::string& input) {
 
 int main(int argc, const char * argv[]) {
   
-    // Connect to QuestDb argv[1]
-    // Load strategy from Base64 argv[2]
-  
-    DatabaseConnection db(argv[1]);
+  // Connect to QuestDb argv[1]
+
+  // DatabaseConnection Constructor
+  // const std::string& endpoint
+  // int port
+  // const std::string& dbname
+  // const std::string& user
+  // const std::string& password
+  DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
+
+  // Load strategy from Base64 argv[2]
   parseJson(argv[2]);
-  
-    // Example query - replace with your actual query
-    std::string query = "SELECT * FROM EURUSD LIMIT 5;";
-  
-    db.executeQuery(query);
-  
-    return 0;
+
+  // Example query - replace with your actual query
+  std::string query = "SELECT * FROM EURUSD LIMIT 5;";
+
+  db.executeQuery(query);
+
+return 0;
   
 }

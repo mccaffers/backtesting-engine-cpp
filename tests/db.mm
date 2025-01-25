@@ -33,7 +33,7 @@
       "port=8812 "
       "dbname=qdb "
       "user=admin "
-      "password=quest "
+      "password= "
       "connect_timeout=3";
   XCTAssertEqual(connection_string,  db.getConnectionString());
   
