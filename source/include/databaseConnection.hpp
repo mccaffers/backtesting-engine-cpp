@@ -16,7 +16,7 @@ public:
                         int port = 8812,
                         const std::string& dbname = "qdb",
                         const std::string& user = "admin",
-                        const std::string& password = "quest");
+                        const std::string& password = "");
   
   void executeQuery(const std::string& query) const;
   
