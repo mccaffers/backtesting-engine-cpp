@@ -18,7 +18,7 @@ public:
                         const std::string& user = "admin",
                         const std::string& password = "quest");
   
-  void executeQuery(const std::string& query);
+  void executeQuery(const std::string& query) const;
   
   const std::string& getConnectionString(){
     return connection_string;

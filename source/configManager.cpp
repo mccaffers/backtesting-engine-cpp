@@ -7,4 +7,4 @@
 #include "configManager.hpp"
 #include <iostream>
 
-std::shared_ptr<ConfigManager> ConfigManager::instance = nullptr;
+
