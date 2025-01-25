@@ -13,4 +13,4 @@ struct OHLCRSIVariables {
     int RSI_SHORT;
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(OHLCRSIVariables, RSI_LONG, RSI_SHORT);
-} // namespace strategy
+} 

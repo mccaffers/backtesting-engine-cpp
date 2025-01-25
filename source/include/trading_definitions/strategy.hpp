@@ -26,4 +26,4 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Strategy,
     OHLC_VARIABLES,
     STRATEGY_VARIABLES
 );
-} // namespace strategy
+} 

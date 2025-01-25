@@ -21,4 +21,4 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TradingVariables,
     LIMIT_DISTANCE_IN_PIPS,
     TRADING_SIZE
 );
-} // namespace strategy
+}
