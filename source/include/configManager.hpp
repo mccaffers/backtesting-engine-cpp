@@ -9,24 +9,17 @@
 
 class ConfigManager {
 private:
-  static std::shared_ptr<ConfigManager> instance;  // Shared pointer to the single instance
-  std::string config;  // Stores the configuration
-  ConfigManager() : config("Default Configuration") {}  // Private constructor
-
+    ConfigManager() = default;
+    ConfigManager(const ConfigManager&) = delete;
+    ConfigManager& operator=(const ConfigManager&) = delete;
+    
 public:
     static std::shared_ptr<ConfigManager> getInstance() {
-      
-        if (!instance) {
-            instance = std::shared_ptr<ConfigManager>(new ConfigManager());
-        }
+        static std::shared_ptr<ConfigManager> instance = std::shared_ptr<ConfigManager>(new ConfigManager());
         return instance;
     }
-
-    void setConfig(const std::string& newConfig) {
-        config = newConfig;
-    }
-
+    
     std::string getConfig() const {
-        return config;
+        return "config data"; // Replace with actual implementation
     }
 };

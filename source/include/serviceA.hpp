@@ -13,7 +13,8 @@ private:
     std::shared_ptr<ConfigManager> configManager;
 
 public:
-    ServiceA(std::shared_ptr<ConfigManager> cm) : configManager(cm) {}
+    ServiceA(std::shared_ptr<ConfigManager> cm = ConfigManager::getInstance())
+        : configManager(cm) {}
 
     void doSomething() {
         std::cout << "ServiceA using config: " << configManager->getConfig() << std::endl;

@@ -19,14 +19,14 @@ DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
         "connect_timeout=3";
 }
 
-void DatabaseConnection::executeQuery(const std::string& query) {
+void DatabaseConnection::executeQuery(const std::string& query) const {
   try {
       // Establish connection
       pqxx::connection conn(this->connection_string);
 
       // Rest of your code remains the same
       if (!conn.is_open()) {
-          throw std::runtime_error("Failed to open database connection");
+          throw std::invalid_argument("Failed to open database connection");
       }
 
       std::cout << "Connected to database successfully!" << std::endl;
@@ -48,7 +48,14 @@ void DatabaseConnection::executeQuery(const std::string& query) {
       // Commit transaction
       txn.commit();
 
-  } catch (const std::exception& e) {
-      std::cerr << "Error: " << e.what() << std::endl;
-  }
+  } catch (const pqxx::broken_connection& e) {
+        std::cerr << "Connection error: " << e.what() << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+        std::cerr << "Query was: " << e.query() << std::endl;
+    } catch (const pqxx::usage_error& e) {
+        std::cerr << "Usage error: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "General error: " << e.what() << std::endl;
+    }
 }
