@@ -16,9 +16,11 @@ json='{
               "OHLC_MINUTES": 100
           }
       ],
-      "OHLC_RSI_VARIABLES": {
-          "RSI_LONG": 60,
-          "RSI_SHORT": 40
+      "STRATEGY_VARIABLES" : {
+        "OHLC_RSI_VARIABLES": {
+            "RSI_LONG": 60,
+            "RSI_SHORT": 40
+        }
       }
   }
 }'
