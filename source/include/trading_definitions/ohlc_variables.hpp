@@ -13,4 +13,4 @@ struct OHLCVariables {
     int OHLC_MINUTES;
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(OHLCVariables, OHLC_COUNT, OHLC_MINUTES);
-} // namespace strategy
+} 

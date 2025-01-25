@@ -1,3 +1,8 @@
+// Backtesting Engine in C++
+//
+// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// This code is licensed under MIT license (see LICENSE.txt for details)
+// ---------------------------------------
 #include "strategy_variables.hpp"
 
 namespace trading_definitions {
@@ -18,4 +23,4 @@ void from_json(const nlohmann::json& j, StrategyVariables& s) {
     }
 }
 
-} // namespace strategy
+}

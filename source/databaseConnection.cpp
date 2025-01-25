@@ -7,6 +7,18 @@
 #include "databaseConnection.hpp"
 #include <pqxx/pqxx>
 
+DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
+                                     const std::string& dbname, const std::string& user,
+                                     const std::string& password) {
+    connection_string =
+        "host=" + endpoint + " "
+        "port=" + std::to_string(port) + " "
+        "dbname=" + dbname + " "
+        "user=" + user + " "
+        "password=" + password + " "
+        "connect_timeout=3";
+}
+
 void DatabaseConnection::executeQuery(const std::string& query) {
   try {
       // Establish connection
