@@ -42,7 +42,7 @@ make
 
 Xcode - Link Binary with Libraries (Source & Test)
 
-````
+```
 ./build/external/libpqxx/src/libpqxx-7.10.a
 ```
 
