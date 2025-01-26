@@ -14,12 +14,14 @@ private:
     ConfigManager& operator=(const ConfigManager&) = delete;
     
 public:
-    static std::shared_ptr<ConfigManager> getInstance() {
-        static std::shared_ptr<ConfigManager> instance = std::shared_ptr<ConfigManager>(new ConfigManager());
-        return instance;
-    }
+
+  static std::shared_ptr<ConfigManager> getInstance() {
+     static auto instance = std::shared_ptr<ConfigManager>(new ConfigManager());
+     return instance;
+  }
     
-    std::string getConfig() const {
-        return "config data"; // Replace with actual implementation
-    }
+  std::string getConfig() const {
+      return "config data"; // Replace with actual implementation
+  }
+  
 };

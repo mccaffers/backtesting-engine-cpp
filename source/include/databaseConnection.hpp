@@ -20,7 +20,7 @@ public:
   
   void executeQuery(const std::string& query) const;
   
-  const std::string& getConnectionString(){
+  const std::string& getConnectionString() const {
     return connection_string;
   }
 
