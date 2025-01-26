@@ -1,7 +1,8 @@
 ## C++ Backtesting Engine
 
-> [!NOTE]  
-> Active development - Usuable at the moment. Last updated 25th Jan 2025
+Active development!
+
+Feel free to explore, but this code base is usuable at the moment.
 
 ### About The Project
 
