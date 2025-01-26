@@ -10,8 +10,14 @@
 DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
                                      const std::string& dbname, const std::string& user,
                                      const std::string& password) {
-  connection_string = std::format("host={} port={} dbname={} user={} password={} connect_timeout=3",
-      endpoint, port, dbname, user, password);
+    connection_string =
+        "host=" + endpoint + " "
+        "port=" + std::to_string(port) + " "
+        "dbname=" + dbname + " "
+        "user=" + user + " "
+        "password=" + password + " "
+        "connect_timeout=3";
+
 }
 
 void DatabaseConnection::executeQuery(const std::string& query) const {
@@ -44,11 +50,11 @@ void DatabaseConnection::executeQuery(const std::string& query) const {
       txn.commit();
 
   } catch (const pqxx::broken_connection& e) {
-      std::cerr << "Connection error: " << e.what() << std::endl;
-  } catch (const pqxx::sql_error& e) {
-      std::cerr << "SQL error: " << e.what() << std::endl;
-      std::cerr << "Query was: " << e.query() << std::endl;
-  } catch (const pqxx::usage_error& e) {
-      std::cerr << "Usage error: " << e.what() << std::endl;
-  }
+        std::cerr << "Connection error: " << e.what() << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+        std::cerr << "Query was: " << e.query() << std::endl;
+    } catch (const pqxx::usage_error& e) {
+        std::cerr << "Usage error: " << e.what() << std::endl;
+    }
 }
