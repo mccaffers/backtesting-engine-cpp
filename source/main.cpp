@@ -49,13 +49,6 @@ int parseJson(const std::string& input) {
 int main(int argc, const char * argv[]) {
   
   // Connect to QuestDb argv[1]
-
-  // DatabaseConnection Constructor
-  // const std::string& endpoint
-  // int port
-  // const std::string& dbname
-  // const std::string& user
-  // const std::string& password
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
   // Load strategy from Base64 argv[2]
