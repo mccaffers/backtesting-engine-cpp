@@ -6,6 +6,7 @@
 #pragma once
 #include <iostream>
 #include <pqxx/pqxx>
+#include "models/priceData.hpp"
 
 class DatabaseConnection {
 private:
@@ -18,7 +19,8 @@ public:
                         const std::string& user = "admin",
                         const std::string& password = "");
   
-  void executeQuery(const std::string& query) const;
+  void printResults(const std::vector<PriceData>& results) const;
+  std::vector<PriceData> executeQuery(const std::string& query) const;
   
   const std::string& getConnectionString() const {
     return connection_string;

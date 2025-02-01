@@ -20,3 +20,9 @@ public:
   static bool isValidBase64(const std::string& input);
   static std::string checkInput(const std::string& base64_input);
 };
+
+class Utilities {
+public:
+  static std::chrono::system_clock::time_point parseTimestamp(const std::string& ts);
+};
+

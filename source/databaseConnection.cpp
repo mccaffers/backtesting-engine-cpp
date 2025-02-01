@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 #include "databaseConnection.hpp"
+#include "base64.hpp"
 #include <pqxx/pqxx>
 
 DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
@@ -20,41 +21,53 @@ DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
 
 }
 
-void DatabaseConnection::executeQuery(const std::string& query) const {
-  try {
-      // Establish connection
-      pqxx::connection conn(this->connection_string);
+std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query) const {
+    std::vector<PriceData> results;
+    
+    try {
+        pqxx::connection conn(this->connection_string);
 
-      // Rest of your code remains the same
-      if (!conn.is_open()) {
-          throw std::invalid_argument("Failed to open database connection");
-      }
+        if (!conn.is_open()) {
+            throw std::invalid_argument("Failed to open database connection");
+        }
 
-      std::cout << "Connected to database successfully!" << std::endl;
+        std::cout << "Connected to database successfully!" << std::endl;
 
-      // Create a transaction
-      pqxx::work txn(conn);
+        pqxx::work txn(conn);
+        pqxx::result result = txn.exec(query);
 
-      // Execute query
-      pqxx::result result = txn.exec(query);
+        // Convert results to PriceData objects
+        for (const auto& row : result) {
+            double value1 = row[0].as<double>();
+            double value2 = row[1].as<double>();
+            std::string timestamp_str = row[2].as<std::string>();
+            
+            auto timestamp = Utilities::parseTimestamp(timestamp_str);
+            
+            results.emplace_back(value1, value2, timestamp);
+        }
 
-      // Print results
-      for (const auto& row : result) {
-          for (const auto& field : row) {
-              std::cout << field.c_str() << "\t";
-          }
-          std::cout << std::endl;
-      }
+        txn.commit();
 
-      // Commit transaction
-      txn.commit();
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 
-  } catch (const pqxx::broken_connection& e) {
-        std::cerr << "Connection error: " << e.what() << std::endl;
-    } catch (const pqxx::sql_error& e) {
-        std::cerr << "SQL error: " << e.what() << std::endl;
-        std::cerr << "Query was: " << e.query() << std::endl;
-    } catch (const pqxx::usage_error& e) {
-        std::cerr << "Usage error: " << e.what() << std::endl;
+    return results;
+}
+
+// Example usage function to demonstrate how to work with the results
+void DatabaseConnection::printResults(const std::vector<PriceData>& results) const {
+    for (const auto& data : results) {
+        // Convert timestamp back to string for display
+        auto time_t = std::chrono::system_clock::to_time_t(data.timestamp);
+        auto tm = *std::localtime(&time_t);
+        std::stringstream ss;
+        ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        
+        std::cout << std::fixed << std::setprecision(4)
+                 << data.value1 << "\t"
+                 << data.value2 << "\t"
+                 << ss.str() << std::endl;
     }
 }
