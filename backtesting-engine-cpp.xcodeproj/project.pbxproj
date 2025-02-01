@@ -53,6 +53,7 @@
 		941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trading_definitions.hpp; sourceTree = "<group>"; };
 		94280BA12D2FC00200F1CF56 /* base64.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = base64.hpp; sourceTree = "<group>"; };
 		94280BA22D2FC00200F1CF56 /* base64.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = base64.cpp; sourceTree = "<group>"; };
+		942966D82D48E84A00532862 /* priceData.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = priceData.hpp; sourceTree = "<group>"; };
 		94364CB52D416D8000F35B55 /* db.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = db.mm; sourceTree = "<group>"; };
 		944D0DC82C8C3704004DD0FC /* LICENSE.MD */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.MD; sourceTree = "<group>"; };
 		944D0DC92C8C3704004DD0FC /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
@@ -1283,6 +1284,14 @@
 				94280BA22D2FC00200F1CF56 /* base64.cpp */,
 			);
 			path = utilities;
+			sourceTree = "<group>";
+		};
+		942966D72D48E84100532862 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				942966D82D48E84A00532862 /* priceData.hpp */,
+			);
+			path = models;
 			sourceTree = "<group>";
 		};
 		944D0DB52C8C36C0004DD0FC = {
@@ -3455,6 +3464,7 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				942966D72D48E84100532862 /* models */,
 				94B8C7932D3D770800E17EB6 /* utilities */,
 				941B548F2D3BBA3B00E3BF64 /* trading_definitions */,
 				941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */,

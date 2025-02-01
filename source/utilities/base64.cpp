@@ -4,6 +4,9 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
+#include <iomanip>  // Add this header for std::get_time
+#include <sstream>
+#include <chrono>
 #include "base64.hpp"
 
 static const char* const B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -110,4 +113,22 @@ bool Base64::isValidBase64(const std::string& input) {
             const char* valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
             return strchr(valid, c) != nullptr;
         });
+}
+
+std::chrono::system_clock::time_point Utilities::parseTimestamp(const std::string& ts) {
+    std::tm tm = {};
+    std::istringstream ss(ts);
+    ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+    
+    auto timePoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+    
+    // Parse milliseconds if present
+    if (ss.peek() == '.') {
+        ss.ignore(); // Skip the dot
+        int milliseconds;
+        ss >> milliseconds;
+        timePoint += std::chrono::milliseconds(milliseconds / 1000); // Convert microseconds to milliseconds
+    }
+    
+    return timePoint;
 }
