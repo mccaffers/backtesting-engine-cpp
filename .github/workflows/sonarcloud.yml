@@ -1,7 +1,7 @@
-# Workflow for building and testing the project
+# Backtesting C++ Workflow
+# To build, test and perform SonarCloud analysis
 name: Build
 
-# Define when the workflow should run
 on:
   push:
     branches:
@@ -9,7 +9,6 @@ on:
   pull_request:
     types: 
       - opened      # When PR is first created
-      - edited      # When PR description/title is edited
       - synchronize # When new commits are pushed to the PR
       - reopened    # When PR is reopened after being closed
 
@@ -37,8 +36,8 @@ jobs:
     - name: Install dependencies
       run: bash ./.github/workflows/brew.sh
 
-    # Step 4: Build project libraries
-    - name: Build libraries
+    # Step 4: Build project external libraries
+    - name: Build C++ Libraries
       run: bash ./.github/workflows/build.sh
 
     # Step 5: Configure Xcode version
@@ -90,10 +89,10 @@ jobs:
         run: |
           g++ --version
           cmake --version
-      - name: Build libraries
+      - name: Build C++ Libraries
         run: >
             bash ./.github/workflows/build.sh
-      - name: Set up Python 3.8 for gcovr
+      - name: Install Python 3.12 for gcovr
         uses: actions/setup-python@v5
         with: 
           python-version: 3.12
