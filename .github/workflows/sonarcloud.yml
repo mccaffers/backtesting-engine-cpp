@@ -78,7 +78,7 @@ jobs:
         run: |
           pip install gcovr==5.0 # 5.1 is not supported by sonarcloud
       - name: Install Build Wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@4.2.1
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4.2.1
       # - name: Install sonar-scanner and build-wrapper
       #   uses: SonarSource/sonarcloud-github-c-cpp@v3   
       - name: Download all workflow run artifacts
@@ -92,7 +92,8 @@ jobs:
         run: |
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@4.2.1
+        uses: 
+        uses: SonarSource/sonarqube-scan-action@v4.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} 
