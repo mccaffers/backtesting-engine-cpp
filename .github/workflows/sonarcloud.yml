@@ -77,25 +77,35 @@ jobs:
       - name: install gcovr 5.0
         run: |
           pip install gcovr==5.0 # 5.1 is not supported by sonarcloud
-      - name: Install sonar-scanner and build-wrapper
-        uses: SonarSource/sonarcloud-github-c-cpp@v3   
+      - name: Install Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@4.2.1
+      # - name: Install sonar-scanner and build-wrapper
+      #   uses: SonarSource/sonarcloud-github-c-cpp@v3   
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v4
       - name: Unpack Artifact  
         run: >
           ls -l ./
       - name: Configure CMake
-        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      #  See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-      - name: Run sonar-scanner
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@4.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} # Put the name of your token here
-        run: |
-          sonar-scanner \
-          --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" \
-          -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} 
+        with:
+          # Consult https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/ for more information and options
+          args: >
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" \
+      #       -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
+      # - name: Run sonar-scanner
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} 
+      #   run: |
+      #     sonar-scanner \
+      #     --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" \
+      #     -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
