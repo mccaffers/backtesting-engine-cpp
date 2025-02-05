@@ -9,6 +9,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <iomanip>
 
 // external headers
 #include <nlohmann/json.hpp>
@@ -60,7 +61,9 @@ int main(int argc, const char * argv[]) {
 
   std::vector<PriceData> priceData = db.executeQuery(query);
   
-  std::cout << priceData[0].timestamp;
+  // Convert timestamp to readable format for debugging
+  auto timeT = std::chrono::system_clock::to_time_t(priceData[0].timestamp);
+  std::cout << "Timestamp: " << std::put_time(std::localtime(&timeT), "%Y-%m-%d %H:%M:%S") << std::endl;
 
   auto tradeManager = TradeManager::getInstance();
 
