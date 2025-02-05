@@ -58,21 +58,24 @@ jobs:
           -destination 'platform=macOS' 
           -resultBundlePath TestResult/ 
           -enableCodeCoverage YES 
-          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
+          -derivedDataPath "/tmp"
           HEADER_SEARCH_PATHS="./external/libpqxx/include/pqxx/internal ./external/libpqxx/include/ ./external/libpqxx/build/include/ ./external/" \
           LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/" \
           OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib/pkgconfig -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14 -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pgxs -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pkgconfig"
           clean build test  
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
-    - name: Convert coverage report to sonarqube format
-      run: >
-          bash ./.github/workflows/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
+    - name: Check artifacts
+          run: |
+            sh ./.github/workflows/cpp_coverage.sh
+    # - name: Convert coverage report to sonarqube format
+    #   run: >
+    #       bash ./.github/workflows/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
     # Artifact will be available only for 1 day, this is because 
     # it's only used to pass test data to SonarCloud only
     - name: Upload coverage report
       uses: actions/upload-artifact@v4
       with:
-        path: sonarqube-generic-coverage.xml
+        path: coverage.txt
         retention-days: 1 
     
   # This block takes the artifact generated from the build step and uses it for SonarCloud analysis
@@ -139,4 +142,5 @@ jobs:
         with:
           args: >
             -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
+            -Dsonar.sonar.cfamily.gcov.reportsPath=artifact/coverage.txt
+          # -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
