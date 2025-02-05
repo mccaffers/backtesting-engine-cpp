@@ -142,5 +142,5 @@ jobs:
         with:
           args: >
             -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            -Dsonar.sonar.cfamily.gcov.reportsPath=artifact/coverage.txt
+            -Dsonar.cfamily.gcov.reportsPath=artifact/coverage.txt
           # -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
