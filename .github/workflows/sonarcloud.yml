@@ -134,5 +134,4 @@ jobs:
         with:
           args: >
             -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            -Dsonar.coverage.exclusions=tests/**/*,external/**/*
             -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
