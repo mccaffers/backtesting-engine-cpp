@@ -65,7 +65,7 @@ jobs:
           clean build test  
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
     - name: Export coverage report
-        run: |
+      run: |
           sh ./.github/workflows/cpp_coverage.sh
     # - name: Convert coverage report to sonarqube format
     #   run: >
