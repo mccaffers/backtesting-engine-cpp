@@ -19,6 +19,7 @@
 #include "databaseConnection.hpp"
 #include "base64.hpp"
 #include "trading_definitions.hpp"  // For everything
+#include "tradeManager.hpp"
 
 using json = nlohmann::json;
 
@@ -57,8 +58,24 @@ int main(int argc, const char * argv[]) {
   // Example query - replace with your actual query
   std::string query = "SELECT * FROM EURUSD LIMIT 5;";
 
-  db.executeQuery(query);
+  std::vector<PriceData> priceData = db.executeQuery(query);
+  
+  std::cout << priceData[0].timestamp;
 
-return 0;
+  auto tradeManager = TradeManager::getInstance();
+
+  // Open a trade
+  std::string tradeId = tradeManager->openTrade(1.2345, 100000, true);
+  std::cout << "Opened trade: " << tradeId << std::endl;
+
+  // Review account
+  size_t openTrades = tradeManager->reviewAccount();
+  std::cout << "Number of open trades: " << openTrades << std::endl;
+
+  // Close trade
+  bool closed = tradeManager->closeTrade(tradeId);
+  std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
+
+  return 0;
   
 }

@@ -63,7 +63,7 @@ Xcode - Library Path
 "/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14"
 ```
 
-### Test build with cmake
+### Test the build
 
 `sh ./scripts/build.sh`
 
