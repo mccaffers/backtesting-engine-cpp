@@ -17,6 +17,11 @@
 		94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* base64.cpp */; };
 		94364CB62D416D8D00F35B55 /* db.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94364CB52D416D8000F35B55 /* db.mm */; };
 		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
+		94674B872D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
+		94674B882D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
+		94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94674B892D533BDA00973137 /* tradeManager.mm */; };
+		94674B8D2D533E7800973137 /* trade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B8B2D533E7800973137 /* trade.cpp */; };
+		94674B8E2D533E7800973137 /* trade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B8B2D533E7800973137 /* trade.cpp */; };
 		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		94CD8B992D2DCDD800041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B982D2DCDD800041BBA /* libpqxx-7.10.a */; };
@@ -65,6 +70,11 @@
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "random-indices-sp500-variable.svg"; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		94674B822D533B1D00973137 /* trade.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trade.hpp; sourceTree = "<group>"; };
+		94674B832D533B2F00973137 /* tradeManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tradeManager.hpp; sourceTree = "<group>"; };
+		94674B852D533B4000973137 /* tradeManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tradeManager.cpp; sourceTree = "<group>"; };
+		94674B892D533BDA00973137 /* tradeManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tradeManager.mm; sourceTree = "<group>"; };
+		94674B8B2D533E7800973137 /* trade.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = trade.cpp; sourceTree = "<group>"; };
 		94685CCE2D384A8B00863D04 /* json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = json.hpp; sourceTree = "<group>"; };
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5A32C8C5AD0007D9CC6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
@@ -1289,6 +1299,7 @@
 		942966D72D48E84100532862 /* models */ = {
 			isa = PBXGroup;
 			children = (
+				94674B822D533B1D00973137 /* trade.hpp */,
 				942966D82D48E84A00532862 /* priceData.hpp */,
 			);
 			path = models;
@@ -1343,6 +1354,30 @@
 			path = images;
 			sourceTree = "<group>";
 		};
+		94674B842D533B2F00973137 /* trading */ = {
+			isa = PBXGroup;
+			children = (
+				94674B832D533B2F00973137 /* tradeManager.hpp */,
+			);
+			path = trading;
+			sourceTree = "<group>";
+		};
+		94674B862D533B4000973137 /* trading */ = {
+			isa = PBXGroup;
+			children = (
+				94674B852D533B4000973137 /* tradeManager.cpp */,
+			);
+			path = trading;
+			sourceTree = "<group>";
+		};
+		94674B8C2D533E7800973137 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				94674B8B2D533E7800973137 /* trade.cpp */,
+			);
+			path = models;
+			sourceTree = "<group>";
+		};
 		94685CCF2D384A8B00863D04 /* nlohmann */ = {
 			isa = PBXGroup;
 			children = (
@@ -1354,6 +1389,8 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				94674B8C2D533E7800973137 /* models */,
+				94674B862D533B4000973137 /* trading */,
 				94DE4F772C8C3E7C00FE48FF /* include */,
 				941B54982D3BBAD800E3BF64 /* trading_definitions */,
 				94280BA72D2FC29F00F1CF56 /* utilities */,
@@ -1368,6 +1405,7 @@
 		9470B5AD2C8C5B99007D9CC6 /* tests */ = {
 			isa = PBXGroup;
 			children = (
+				94674B892D533BDA00973137 /* tradeManager.mm */,
 				94364CB52D416D8000F35B55 /* db.mm */,
 			);
 			path = tests;
@@ -3464,6 +3502,7 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				94674B842D533B2F00973137 /* trading */,
 				942966D72D48E84100532862 /* models */,
 				94B8C7932D3D770800E17EB6 /* utilities */,
 				941B548F2D3BBA3B00E3BF64 /* trading_definitions */,
@@ -3570,7 +3609,9 @@
 			files = (
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
+				94674B8E2D533E7800973137 /* trade.cpp in Sources */,
 				941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				94674B872D533B4000973137 /* tradeManager.cpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
 				940A61132C92CE210083FEB8 /* configManager.cpp in Sources */,
 				940A61172C92CE960083FEB8 /* serviceA.cpp in Sources */,
@@ -3583,8 +3624,11 @@
 			files = (
 				94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */,
+				94674B8D2D533E7800973137 /* trade.cpp in Sources */,
 				941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */,
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
+				94674B882D533B4000973137 /* tradeManager.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
 				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
 				940A61142C92CE210083FEB8 /* configManager.cpp in Sources */,
