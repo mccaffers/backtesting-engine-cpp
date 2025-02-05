@@ -141,6 +141,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }} 
         with:
           args: >
-            -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            -Dsonar.cfamily.gcov.reportsPath=artifact/coverage.txt
-          # -Dsonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.coverageReportPaths=artifact/coverage.txt
+          
