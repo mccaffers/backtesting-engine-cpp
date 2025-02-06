@@ -142,5 +142,5 @@ jobs:
         with:
           args: >
             --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
-            --define sonar.coverageReportPaths=artifact/coverage.txt
+            --define sonar.cfamily.llvm-cov.reportPath=artifact/coverage.txt
           
