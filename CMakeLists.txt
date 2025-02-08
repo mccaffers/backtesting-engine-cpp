@@ -39,6 +39,8 @@ add_subdirectory(external/libpqxx EXCLUDE_FROM_ALL)
 include_directories(
     ${CMAKE_SOURCE_DIR}/source/include
     ${CMAKE_SOURCE_DIR}/source/include/utilities
+    ${CMAKE_SOURCE_DIR}/source/include/models
+    ${CMAKE_SOURCE_DIR}/source/include/trading
     ${CMAKE_SOURCE_DIR}/source/include/trading_definitions
     ${CMAKE_SOURCE_DIR}/external
 )
