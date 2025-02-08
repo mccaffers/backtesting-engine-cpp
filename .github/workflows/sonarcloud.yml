@@ -49,19 +49,17 @@ jobs:
     # - Outputs results in JUnit format
     - name: Run tests
       run: >
+          OTHER_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"
+          OTHER_CPLUSPLUSFLAGS="-fprofile-instr-generate -fcoverage-mapping"
+          OTHER_SWIFT_FLAGS="-profile-generate -profile-coverage-mapping"
+          LLVM_PROFILE_FILE="/tmp/coverage.profraw"
           CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-          xcodebuild 
-          -scheme tests 
-          -destination 'platform=macOS' 
+          xcodebuild
+          -scheme tests
+          -destination 'platform=macOS'
           -resultBundlePath TestResult/ 
           -enableCodeCoverage YES 
           -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
-          GCC_GENERATE_TEST_COVERAGE_FILES=YES
-          GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES
-          CLANG_COVERAGE_MAPPING=YES
-          CLANG_COVERAGE_MAPPING_LINKER_ARGS=YES
-          DEBUG_INFORMATION_FORMAT="dwarf-with-dsym"
-          BUILD_LIBRARY_FOR_DISTRIBUTION=NO
           HEADER_SEARCH_PATHS="./external/libpqxx/include/pqxx/internal ./external/libpqxx/include/ ./external/libpqxx/build/include/ ./external/"
           LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/"
           OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib -L/opt/homebrew/Cellar/pkgconf/2.3.0_1/lib/pkgconfig -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14 -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pgxs -L/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pkgconfig"
