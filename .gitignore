@@ -38,3 +38,5 @@ TestResult
 
 xcuserdata/
 xcuserstate/
+TestResult.xcresult/
+sonarqube-generic-coverage.xml

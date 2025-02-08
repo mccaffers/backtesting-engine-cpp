@@ -8,7 +8,7 @@ Feel free to explore, but this code base is usuable at the moment.
 
 I'm developing a high-performance C++ backtesting engine designed to analyze financial data and evaluate multiple trading strategies at scale.
 
-![alt](images/development_active.svg) [![Build](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonarcloud.yml)  [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
+[![Build](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonarcloud.yml)  [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
 
 I'm extracting results and creating various graphs for trend analyses using SciPy for calculations and Plotly for visualization.
 
@@ -63,7 +63,7 @@ Xcode - Library Path
 "/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14"
 ```
 
-### Test build with cmake
+### Test the build
 
 `sh ./scripts/build.sh`
 
