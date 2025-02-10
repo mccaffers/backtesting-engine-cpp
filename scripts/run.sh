@@ -4,7 +4,7 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Build the source code
-source $current_dir/environment.sh
+# source $current_dir/environment.sh - no longer necessary
 source $current_dir/clean.sh
 source $current_dir/build.sh
 
@@ -49,5 +49,5 @@ output=$(echo "$json" | base64)
 
 # Step 6: Run the tests for now (/executable) from the root directory
 # Passing two arguements, the destination of the QuestDB and the Strategy JSON (in base64)
-./"$BUILD_DIR/$EXECUTABLE_NAME" localhost "$output"
+./"$BUILD_DIR/$EXECUTABLE_NAME" 100.85.44.114 "$output"
 
