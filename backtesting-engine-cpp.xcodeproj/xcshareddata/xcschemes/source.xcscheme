@@ -58,7 +58,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "100.85.44.114"
+            argument = "localhost"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
