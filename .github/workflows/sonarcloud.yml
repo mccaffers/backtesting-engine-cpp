@@ -62,7 +62,7 @@ jobs:
           -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
           HEADER_SEARCH_PATHS="./external/libpqxx/include/pqxx/internal ./external/libpqxx/include/ ./external/libpqxx/build/include/ ./external/"
           LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/"
-          OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L$(brew --prefix pkgconf)/lib -L$(brew --prefix pkgconf)/lib/pkgconfig -L$(brew --prefix postgresql@14)/lib/postgresql@14 -L$(brew --prefix postgresql@14)/lib/postgresql@14/pgxs -L$(brew --prefix postgresql@14)/lib/postgresql@14/pkgconfig"
+          OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L$(brew --prefix pkgconf)/lib -L$(brew --prefix pkgconf)/lib/pkgconfig -L$(brew --prefix postgresql@18)/lib/postgresql -L$(brew --prefix postgresql@18)/lib/postgresql/pgxs -L$(brew --prefix postgresql@18)/lib/postgresql/pkgconfig"
           clean build test
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
     - name: Convert coverage report to sonarqube format
