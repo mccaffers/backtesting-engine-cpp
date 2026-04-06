@@ -11,6 +11,8 @@
 		940A61142C92CE210083FEB8 /* configManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61112C92CE210083FEB8 /* configManager.cpp */; };
 		940A61172C92CE960083FEB8 /* serviceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* serviceA.cpp */; };
 		940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940A61152C92CE960083FEB8 /* serviceA.cpp */; };
+		941408AE2D59F93F000ED1F9 /* sqlManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941408AD2D59F93F000ED1F9 /* sqlManager.cpp */; };
+		941408AF2D59F93F000ED1F9 /* sqlManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941408AD2D59F93F000ED1F9 /* sqlManager.cpp */; };
 		941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* trading_definitions_json.cpp */; };
 		941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* trading_definitions_json.cpp */; };
 		94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94280BA22D2FC00200F1CF56 /* base64.cpp */; };
@@ -51,6 +53,8 @@
 		940A61122C92CE210083FEB8 /* configManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = configManager.hpp; sourceTree = "<group>"; };
 		940A61152C92CE960083FEB8 /* serviceA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = serviceA.cpp; sourceTree = "<group>"; };
 		940A61162C92CE960083FEB8 /* serviceA.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = serviceA.hpp; sourceTree = "<group>"; };
+		941408AD2D59F93F000ED1F9 /* sqlManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sqlManager.cpp; sourceTree = "<group>"; };
+		941408B02D59F954000ED1F9 /* sqlManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sqlManager.hpp; sourceTree = "<group>"; };
 		941B54902D3BBA4900E3BF64 /* ohlc_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ohlc_variables.hpp; sourceTree = "<group>"; };
 		941B54912D3BBA5600E3BF64 /* ohlc_rsi_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ohlc_rsi_variables.hpp; sourceTree = "<group>"; };
 		941B54922D3BBA6500E3BF64 /* trading_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trading_variables.hpp; sourceTree = "<group>"; };
@@ -1317,6 +1321,7 @@
 				94CD849E2D2D22C900041BBA /* external */,
 				944D0DD22C8C3704004DD0FC /* images */,
 				944D0DCE2C8C3704004DD0FC /* scripts */,
+				94DE4F772C8C3E7C00FE48FF /* include */,
 				9470B5A22C8C5AD0007D9CC6 /* source */,
 				9470B5AD2C8C5B99007D9CC6 /* tests */,
 				948A9CEC2C906ADB00E23669 /* resources */,
@@ -1395,16 +1400,16 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
-				943398232D57E53400287A2D /* jsonParser.cpp */,
 				94674B8C2D533E7800973137 /* models */,
 				94674B862D533B4000973137 /* trading */,
-				94DE4F772C8C3E7C00FE48FF /* include */,
 				941B54982D3BBAD800E3BF64 /* trading_definitions */,
 				94280BA72D2FC29F00F1CF56 /* utilities */,
 				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
 				940A61112C92CE210083FEB8 /* configManager.cpp */,
 				940A61152C92CE960083FEB8 /* serviceA.cpp */,
 				94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */,
+				943398232D57E53400287A2D /* jsonParser.cpp */,
+				941408AD2D59F93F000ED1F9 /* sqlManager.cpp */,
 			);
 			path = source;
 			sourceTree = "<group>";
@@ -3510,6 +3515,7 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				941408B02D59F954000ED1F9 /* sqlManager.hpp */,
 				943398222D57E52900287A2D /* jsonParser.hpp */,
 				94674B842D533B2F00973137 /* trading */,
 				942966D72D48E84100532862 /* models */,
@@ -3616,6 +3622,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				941408AE2D59F93F000ED1F9 /* sqlManager.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
 				943398252D57E53400287A2D /* jsonParser.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
@@ -3633,6 +3640,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
+				941408AF2D59F93F000ED1F9 /* sqlManager.cpp in Sources */,
 				943398242D57E53400287A2D /* jsonParser.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8D2D533E7800973137 /* trade.cpp in Sources */,
@@ -3777,9 +3785,8 @@
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(SRCROOT)/build/external/libpqxx/src",
-					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
+					"\"$(SRCROOT)/external/libpqxx/build/src\"",
+					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
 				);
 				OTHER_LDFLAGS = "";
 				OTHER_LIBTOOLFLAGS = "";
@@ -3800,9 +3807,8 @@
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(SRCROOT)/build/external/libpqxx/src",
-					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
+					"\"$(SRCROOT)/external/libpqxx/build/src\"",
+					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
 				);
 				OTHER_LDFLAGS = "";
 				OTHER_LIBTOOLFLAGS = "";
@@ -3823,9 +3829,8 @@
 					"\"$(SRCROOT)/external/",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(PROJECT_DIR)/build/external/libpqxx/src",
-					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
+					"\"$(SRCROOT)/external/libpqxx/build/src\"",
+					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mccaffers.tests;
@@ -3846,9 +3851,8 @@
 					"\"$(SRCROOT)/external/",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/external/libpqxx/src\"",
-					"$(PROJECT_DIR)/build/external/libpqxx/src",
-					"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14",
+					"\"$(SRCROOT)/external/libpqxx/build/src\"",
+					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mccaffers.tests;

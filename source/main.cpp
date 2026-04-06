@@ -22,6 +22,7 @@
 #include "trading_definitions.hpp"  // For everything
 #include "tradeManager.hpp"
 #include "jsonParser.hpp"
+#include "sqlManager.hpp"
 
 using json = nlohmann::json;
 
@@ -33,10 +34,7 @@ int main(int argc, const char * argv[]) {
   // Load strategy from Base64 argv[2]
   JsonParser::parseConfigurationFromBase64(argv[2]);
 
-  // Example query - replace with your actual query
-  std::string query = "SELECT * FROM EURUSD LIMIT 5;";
-
-  std::vector<PriceData> priceData = db.executeQuery(query);
+  std::vector<PriceData> priceData = SqlManager::getInitialPriceData(db);
   
   // Convert timestamp to readable format for debugging
   auto timeT = std::chrono::system_clock::to_time_t(priceData[0].timestamp);
