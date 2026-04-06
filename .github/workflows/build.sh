@@ -11,15 +11,13 @@ cd ./external/libpqxx
 mkdir -p build
 cd ./build
 
-# Generate build system files using CMake
-# '..' points to the libpqxx root directory containing CMakeLists.txt
-cmake .. 
+# Expose paths so CMake finds libpq
+export PATH="$(brew --prefix libpq)/bin:$PATH"
+export PKG_CONFIG_PATH="$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PostgreSQL_ROOT="$(brew --prefix libpq)"
 
-# Configure the build with specific C++ compiler flags:
-# -std=c++20: Use C++20 standard
-# -O3: Enable maximum optimization
-# --enable-silent-rules: Reduce build output verbosity
-./configure CXXFLAGS="-std=c++20 -O3" --enable-silent-rules
+# 1. Generate build files (Passing your CXX flags directly to CMake instead of configure)
+cmake .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release 
 
-# Compile libpqxx using generated build files
+# 2. Compile libpqxx
 make
