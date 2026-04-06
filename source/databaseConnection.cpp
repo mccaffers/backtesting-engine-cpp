@@ -61,7 +61,11 @@ void DatabaseConnection::printResults(const std::vector<PriceData>& results) con
     for (const auto& data : results) {
         // Convert timestamp back to string for display
         auto time_t = std::chrono::system_clock::to_time_t(data.timestamp);
-        auto tm = *std::localtime(&time_t);
+        struct tm tm = {};
+        if (localtime_r(&time_t, &tm) == nullptr) {
+            std::cerr << "Error: failed to convert timestamp" << std::endl;
+            continue;
+        }
         std::stringstream ss;
         ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         
