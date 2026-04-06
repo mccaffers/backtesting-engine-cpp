@@ -49,5 +49,5 @@ output=$(echo "$json" | base64)
 
 # Step 6: Run the tests for now (/executable) from the root directory
 # Passing two arguements, the destination of the QuestDB and the Strategy JSON (in base64)
-./"$BUILD_DIR/$EXECUTABLE_NAME" 100.85.44.114 "$output"
+./"$BUILD_DIR/$EXECUTABLE_NAME" localhost "$output"
 
