@@ -35,7 +35,7 @@ int main(int argc, const char * argv[]) {
 
   JsonParser::parseConfigurationFromBase64(argv[2]);
 
-  std::vector<PriceData> ticks = SqlManager::streamPriceData(db);
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, 1);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
   // print first tick
@@ -46,18 +46,18 @@ int main(int argc, const char * argv[]) {
   }
   char buffer[20];
   std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
-  printf("First tick: ask=%.4f, value2=%.4f timestamp=%s\n", ticks[0].value1, ticks[0].value2, buffer);
+  printf("First tick: ask=%.4f, bid=%.4f timestamp=%s\n", ticks[0].ask, ticks[0].bid, buffer);
 
   auto tradeManager = TradeManager::getInstance();
 
-  // std::string tradeId = tradeManager->openTrade(1.2345, 100000, true);
-  // std::cout << "Opened trade: " << tradeId << std::endl;
+  std::string tradeId = tradeManager->openTrade(ticks[0].ask, 100000, true);
+  std::cout << "Opened trade: " << tradeId << std::endl;
 
-  // size_t openTrades = tradeManager->reviewAccount();
-  // std::cout << "Number of open trades: " << openTrades << std::endl;
+  size_t openTrades = tradeManager->reviewAccount();
+  std::cout << "Number of open trades: " << openTrades << std::endl;
 
-  // bool closed = tradeManager->closeTrade(tradeId);
-  // std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
+  bool closed = tradeManager->closeTrade(tradeId);
+  std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
 
   return 0;
   

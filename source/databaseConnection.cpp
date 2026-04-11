@@ -63,13 +63,13 @@ std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query
 
         // Convert results to PriceData objects
         for (const auto& row : result) {
-            double value1 = row[0].as<double>();
-            double value2 = row[1].as<double>();
+            double ask = row[0].as<double>();
+            double bid = row[1].as<double>();
             std::string timestamp_str = row[2].as<std::string>();
             
             auto timestamp = Utilities::parseTimestamp(timestamp_str);
             
-            results.emplace_back(value1, value2, timestamp);
+            results.emplace_back(ask, bid, timestamp);
         }
 
         txn.commit();
@@ -90,13 +90,13 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
 
     for (int i = 0; i < (int)result.size(); ++i) {
         const auto& row = result[i];
-        double value1, value2;
+        double ask, bid;
         auto sv1 = row[0].view();
         auto sv2 = row[1].view();
-        std::from_chars(sv1.data(), sv1.data() + sv1.size(), value1);
-        std::from_chars(sv2.data(), sv2.data() + sv2.size(), value2);
-        results[i] = PriceData(value1, value2, fastParseTimestamp(row[2].c_str()));
-    }
+        std::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
+        std::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
+        results[i] = PriceData(ask, bid, fastParseTimestamp(row[2].c_str()));
+    }  
 
     return results;
 }
@@ -115,8 +115,8 @@ void DatabaseConnection::printResults(const std::vector<PriceData>& results) con
         ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         
         std::cout << std::fixed << std::setprecision(4)
-                 << data.value1 << "\t"
-                 << data.value2 << "\t"
+                 << data.ask << "\t"
+                 << data.bid << "\t"
                  << ss.str() << std::endl;
     }
 }
