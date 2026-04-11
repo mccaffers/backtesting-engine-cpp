@@ -11,8 +11,9 @@
 
 class SqlManager {
 public:
-    static std::vector<PriceData> getInitialPriceData(const DatabaseConnection& db);
+    static std::vector<PriceData> streamPriceData(const DatabaseConnection& db);
     static std::string getBaseQuery();
 private:
-    static constexpr int DEFAULT_LIMIT = 1000;
+    static constexpr int LAST_MONTHS = 1;
+    static constexpr int STREAM_LIMIT = 200000;
 };

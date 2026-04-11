@@ -7,6 +7,10 @@ current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # source $current_dir/environment.sh - no longer necessary
 source $current_dir/clean.sh
 source $current_dir/build.sh
+if [ $? -ne 0 ]; then
+    echo "Error: Build failed. Aborting."
+    exit 1
+fi
 
 # Debug: Check if the executable exists
 if [ -f "$BUILD_DIR/$EXECUTABLE_NAME" ]; then
@@ -49,5 +53,9 @@ output=$(echo "$json" | base64)
 
 # Step 6: Run the tests for now (/executable) from the root directory
 # Passing two arguements, the destination of the QuestDB and the Strategy JSON (in base64)
+start_time=$(date +%s%N)
 ./"$BUILD_DIR/$EXECUTABLE_NAME" localhost "$output"
+end_time=$(date +%s%N)
+elapsed=$(( (end_time - start_time) / 1000000 ))
+echo "Execution time: ${elapsed}ms"
 

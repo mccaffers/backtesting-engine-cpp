@@ -7,6 +7,31 @@
 #include "databaseConnection.hpp"
 #include "base64.hpp"
 #include <pqxx/pqxx>
+#include <cstdio>
+#include <charconv>
+#include <execution>
+#include <algorithm>
+
+static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
+    int year, month, day, hour, min, sec, usec = 0;
+    std::sscanf(ts, "%4d-%2d-%2d %2d:%2d:%2d.%d", &year, &month, &day, &hour, &min, &sec, &usec);
+
+    // Cache timegm per date — tick data is time-ordered so date changes rarely
+    static char cachedDate[11] = {};
+    static time_t cachedEpoch = 0;
+    if (std::memcmp(ts, cachedDate, 10) != 0) {
+        std::memcpy(cachedDate, ts, 10);
+        std::tm tm = {};
+        tm.tm_year = year - 1900;
+        tm.tm_mon  = month - 1;
+        tm.tm_mday = day;
+        tm.tm_isdst = 0;
+        cachedEpoch = timegm(&tm);
+    }
+
+    time_t t = cachedEpoch + hour * 3600 + min * 60 + sec;
+    return std::chrono::system_clock::from_time_t(t) + std::chrono::microseconds(usec);
+}
 
 DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
                                      const std::string& dbname, const std::string& user,
@@ -51,6 +76,26 @@ std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return results;
+}
+
+std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query) const {
+    pqxx::connection conn(this->connection_string);
+    pqxx::nontransaction txn(conn);
+    pqxx::result result = txn.exec(query);
+
+    std::vector<PriceData> results(result.size());
+
+    for (int i = 0; i < (int)result.size(); ++i) {
+        const auto& row = result[i];
+        double value1, value2;
+        auto sv1 = row[0].view();
+        auto sv2 = row[1].view();
+        std::from_chars(sv1.data(), sv1.data() + sv1.size(), value1);
+        std::from_chars(sv2.data(), sv2.data() + sv2.size(), value2);
+        results[i] = PriceData(value1, value2, fastParseTimestamp(row[2].c_str()));
     }
 
     return results;

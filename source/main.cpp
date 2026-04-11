@@ -1,6 +1,6 @@
 // Backtesting Engine in C++
 //
-// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
@@ -26,33 +26,38 @@
 
 using json = nlohmann::json;
 
+// Entry point. Expects two command-line arguments:
+//   argv[1] — hostname/IP of the QuestDB instance
+//   argv[2] — Base64-encoded JSON strategy configuration
 int main(int argc, const char * argv[]) {
   
-  // Connect to QuestDb argv[1]
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
-  // Load strategy from Base64 argv[2]
   JsonParser::parseConfigurationFromBase64(argv[2]);
 
-  std::vector<PriceData> priceData = SqlManager::getInitialPriceData(db);
-  
-  // Convert timestamp to readable format for debugging
-  auto timeT = std::chrono::system_clock::to_time_t(priceData[0].timestamp);
-  std::cout << "Timestamp: " << std::put_time(std::localtime(&timeT), "%Y-%m-%d %H:%M:%S") << std::endl;
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db);
+  printf("Total ticks streamed: %zu\n", ticks.size());
+
+  // print first tick
+  auto time_t = std::chrono::system_clock::to_time_t(ticks[0].timestamp);
+  struct tm tm = {};
+  if (localtime_r(&time_t, &tm) == nullptr) {
+      std::cerr << "Error: failed to convert timestamp" << std::endl;
+  }
+  char buffer[20];
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
+  printf("First tick: ask=%.4f, value2=%.4f timestamp=%s\n", ticks[0].value1, ticks[0].value2, buffer);
 
   auto tradeManager = TradeManager::getInstance();
 
-  // Open a trade
-  std::string tradeId = tradeManager->openTrade(1.2345, 100000, true);
-  std::cout << "Opened trade: " << tradeId << std::endl;
+  // std::string tradeId = tradeManager->openTrade(1.2345, 100000, true);
+  // std::cout << "Opened trade: " << tradeId << std::endl;
 
-  // Review account
-  size_t openTrades = tradeManager->reviewAccount();
-  std::cout << "Number of open trades: " << openTrades << std::endl;
+  // size_t openTrades = tradeManager->reviewAccount();
+  // std::cout << "Number of open trades: " << openTrades << std::endl;
 
-  // Close trade
-  bool closed = tradeManager->closeTrade(tradeId);
-  std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
+  // bool closed = tradeManager->closeTrade(tradeId);
+  // std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
 
   return 0;
   

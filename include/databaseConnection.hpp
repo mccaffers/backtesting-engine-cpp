@@ -21,6 +21,7 @@ public:
   
   void printResults(const std::vector<PriceData>& results) const;
   std::vector<PriceData> executeQuery(const std::string& query) const;
+  std::vector<PriceData> streamQuery(const std::string& query) const;
   
   const std::string& getConnectionString() const {
     return connection_string;

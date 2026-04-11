@@ -14,4 +14,6 @@ struct PriceData {
     // Constructor for easy creation
     PriceData(double v1, double v2, const std::chrono::system_clock::time_point& ts)
         : value1(v1), value2(v2), timestamp(ts) {}
+
+    PriceData() : value1(0.0), value2(0.0), timestamp{} {}
 };
