@@ -17,7 +17,7 @@ jobs:
 
   build:
     name: Build & Test
-    runs-on: macos-latest
+    runs-on: macos-26.2
 
     steps:
     # Step 1: Check out the repository code
@@ -40,7 +40,7 @@ jobs:
     # Step 5: Configure Xcode version
     - name: Select Xcode version
       run: |
-        sudo xcode-select -switch /Applications/Xcode_15.2.app
+        sudo xcode-select -switch /Applications/Xcode_26.2.app
         /usr/bin/xcodebuild -version
     # Run XCode tests with specific configurations:
     # - Builds and runs the test suite
