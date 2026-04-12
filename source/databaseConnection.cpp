@@ -46,41 +46,6 @@ DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
 
 }
 
-std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query) const {
-    std::vector<PriceData> results;
-    
-    try {
-        pqxx::connection conn(this->connection_string);
-
-        if (!conn.is_open()) {
-            throw std::invalid_argument("Failed to open database connection");
-        }
-
-        std::cout << "Connected to database successfully!" << std::endl;
-
-        pqxx::work txn(conn);
-        pqxx::result result = txn.exec(query);
-
-        // Convert results to PriceData objects
-        for (const auto& row : result) {
-            double ask = row[0].as<double>();
-            double bid = row[1].as<double>();
-            std::string timestamp_str = row[2].as<std::string>();
-            
-            auto timestamp = Utilities::parseTimestamp(timestamp_str);
-            
-            results.emplace_back(ask, bid, timestamp);
-        }
-
-        txn.commit();
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-
-    return results;
-}
-
 std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query) const {
     pqxx::connection conn(this->connection_string);
     pqxx::nontransaction txn(conn);
@@ -91,11 +56,12 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
     for (int i = 0; i < (int)result.size(); ++i) {
         const auto& row = result[i];
         double ask, bid;
-        auto sv1 = row[0].view();
-        auto sv2 = row[1].view();
+        auto symbol = row[0].view();
+        auto sv1 = row[1].view();
+        auto sv2 = row[2].view();
         std::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
         std::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
-        results[i] = PriceData(ask, bid, fastParseTimestamp(row[2].c_str()));
+        results[i] = PriceData(ask, bid, fastParseTimestamp(row[3].c_str()), std::string(symbol));
     }  
 
     return results;

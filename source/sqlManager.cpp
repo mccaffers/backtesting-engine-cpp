@@ -1,18 +1,31 @@
 // Backtesting Engine in C++
 //
-// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 #include "sqlManager.hpp"
 #include <string>
 #include <vector>
 
-std::string SqlManager::getBaseQuery(int LAST_MONTHS) {
-    return "SELECT * FROM EURUSD WHERE timestamp >= dateadd('M', -" + std::to_string(LAST_MONTHS) + ", now()) LIMIT " + std::to_string(STREAM_LIMIT);
+std::string SqlManager::getBaseQuery(const std::vector<std::string>& symbols, int LAST_MONTHS) {
+    if (symbols.empty()) {
+        return "";
+    }
+    
+    std::string query;
+    for (size_t i = 0; i < symbols.size(); ++i) {
+        if (i > 0) {
+            query += " UNION ALL ";
+        }
+        query += "SELECT '" + symbols[i] + "' as symbol, * FROM '" + symbols[i] + "' WHERE timestamp >= dateadd('M', -" + std::to_string(LAST_MONTHS) + ", now())";
+    }
+    query += " ORDER BY timestamp";
+    
+    return query;
 }
 
-std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db, int LAST_MONTHS) {
-    std::string query = getBaseQuery(LAST_MONTHS);
+std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db, const std::vector<std::string>& symbols, int LAST_MONTHS) {
+    std::string query = getBaseQuery(symbols, LAST_MONTHS);
     std::cout << "Executing query: " << query << std::endl;
     return db.streamQuery(query);
 }

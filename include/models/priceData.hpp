@@ -5,15 +5,17 @@
 // ---------------------------------------
 #pragma once
 #include <chrono>
+#include <string>
 
 struct PriceData {
     double ask;
     double bid;
     std::chrono::system_clock::time_point timestamp;
+    std::string symbol;
 
     // Constructor for easy creation
-    PriceData(double ask, double bid, const std::chrono::system_clock::time_point& ts)
-        : ask(ask), bid(bid), timestamp(ts) {}
+    PriceData(double ask, double bid, const std::chrono::system_clock::time_point& ts, const std::string& symbol)
+        : ask(ask), bid(bid), timestamp(ts), symbol(symbol) {}
 
-    PriceData() : ask(0.0), bid(0.0), timestamp{} {}
+    PriceData() : ask(0.0), bid(0.0), timestamp{}, symbol("") {}
 };

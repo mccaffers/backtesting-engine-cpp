@@ -23,6 +23,7 @@
 #include "tradeManager.hpp"
 #include "jsonParser.hpp"
 #include "sqlManager.hpp"
+#include "operations.hpp"
 
 using json = nlohmann::json;
 
@@ -35,29 +36,11 @@ int main(int argc, const char * argv[]) {
 
   JsonParser::parseConfigurationFromBase64(argv[2]);
 
-  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, 1);
+  std::vector<std::string> symbols = {"AUSIDXAUD", "EURUSD"};
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 1);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
-  // print first tick
-  auto time_t = std::chrono::system_clock::to_time_t(ticks[0].timestamp);
-  struct tm tm = {};
-  if (localtime_r(&time_t, &tm) == nullptr) {
-      std::cerr << "Error: failed to convert timestamp" << std::endl;
-  }
-  char buffer[20];
-  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
-  printf("First tick: ask=%.4f, bid=%.4f timestamp=%s\n", ticks[0].ask, ticks[0].bid, buffer);
-
-  auto tradeManager = TradeManager::getInstance();
-
-  std::string tradeId = tradeManager->openTrade(ticks[0].ask, 100000, true);
-  std::cout << "Opened trade: " << tradeId << std::endl;
-
-  size_t openTrades = tradeManager->reviewAccount();
-  std::cout << "Number of open trades: " << openTrades << std::endl;
-
-  bool closed = tradeManager->closeTrade(tradeId);
-  std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
+  Operations::run(ticks);
 
   return 0;
   
