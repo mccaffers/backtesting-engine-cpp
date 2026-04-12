@@ -1,6 +1,6 @@
 // Backtesting Engine in C++
 //
-// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
