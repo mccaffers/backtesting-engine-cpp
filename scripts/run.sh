@@ -5,9 +5,8 @@ current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Build the source code
 # source $current_dir/environment.sh - no longer necessary
-source $current_dir/clean.sh
-source $current_dir/build.sh
-if [ $? -ne 0 ]; then
+source "$current_dir/clean.sh"
+if ! bash "$current_dir/build.sh"; then
     echo "Error: Build failed. Aborting."
     exit 1
 fi

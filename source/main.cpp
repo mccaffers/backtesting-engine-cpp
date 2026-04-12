@@ -32,6 +32,10 @@ using json = nlohmann::json;
 //   argv[2] — Base64-encoded JSON strategy configuration
 int main(int argc, const char * argv[]) {
   
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " <questdb-host> <base64-config>" << std::endl;
+    return 1;
+  }
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
   JsonParser::parseConfigurationFromBase64(argv[2]);

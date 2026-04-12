@@ -50,17 +50,17 @@ file(GLOB_RECURSE SOURCES "source/*.cpp")
 # Create a library of your project's code
 add_library(BacktestingEngineLib STATIC ${SOURCES})
 
-# Replace find_package(OpenMP REQUIRED) with this:
+# Configure OpenMP. On Apple, provide Homebrew libomp hints before discovery.
 if(APPLE)
     set(OpenMP_C_FLAGS "-Xclang -fopenmp")
     set(OpenMP_CXX_FLAGS "-Xclang -fopenmp")
     set(OpenMP_C_LIB_NAMES "omp")
     set(OpenMP_CXX_LIB_NAMES "omp")
     set(OpenMP_omp_LIBRARY /opt/homebrew/opt/libomp/lib/libomp.dylib)
-    find_package(OpenMP REQUIRED)
     target_include_directories(BacktestingEngineLib PRIVATE /opt/homebrew/opt/libomp/include)
 endif()
 
+find_package(OpenMP REQUIRED)
 target_link_libraries(BacktestingEngineLib PUBLIC pqxx OpenMP::OpenMP_CXX)
 
 # Main executable

@@ -9,12 +9,15 @@
 #include <pqxx/pqxx>
 #include <cstdio>
 #include <charconv>
-#include <execution>
-#include <algorithm>
+#include <stdexcept>
 
 static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
-    int year, month, day, hour, min, sec, usec = 0;
-    std::sscanf(ts, "%4d-%2d-%2d %2d:%2d:%2d.%d", &year, &month, &day, &hour, &min, &sec, &usec);
+    int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, usec = 0;
+    const int parsedFields =
+        std::sscanf(ts, "%4d-%2d-%2d %2d:%2d:%2d.%d", &year, &month, &day, &hour, &min, &sec, &usec);
+    if (parsedFields != 6 && parsedFields != 7) {
+        throw std::runtime_error("Invalid timestamp format");
+    }
 
     // Cache timegm per date — tick data is time-ordered so date changes rarely
     static char cachedDate[11] = {};
@@ -53,7 +56,7 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
 
     std::vector<PriceData> results(result.size());
 
-    for (int i = 0; i < (int)result.size(); ++i) {
+    for (std::size_t i = 0; i < result.size(); ++i) {
         const auto& row = result[i];
         double ask, bid;
         auto symbol = row[0].view();
