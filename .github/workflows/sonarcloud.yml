@@ -17,7 +17,7 @@ jobs:
 
   build:
     name: Build & Test
-    runs-on: macos-14  # Use macOS 14 (Sonoma) runner
+    runs-on: macos-latest
 
     steps:
     # Step 1: Check out the repository code
