@@ -11,11 +11,13 @@
 #include <memory>
 #include <string>
 #include <iomanip>
+#include <cstdio>
+#include <ctime>
 #include "tradeManager.hpp"
 
 void Operations::run(const std::vector<PriceData>& ticks) {
 
-    // Loop aroudn every tick
+    // Loop around every tick
     // Example output:
     // symbol=AUSIDXAUD, ask=8602.4000, bid=8599.4000 timestamp=2026-03-12 18:39:01.076
     // symbol=AUSIDXAUD, ask=8602.9000, bid=8599.9000 timestamp=2026-03-12 18:39:01.584
