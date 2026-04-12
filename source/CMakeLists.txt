@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.30)
 
 # CMAKE_OSX_SYSROOT is a macOS-specific setting that specifies the SDK path.
-# This is ignored on non-Apple platforms, so it's safe to include in cross-platform builds.
-execute_process(
-    COMMAND xcrun --show-sdk-path
-    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+# Only query and set it on Apple platforms, where xcrun is expected to exist.
+if(APPLE)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
 
 project(BacktestingEngine)
 
