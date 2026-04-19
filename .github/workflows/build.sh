@@ -17,7 +17,11 @@ export PKG_CONFIG_PATH="$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PostgreSQL_ROOT="$(brew --prefix libpq)"
 
 # 1. Generate build files (Passing your CXX flags directly to CMake instead of configure)
-cmake .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release 
+cmake .. \
+  -DCMAKE_CXX_STANDARD=20 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
+  -DSKIP_BUILD_TEST=ON
 
 # 2. Compile libpqxx
-make
+make -j$(sysctl -n hw.logicalcpu) 

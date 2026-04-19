@@ -35,7 +35,8 @@ jobs:
 
     # Step 4: Build project external libraries
     - name: Build C++ Libraries
-      run: bash ./.github/workflows/build.sh
+      run: bash ./scripts/build_dep.sh
+      # run: bash ./.github/workflows/build.sh
 
     # Step 5: Configure Xcode version
     - name: Select Xcode version
@@ -92,7 +93,7 @@ jobs:
           cmake --version
       - name: Build C++ Libraries
         run: >
-            bash ./.github/workflows/build.sh
+            sh ./scripts/build.sh
       - name: Install Python 3.12 for gcovr
         uses: actions/setup-python@v5
         with: 

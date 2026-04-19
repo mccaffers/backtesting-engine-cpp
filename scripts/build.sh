@@ -12,8 +12,17 @@ fi
 # Step 2: Navigate to the build directory
 cd "$BUILD_DIR" || exit
 
-# Step 3: Run CMake to configure the project
-cmake ..
+# Expose paths so CMake finds libpq
+export PATH="$(brew --prefix libpq)/bin:$PATH"
+export PKG_CONFIG_PATH="$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PostgreSQL_ROOT="$(brew --prefix libpq)"
+
+# 1. Generate build files (Passing your CXX flags directly to CMake instead of configure)
+cmake .. \
+  -DCMAKE_CXX_STANDARD=20 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
+  -DSKIP_BUILD_TEST=ON
 
 # Step 4: Compile the project
 cmake --build .

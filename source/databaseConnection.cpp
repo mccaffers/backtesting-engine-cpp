@@ -57,7 +57,7 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
     std::vector<PriceData> results(result.size());
 
     for (std::size_t i = 0; i < result.size(); ++i) {
-        const auto& row = result[i];
+        const auto& row = result[static_cast<pqxx::result::size_type>(i)];
         double ask, bid;
         auto symbol = row[0].view();
         auto sv1 = row[1].view();

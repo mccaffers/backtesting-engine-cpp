@@ -32,18 +32,24 @@ using json = nlohmann::json;
 //   argv[2] — Base64-encoded JSON strategy configuration
 int main(int argc, const char * argv[]) {
   
+  // Validate required command-line arguments before proceeding
   if (argc < 3) {
     std::cerr << "Usage: " << argv[0] << " <questdb-host> <base64-config>" << std::endl;
     return 1;
   }
+
+  // Connect to QuestDB on the default port (8812) using default credentials
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
+  // Decode and apply the strategy configuration from Base64-encoded JSON
   JsonParser::parseConfigurationFromBase64(argv[2]);
 
+  // Define the instruments to backtest and stream their historical tick data
   std::vector<std::string> symbols = {"AUSIDXAUD", "EURUSD"};
   std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 1);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
+  // Execute the backtest by replaying all ticks through the strategy logic
   Operations::run(ticks);
 
   return 0;
