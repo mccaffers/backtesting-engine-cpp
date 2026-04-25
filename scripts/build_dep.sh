@@ -1,3 +1,5 @@
+git submodule update --init --recursive
+
 cd ./external/libpqxx
 
 mkdir -p build

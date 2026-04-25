@@ -46,7 +46,7 @@ int main(int argc, const char * argv[]) {
 
   // Define the instruments to backtest and stream their historical tick data
   std::vector<std::string> symbols = {"AUSIDXAUD", "EURUSD"};
-  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 1);
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 3);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
   // Execute the backtest by replaying all ticks through the strategy logic
