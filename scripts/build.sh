@@ -15,9 +15,11 @@ fi
 cd "$BUILD_DIR" || exit
 
 # Expose paths so CMake finds libpq
-export PATH="$(brew --prefix libpq)/bin:$PATH"
-export PKG_CONFIG_PATH="$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PostgreSQL_ROOT="$(brew --prefix libpq)"
+if command -v brew &>/dev/null; then
+    export PATH="$(brew --prefix libpq)/bin:$PATH"
+    export PKG_CONFIG_PATH="$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export PostgreSQL_ROOT="$(brew --prefix libpq)"
+fi
 
 # 1. Generate build files (Passing your CXX flags directly to CMake instead of configure)
 cmake .. \

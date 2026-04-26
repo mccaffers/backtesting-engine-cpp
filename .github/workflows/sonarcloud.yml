@@ -124,7 +124,7 @@ jobs:
       # Runs the build wrapper to capture build commands and outputs them to the specified directory. Then builds the project using CMake
       - name: Run build-wrapper
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} 
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --clean-first
       
       # Performs the SonarQube scan using the scan action. Uses captured build commands for analysis and requires GitHub and SonarQube tokens for authentication
       - name: SonarQube Scan
