@@ -11,7 +11,7 @@ name: Build
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  BUILD_WRAPPER_OUT_DIR: build # Directory where build-wrapper output will be placed
+  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
 
 jobs:
 
@@ -119,12 +119,12 @@ jobs:
       
       # Configures the CMake build system, specifying the source directory and build directory, and setting the build type
       - name: Configure CMake
-        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       
       # Runs the build wrapper to capture build commands and outputs them to the specified directory. Then builds the project using CMake
       - name: Run build-wrapper
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} 
       
       # Performs the SonarQube scan using the scan action. Uses captured build commands for analysis and requires GitHub and SonarQube tokens for authentication
       - name: SonarQube Scan
