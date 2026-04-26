@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git submodule update --init --recursive
+
 BUILD_DIR="build"
 # Variables
 EXECUTABLE_NAME="BacktestingEngine"
