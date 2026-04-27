@@ -37,8 +37,8 @@ void Operations::run(const std::vector<PriceData>& ticks) {
         char buffer[20];
         std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tick.timestamp.time_since_epoch()) % 1000;
-        printf("symbol=%s, ask=%.4f, bid=%.4f timestamp=%s.%03lld\n", tick.symbol.c_str(), tick.ask, tick.bid, buffer,
-               static_cast<long long>(ms.count()));
+        // printf("symbol=%s, ask=%.4f, bid=%.4f timestamp=%s.%03lld\n", tick.symbol.c_str(), tick.ask, tick.bid, buffer,
+        //        static_cast<long long>(ms.count()));
     }
 
     auto tradeManager = TradeManager::getInstance();

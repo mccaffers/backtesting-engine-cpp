@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <iomanip>
+#include <sstream>
 
 // external headers
 #include <nlohmann/json.hpp>
@@ -42,10 +43,14 @@ int main(int argc, const char * argv[]) {
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
   // Decode and apply the strategy configuration from Base64-encoded JSON
-  JsonParser::parseConfigurationFromBase64(argv[2]);
-
-  // Define the instruments to backtest and stream their historical tick data
-  std::vector<std::string> symbols = {"AUSIDXAUD", "EURUSD"};
+  auto config = JsonParser::parseConfigurationFromBase64(argv[2]);
+  
+  // Split config.SYMBOLS (comma-separated) into a vector
+  std::vector<std::string> symbols;
+  std::istringstream ss(config.SYMBOLS);
+  for (std::string token; std::getline(ss, token, ',');) {
+    symbols.push_back(token);
+  }
   std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 3);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
