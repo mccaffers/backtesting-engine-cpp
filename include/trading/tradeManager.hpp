@@ -6,22 +6,22 @@
 
 #pragma once
 #include <unordered_map>
+#include <vector>
 #include <memory>
 #include "trade.hpp"
+#include "priceData.hpp"
 
 class TradeManager {
 private:
-    static TradeManager* instance;
     std::unordered_map<std::string, Trade> activeTrades;
-    
-    TradeManager() = default;
+    std::vector<Trade> closedTrades;
 
 public:
-    static TradeManager* getInstance();
-    static void reset();
-    void clearAllTrades();
-    std::string openTrade(double price, double size, bool isLong);
+    TradeManager() = default;
+    std::string openTrade(const PriceData& tick, double size, Direction direction);
     size_t reviewAccount() const;
-    bool closeTrade(const std::string& tradeId);
+    bool closeTrade(const std::string& tradeId, double closePrice);
     const std::unordered_map<std::string, Trade>& getActiveTrades() const;
+    const std::vector<Trade>& getClosedTrades() const;
+    double calculatePnl() const;
 };

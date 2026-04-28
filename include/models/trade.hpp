@@ -8,31 +8,45 @@
 #include <string>
 #include <chrono>
 
+enum class Direction {
+    LONG,
+    SHORT
+};
+
 struct Trade {
-    static int idCounter;
     std::string id;
     double entryPrice;
     double size;
     std::chrono::system_clock::time_point openTime;
-    bool isLong;
+    Direction direction;
+
+    std::string dealReference;
+    std::string symbol;
+    double scalingFactor;
+    double stopDistancePips;
+    double limitDistancePips;
+    std::string strategyId;
+    std::string strategyName;
+
+    double closePrice;
+    std::chrono::system_clock::time_point closeTime;
     
     // Default constructor
-    Trade() : entryPrice(0), size(0), isLong(false), 
+    Trade() : entryPrice(0), size(0), direction(Direction::LONG),
+              scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
+              closePrice(0),
               openTime(std::chrono::system_clock::now()) {}
     
     // Copy constructor
     Trade(const Trade& other) = default;
     
-    Trade(double price, double quantity, bool long_position) 
+    Trade(double price, double quantity, Direction dir) 
         : entryPrice(price), 
           size(quantity), 
-          isLong(long_position),
+          direction(dir),
+          scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
           openTime(std::chrono::system_clock::now()) {
-        // Generate unique ID using counter
-        id = std::to_string(++idCounter);
+        
     }
 
-    static void resetCounter() {
-        idCounter = 0;
-    }
 };

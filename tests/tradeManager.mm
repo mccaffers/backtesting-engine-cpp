@@ -24,35 +24,41 @@
 }
 
 - (void)testOpenTrade {
-    std::string tradeId = self.manager->openTrade(100.0, 1.0, true);
+    PriceData tick(100.0, 99.0, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, 1.0, Direction::LONG);
     XCTAssertFalse(tradeId.empty(), "Trade ID should not be empty");
     XCTAssertEqual(self.manager->reviewAccount(), 1, "Should have 1 active trade");
 }
 
 - (void)testCloseTrade {
-    std::string tradeId = self.manager->openTrade(100.0, 1.0, true);
-    bool closed = self.manager->closeTrade(tradeId);
+    PriceData tick(100.0, 99.0, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, 1.0, Direction::LONG);
+    bool closed = self.manager->closeTrade(tradeId, 110.0);
     XCTAssertTrue(closed, "Trade should be closed successfully");
     XCTAssertEqual(self.manager->reviewAccount(), 0, "Should have 0 active trades");
 }
 
 - (void)testMultipleTrades {
-    self.manager->openTrade(100.0, 1.0, true);
-    self.manager->openTrade(200.0, 2.0, false);
-    self.manager->openTrade(300.0, 3.0, true);
+    PriceData tick1(100.0, 99.0, std::chrono::system_clock::now(), "EURUSD");
+    PriceData tick2(200.0, 199.0, std::chrono::system_clock::now(), "EURUSD");
+    PriceData tick3(300.0, 299.0, std::chrono::system_clock::now(), "EURUSD");
+    self.manager->openTrade(tick1, 1.0, Direction::LONG);
+    self.manager->openTrade(tick2, 2.0, Direction::SHORT);
+    self.manager->openTrade(tick3, 3.0, Direction::LONG);
     
     XCTAssertEqual(self.manager->reviewAccount(), 3, "Should have 3 active trades");
 }
 
 - (void)testTradeDetails {
-    std::string tradeId = self.manager->openTrade(100.0, 1.0, true);
+    PriceData tick(100.0, 99.0, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, 1.0, Direction::LONG);
     auto trades = self.manager->getActiveTrades();
     auto trade = trades.find(tradeId);
     
     XCTAssertNotEqual(trade, trades.end(), "Trade should exist");
     XCTAssertEqual(trade->second.entryPrice, 100.0, "Entry price should match");
     XCTAssertEqual(trade->second.size, 1.0, "Size should match");
-    XCTAssertTrue(trade->second.isLong, "Trade should be long");
+    XCTAssertTrue(trade->second.direction == Direction::LONG, "Trade should be long");
 }
 
 @end

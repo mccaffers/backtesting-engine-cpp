@@ -5,6 +5,3 @@
 // ---------------------------------------
 
 #include "trade.hpp"
-
-// Definition of static member
-int Trade::idCounter = 0;
