@@ -51,7 +51,7 @@ int main(int argc, const char * argv[]) {
   for (std::string token; std::getline(ss, token, ',');) {
     symbols.push_back(token);
   }
-  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, 3);
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, config.LAST_MONTHS);
   printf("Total ticks streamed: %zu\n", ticks.size());
 
   // Execute the backtest by replaying all ticks through the strategy logic

@@ -5,10 +5,19 @@
 // ---------------------------------------
 
 #include "tradeManager.hpp"
+#include <atomic>
+
+namespace {
+std::string nextTradeId() {
+    static std::atomic<uint64_t> counter{0};
+    return "T" + std::to_string(counter.fetch_add(1, std::memory_order_relaxed));
+}
+}
 
 std::string TradeManager::openTrade(const PriceData& tick, double size, Direction direction) {
     double price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction);
+    trade.id = nextTradeId();
     activeTrades[trade.id] = trade;
     return trade.id;
 }

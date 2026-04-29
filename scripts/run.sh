@@ -24,7 +24,7 @@ fi
 json='{
   "RUN_ID": "UNIQUE_IDENTIFER",
   "SYMBOLS": "EURUSD",
-  "LAST_MONTHS": 6,
+  "LAST_MONTHS": 3,
   "STRATEGY": {
       "UUID": "",
       "TRADING_VARIABLES": {

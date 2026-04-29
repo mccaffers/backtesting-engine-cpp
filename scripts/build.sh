@@ -26,7 +26,8 @@ cmake .. \
   -DCMAKE_CXX_STANDARD=20 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
-  -DSKIP_BUILD_TEST=ON
+  -DSKIP_BUILD_TEST=ON \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # Step 4: Compile the project
 cmake --build .

@@ -5,28 +5,25 @@
 // ---------------------------------------
 #include "sqlManager.hpp"
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
-std::string SqlManager::getBaseQuery(const std::vector<std::string>& symbols, int LAST_MONTHS) {
+std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db, const std::vector<std::string>& symbols, int LAST_MONTHS) {
     if (symbols.empty()) {
-        return "";
+        return {};
     }
-    
-    std::string query;
+
+    std::ostringstream query;
     for (size_t i = 0; i < symbols.size(); ++i) {
         if (i > 0) {
-            query += " UNION ALL ";
+            query << " UNION ALL ";
         }
-        query += "SELECT '" + symbols[i] + "' as symbol, * FROM '" + symbols[i] + "' WHERE timestamp >= dateadd('M', -" + std::to_string(LAST_MONTHS) + ", now())";
+        query << "SELECT '" << symbols[i] << "' as symbol, * FROM '" << symbols[i]
+              << "' WHERE timestamp >= dateadd('M', -" << LAST_MONTHS << ", now())";
     }
-    query += " ORDER BY timestamp";
-    
-    return query;
-}
+    query << " ORDER BY timestamp";
 
-std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db, const std::vector<std::string>& symbols, int LAST_MONTHS) {
-    std::string query = getBaseQuery(symbols, LAST_MONTHS);
-    std::cout << "Executing query: " << query << std::endl;
-    return db.streamQuery(query);
+    std::cout << "Executing query: " << query.str() << std::endl;
+    return db.streamQuery(query.str());
 }

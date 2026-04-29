@@ -14,13 +14,12 @@
 @implementation TradeManagerTests
 
 - (void)setUp {
-    TradeManager::reset();  // Reset the singleton instance
-    self.manager = TradeManager::getInstance();
+    self.manager = new TradeManager();
 }
 
 - (void)tearDown {
-    self.manager->clearAllTrades();
-    TradeManager::reset();
+    delete self.manager;
+    self.manager = nullptr;
 }
 
 - (void)testOpenTrade {
