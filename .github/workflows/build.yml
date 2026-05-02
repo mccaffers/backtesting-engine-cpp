@@ -58,7 +58,7 @@ jobs:
           bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
 
     - name: Upload coverage report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: sonarqube-coverage
         path: sonarqube-generic-coverage.xml
