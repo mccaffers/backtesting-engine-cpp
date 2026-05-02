@@ -4,7 +4,6 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Build the source code
-# source $current_dir/environment.sh - no longer necessary
 source "$current_dir/clean.sh"
 if ! source "$current_dir/build.sh"; then
     echo "Error: Build failed. Aborting."
@@ -24,7 +23,7 @@ fi
 json='{
   "RUN_ID": "UNIQUE_IDENTIFER",
   "SYMBOLS": "EURUSD",
-  "LAST_MONTHS": 3,
+  "LAST_MONTHS": 1,
   "STRATEGY": {
       "UUID": "",
       "TRADING_VARIABLES": {

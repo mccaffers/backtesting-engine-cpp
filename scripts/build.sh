@@ -25,12 +25,12 @@ fi
 cmake .. \
   -DCMAKE_CXX_STANDARD=20 \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
   -DSKIP_BUILD_TEST=ON \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # Step 4: Compile the project
-cmake --build .
+JOBS=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
+cmake --build . --parallel "$JOBS"
 
 # Step 5: Navigate back to the root directory
 cd ..

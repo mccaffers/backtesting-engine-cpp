@@ -16,6 +16,7 @@ fi
 cmake .. \
   -DCMAKE_CXX_STANDARD=20 \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
   -DSKIP_BUILD_TEST=ON
-make
+
+JOBS=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
+make -j"$JOBS"
