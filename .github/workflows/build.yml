@@ -1,16 +1,14 @@
 on:
-  # Trigger analysis when pushing in master or pull requests, and when creating
-  # a pull request.
   push:
     branches:
       - main
   pull_request:
       types: [opened, synchronize, reopened]
+
 name: Build
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
 jobs:
   build:
@@ -18,33 +16,22 @@ jobs:
     runs-on: macos-26
 
     steps:
-    # Step 1: Check out the repository code
     - name: Checkout repository
       uses: actions/checkout@v5
 
-    # Step 2: Set up Homebrew package manager
     - name: Set up Homebrew
       id: set-up-homebrew
       uses: Homebrew/actions/setup-homebrew@main
 
-    # Step 3: Install required dependencies using Homebrew
     - name: Install dependencies
       run: bash ./.github/workflows/scripts/brew.sh
 
-    # Step 4: Build project external libraries
     - name: Build C++ Libraries
       run: bash ./scripts/build_dep.sh
 
-    # Step 5: Configure Xcode version
     - name: Select Xcode version
-      run: |
-        sudo xcode-select -switch /Applications/Xcode_26.2.app
-        /usr/bin/xcodebuild -version
-    # Run XCode tests with specific configurations:
-    # - Builds and runs the test suite
-    # - Generates code coverage reports
-    # - Uses PostgreSQL and libpqxx external dependencies
-    # - Outputs results in JUnit format
+      run: sudo xcode-select -switch /Applications/Xcode.app
+
     - name: Run tests
       run: >
           OTHER_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"
@@ -65,11 +52,11 @@ jobs:
           OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L$(brew --prefix pkgconf)/lib -L$(brew --prefix pkgconf)/lib/pkgconfig -L$(brew --prefix postgresql@18)/lib/postgresql -L$(brew --prefix postgresql@18)/lib/postgresql/pgxs -L$(brew --prefix postgresql@18)/lib/postgresql/pkgconfig"
           clean build test
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
+
     - name: Convert coverage report to sonarqube format
       run: >
           bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
-    # Artifact is consumed by the SonarCloud Scan workflow, which is triggered
-    # on completion of this workflow via the workflow_run event.
+
     - name: Upload coverage report
       uses: actions/upload-artifact@v5
       with:
