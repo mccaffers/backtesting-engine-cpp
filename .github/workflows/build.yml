@@ -1,0 +1,65 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+      types: [opened, synchronize, reopened]
+
+name: Build
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-26
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@main
+
+    - name: Install dependencies
+      run: bash ./.github/workflows/scripts/brew.sh
+
+    - name: Build C++ Libraries
+      run: bash ./scripts/build_dep.sh
+
+    - name: Select Xcode version
+      run: sudo xcode-select -switch /Applications/Xcode.app
+
+    - name: Run tests
+      run: >
+          OTHER_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"
+          OTHER_CPLUSPLUSFLAGS="-fprofile-instr-generate -fcoverage-mapping"
+          OTHER_SWIFT_FLAGS="-profile-generate -profile-coverage-mapping"
+          LLVM_PROFILE_FILE="/tmp/coverage.profraw"
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+          xcodebuild
+          -scheme tests
+          -destination 'platform=macOS'
+          -resultBundlePath TestResult/ 
+          -enableCodeCoverage YES 
+          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
+          -parallelizeTargets
+          -jobs "$(sysctl -n hw.logicalcpu)"
+          HEADER_SEARCH_PATHS="./external/libpqxx/include/pqxx/internal ./external/libpqxx/include/ ./external/libpqxx/build/include/ ./external/"
+          LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/"
+          OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L$(brew --prefix pkgconf)/lib -L$(brew --prefix pkgconf)/lib/pkgconfig -L$(brew --prefix postgresql@18)/lib/postgresql -L$(brew --prefix postgresql@18)/lib/postgresql/pgxs -L$(brew --prefix postgresql@18)/lib/postgresql/pkgconfig"
+          clean build test
+          | xcpretty -r junit && exit ${PIPESTATUS[0]}
+
+    - name: Convert coverage report to sonarqube format
+      run: >
+          bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
+      with:
+        name: sonarqube-coverage
+        path: sonarqube-generic-coverage.xml
+        retention-days: 1

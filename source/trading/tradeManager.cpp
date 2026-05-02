@@ -5,28 +5,19 @@
 // ---------------------------------------
 
 #include "tradeManager.hpp"
+#include <atomic>
 
-TradeManager* TradeManager::instance = nullptr;
-
-TradeManager* TradeManager::getInstance() {
-    if (instance == nullptr) {
-        instance = new TradeManager();
-    }
-    return instance;
+namespace {
+std::string nextTradeId() {
+    static std::atomic<uint64_t> counter{0};
+    return "T" + std::to_string(counter.fetch_add(1, std::memory_order_relaxed));
+}
 }
 
-void TradeManager::reset() {
-    delete instance;
-    instance = nullptr;
-    Trade::resetCounter();
-}
-
-void TradeManager::clearAllTrades() {
-    activeTrades.clear();
-}
-
-std::string TradeManager::openTrade(double price, double size, bool isLong) {
-    Trade trade(price, size, isLong);
+std::string TradeManager::openTrade(const PriceData& tick, double size, Direction direction) {
+    double price = (direction == Direction::LONG) ? tick.ask : tick.bid;
+    Trade trade(price, size, direction);
+    trade.id = nextTradeId();
     activeTrades[trade.id] = trade;
     return trade.id;
 }
@@ -35,9 +26,13 @@ size_t TradeManager::reviewAccount() const {
     return activeTrades.size();
 }
 
-bool TradeManager::closeTrade(const std::string& tradeId) {
+bool TradeManager::closeTrade(const std::string& tradeId, double closePrice) {
     auto it = activeTrades.find(tradeId);
     if (it != activeTrades.end()) {
+        Trade closed = it->second;
+        closed.closePrice = closePrice;
+        closed.closeTime = std::chrono::system_clock::now();
+        closedTrades.push_back(closed);
         activeTrades.erase(it);
         return true;
     }
@@ -47,3 +42,19 @@ bool TradeManager::closeTrade(const std::string& tradeId) {
 const std::unordered_map<std::string, Trade>& TradeManager::getActiveTrades() const {
     return activeTrades;
 }
+
+const std::vector<Trade>& TradeManager::getClosedTrades() const {
+    return closedTrades;
+}
+
+double TradeManager::calculatePnl() const {
+    double pnl = 0.0;
+    for (const auto& trade : closedTrades) {
+        double diff = trade.closePrice - trade.entryPrice;
+        if (trade.direction == Direction::SHORT) diff = -diff;
+        pnl += diff * trade.size;
+    }
+    return pnl;
+}
+
+

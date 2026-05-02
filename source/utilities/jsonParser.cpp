@@ -1,6 +1,6 @@
 // Backtesting Engine in C++
 //
-// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
@@ -10,7 +10,7 @@
 
 using json = nlohmann::json;
 
-int JsonParser::parseConfigurationFromBase64(const std::string& input) {
+trading_definitions::Configuration JsonParser::parseConfigurationFromBase64(const std::string& input) {
     // Ingest parameters
     std::string output = Base64::b64decode(input);
     
@@ -28,5 +28,5 @@ int JsonParser::parseConfigurationFromBase64(const std::string& input) {
     auto config = j.get<trading_definitions::Configuration>();
     std::cout << config.RUN_ID << std::endl;
 
-    return 0;
+    return config;
 }

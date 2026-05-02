@@ -1,0 +1,88 @@
+on:
+  # Triggered on completion of the Build workflow so we can consume its
+  # coverage artifact. workflow_run fires regardless of whether the upstream
+  # was triggered by push or pull_request.
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+
+name: SonarCloud Scan
+
+env:
+  BUILD_TYPE: Release
+  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+  # Opt into Node.js 24 for JavaScript actions ahead of the June 2026 default switch.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  sonar-scan:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    # Only run if the upstream Build workflow succeeded.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      # Check out the same commit the Build workflow ran against. workflow_run
+      # otherwise defaults to the default branch.
+      - name: Checkout repository on branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Check compiler version, for debugging
+        run: |
+          g++ --version
+          cmake --version
+      - name: Build C++ Libraries
+        run: >
+            sh ./scripts/build.sh
+      - name: Install Python 3.12 for gcovr
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
+      # Gcovr provides a utility for managing the use of the GNU gcov utility and generating
+      # summarized code coverage results. This command is inspired by the Python coverage.py
+      # package, which provides a similar utility for Python.
+      # https://pypi.org/project/gcovr/
+      - name: Install gcovr
+        run: |
+          pip install gcovr==8.3
+      # SonarQube Server and Cloud (formerly SonarQube and SonarCloud) is a widely used static
+      # analysis solution for continuous code quality and security inspection.
+      # This action now supports and is the official entrypoint for scanning C++ projects via GitHub actions.
+      # https://github.com/SonarSource/sonarqube-scan-action
+      - name: Install Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4.2.1
+        # This step installs the SonarQube build wrapper, which is necessary for analyzing C/C++ projects.
+
+      # Cross-workflow artifact download. v4 requires run-id and github-token
+      # when fetching from a different workflow run. The artifact lands at
+      # ./artifact/sonarqube-generic-coverage.xml so the existing
+      # sonar.coverageReportPaths argument keeps working unchanged.
+      - name: Download coverage artifact from Build workflow
+        uses: actions/download-artifact@v5
+        with:
+          name: sonarqube-coverage
+          path: artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Configures the CMake build system, specifying the source directory and build directory, and setting the build type
+      - name: Configure CMake
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      # Runs the build wrapper to capture build commands and outputs them to the specified directory. Then builds the project using CMake
+      - name: Run build-wrapper
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --clean-first
+
+      # Performs the SonarQube scan using the scan action. Uses captured build commands for analysis and requires GitHub and SonarQube tokens for authentication
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4.2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }}
+        with:
+          args: >
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
