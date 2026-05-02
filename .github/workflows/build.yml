@@ -11,6 +11,8 @@ name: Build
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
+  # Opt into Node.js 24 for JavaScript actions ahead of the June 2026 default switch.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
 
@@ -26,7 +28,7 @@ jobs:
     # Step 2: Set up Homebrew package manager
     - name: Set up Homebrew
       id: set-up-homebrew
-      uses: Homebrew/actions/setup-homebrew@master
+      uses: Homebrew/actions/setup-homebrew@main
 
     # Step 3: Install required dependencies using Homebrew
     - name: Install dependencies

@@ -11,6 +11,8 @@ name: SonarCloud Scan
 env:
   BUILD_TYPE: Release
   BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+  # Opt into Node.js 24 for JavaScript actions ahead of the June 2026 default switch.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
 
