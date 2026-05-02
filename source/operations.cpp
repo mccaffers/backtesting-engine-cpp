@@ -30,7 +30,7 @@ void Operations::run(const std::vector<PriceData>& ticks) {
         }
 
         // randomly check account status every 100 ticks
-        if (openTrades > 0 && (std::rand() % 100) == 0) {
+        if (openTrades > 0 && (std::rand() % 100) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::cout << "Reviewing account at tick timestamp: " << tick.timestamp.time_since_epoch().count() << std::endl;
             std::cout << "Number of open trades: " << openTrades << std::endl;
             for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
@@ -44,7 +44,7 @@ void Operations::run(const std::vector<PriceData>& ticks) {
 
         
         // randomly close trades every 200 ticks
-        if (openTrades > 0 && (std::rand() % 200) == 0) {
+        if (openTrades > 0 && (std::rand() % 200) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::vector<std::string> idsToClose;
             for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
                 idsToClose.push_back(id);
