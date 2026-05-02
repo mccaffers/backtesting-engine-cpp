@@ -54,8 +54,8 @@
     std::string base64Input = Base64::b64encode(validJson);
     
     // Test parsing
-    int result = JsonParser::parseConfigurationFromBase64(base64Input);
-    XCTAssertEqual(result, 0, "Parsing should succeed with valid JSON");
+    trading_definitions::Configuration result = JsonParser::parseConfigurationFromBase64(base64Input);
+    XCTAssertFalse(result.RUN_ID.empty(), "Parsing should succeed with valid JSON");
 }
 
 

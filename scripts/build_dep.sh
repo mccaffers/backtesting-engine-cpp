@@ -1,18 +1,9 @@
-#!/bin/bash
-
 git submodule update --init --recursive
 
-BUILD_DIR="build"
-# Variables
-EXECUTABLE_NAME="BacktestingEngine"
+cd ./external/libpqxx
 
-# Step 1: Create a build directory if it doesn't exist
-if [ ! -d "$BUILD_DIR" ]; then
-    mkdir "$BUILD_DIR"
-fi
-
-# Step 2: Navigate to the build directory
-cd "$BUILD_DIR" || exit
+mkdir -p build
+cd ./build
 
 # Expose paths so CMake finds libpq
 if command -v brew &>/dev/null; then
@@ -25,12 +16,7 @@ fi
 cmake .. \
   -DCMAKE_CXX_STANDARD=20 \
   -DCMAKE_BUILD_TYPE=Release \
-  -DSKIP_BUILD_TEST=ON \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  -DSKIP_BUILD_TEST=ON
 
-# Step 4: Compile the project
 JOBS=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
-cmake --build . --parallel "$JOBS"
-
-# Step 5: Navigate back to the root directory
-cd ..
+make -j"$JOBS"

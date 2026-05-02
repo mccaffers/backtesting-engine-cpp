@@ -1,6 +1,6 @@
 // Backtesting Engine in C++
 //
-// (c) 2025 Ryan McCaffery | https://mccaffers.com
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <iomanip>
+#include <sstream>
 
 // external headers
 #include <nlohmann/json.hpp>
@@ -23,36 +24,38 @@
 #include "tradeManager.hpp"
 #include "jsonParser.hpp"
 #include "sqlManager.hpp"
+#include "operations.hpp"
 
 using json = nlohmann::json;
 
+// Entry point. Expects two command-line arguments:
+//   argv[1] — hostname/IP of the QuestDB instance
+//   argv[2] — Base64-encoded JSON strategy configuration
 int main(int argc, const char * argv[]) {
   
-  // Connect to QuestDb argv[1]
+  // Validate required command-line arguments before proceeding
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " <questdb-host> <base64-config>" << std::endl;
+    return 1;
+  }
+
+  // Connect to QuestDB on the default port (8812) using default credentials
   DatabaseConnection db(argv[1], 8812, "qdb", "admin", "quest");
 
-  // Load strategy from Base64 argv[2]
-  JsonParser::parseConfigurationFromBase64(argv[2]);
-
-  std::vector<PriceData> priceData = SqlManager::getInitialPriceData(db);
+  // Decode and apply the strategy configuration from Base64-encoded JSON
+  auto config = JsonParser::parseConfigurationFromBase64(argv[2]);
   
-  // Convert timestamp to readable format for debugging
-  auto timeT = std::chrono::system_clock::to_time_t(priceData[0].timestamp);
-  std::cout << "Timestamp: " << std::put_time(std::localtime(&timeT), "%Y-%m-%d %H:%M:%S") << std::endl;
+  // Split config.SYMBOLS (comma-separated) into a vector
+  std::vector<std::string> symbols;
+  std::istringstream ss(config.SYMBOLS);
+  for (std::string token; std::getline(ss, token, ',');) {
+    symbols.push_back(token);
+  }
+  std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, config.LAST_MONTHS);
+  printf("Total ticks streamed: %zu\n", ticks.size());
 
-  auto tradeManager = TradeManager::getInstance();
-
-  // Open a trade
-  std::string tradeId = tradeManager->openTrade(1.2345, 100000, true);
-  std::cout << "Opened trade: " << tradeId << std::endl;
-
-  // Review account
-  size_t openTrades = tradeManager->reviewAccount();
-  std::cout << "Number of open trades: " << openTrades << std::endl;
-
-  // Close trade
-  bool closed = tradeManager->closeTrade(tradeId);
-  std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
+  // Execute the backtest by replaying all ticks through the strategy logic
+  Operations::run(ticks);
 
   return 0;
   
