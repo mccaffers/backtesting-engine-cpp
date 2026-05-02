@@ -25,7 +25,7 @@ jobs:
       # Check out the same commit the Build workflow ran against. workflow_run
       # otherwise defaults to the default branch.
       - name: Checkout repository on branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
@@ -37,7 +37,7 @@ jobs:
         run: >
             sh ./scripts/build.sh
       - name: Install Python 3.12 for gcovr
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       # Gcovr provides a utility for managing the use of the GNU gcov utility and generating
@@ -60,7 +60,7 @@ jobs:
       # ./artifact/sonarqube-generic-coverage.xml so the existing
       # sonar.coverageReportPaths argument keeps working unchanged.
       - name: Download coverage artifact from Build workflow
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sonarqube-coverage
           path: artifact

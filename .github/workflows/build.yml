@@ -11,11 +11,8 @@ name: Build
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  # Opt into Node.js 24 for JavaScript actions ahead of the June 2026 default switch.
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-
   build:
     name: Build & Test
     runs-on: macos-26
@@ -23,7 +20,7 @@ jobs:
     steps:
     # Step 1: Check out the repository code
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # Step 2: Set up Homebrew package manager
     - name: Set up Homebrew
@@ -74,7 +71,7 @@ jobs:
     # Artifact is consumed by the SonarCloud Scan workflow, which is triggered
     # on completion of this workflow via the workflow_run event.
     - name: Upload coverage report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: sonarqube-coverage
         path: sonarqube-generic-coverage.xml
