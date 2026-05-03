@@ -22,6 +22,7 @@
 		943398272D57E54000287A2D /* jsonParser.mm in Sources */ = {isa = PBXBuildFile; fileRef = 943398262D57E54000287A2D /* jsonParser.mm */; };
 		94364CB62D416D8D00F35B55 /* db.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94364CB52D416D8000F35B55 /* db.mm */; };
 		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
+		9464E5F12FA7467200D82BAD /* symbolScale.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9464E5F02FA7467200D82BAD /* symbolScale.mm */; };
 		94674B872D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
 		94674B882D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
 		94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94674B892D533BDA00973137 /* tradeManager.mm */; };
@@ -75,13 +76,13 @@
 		944D0DC82C8C3704004DD0FC /* LICENSE.MD */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.MD; sourceTree = "<group>"; };
 		944D0DC92C8C3704004DD0FC /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		944D0DCA2C8C3704004DD0FC /* clean.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clean.sh; sourceTree = "<group>"; };
-		944D0DCB2C8C3704004DD0FC /* environment.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = environment.sh; sourceTree = "<group>"; };
 		944D0DCC2C8C3704004DD0FC /* run.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = run.sh; sourceTree = "<group>"; };
 		944D0DCD2C8C3704004DD0FC /* test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = test.sh; sourceTree = "<group>"; };
 		944D0DCF2C8C3704004DD0FC /* sonar-project.properties */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "sonar-project.properties"; sourceTree = "<group>"; };
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "random-indices-sp500-variable.svg"; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		9464E5EF2FA7466900D82BAD /* symbolScale.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = symbolScale.hpp; sourceTree = "<group>"; };
+		9464E5F02FA7467200D82BAD /* symbolScale.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = symbolScale.mm; sourceTree = "<group>"; };
 		94674B822D533B1D00973137 /* trade.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trade.hpp; sourceTree = "<group>"; };
 		94674B832D533B2F00973137 /* tradeManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tradeManager.hpp; sourceTree = "<group>"; };
 		94674B852D533B4000973137 /* tradeManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tradeManager.cpp; sourceTree = "<group>"; };
@@ -1314,6 +1315,7 @@
 		942966D72D48E84100532862 /* models */ = {
 			isa = PBXGroup;
 			children = (
+				9464E5EF2FA7466900D82BAD /* symbolScale.hpp */,
 				94674B822D533B1D00973137 /* trade.hpp */,
 				942966D82D48E84A00532862 /* priceData.hpp */,
 			);
@@ -1324,7 +1326,6 @@
 			isa = PBXGroup;
 			children = (
 				94CD849E2D2D22C900041BBA /* external */,
-				944D0DD22C8C3704004DD0FC /* images */,
 				944D0DCE2C8C3704004DD0FC /* scripts */,
 				94DE4F772C8C3E7C00FE48FF /* include */,
 				9470B5A22C8C5AD0007D9CC6 /* source */,
@@ -1355,19 +1356,10 @@
 				94BBA4502D2EA2570010E04D /* arguments */,
 				944D0DC92C8C3704004DD0FC /* build.sh */,
 				944D0DCA2C8C3704004DD0FC /* clean.sh */,
-				944D0DCB2C8C3704004DD0FC /* environment.sh */,
 				944D0DCC2C8C3704004DD0FC /* run.sh */,
 				944D0DCD2C8C3704004DD0FC /* test.sh */,
 			);
 			path = scripts;
-			sourceTree = "<group>";
-		};
-		944D0DD22C8C3704004DD0FC /* images */ = {
-			isa = PBXGroup;
-			children = (
-				944D0DD12C8C3704004DD0FC /* random-indices-sp500-variable.svg */,
-			);
-			path = images;
 			sourceTree = "<group>";
 		};
 		94674B842D533B2F00973137 /* trading */ = {
@@ -1422,6 +1414,7 @@
 		9470B5AD2C8C5B99007D9CC6 /* tests */ = {
 			isa = PBXGroup;
 			children = (
+				9464E5F02FA7467200D82BAD /* symbolScale.mm */,
 				943398262D57E54000287A2D /* jsonParser.mm */,
 				94674B892D533BDA00973137 /* tradeManager.mm */,
 				94364CB52D416D8000F35B55 /* db.mm */,
@@ -3648,6 +3641,7 @@
 			files = (
 				94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
 				941408AF2D59F93F000ED1F9 /* sqlManager.cpp in Sources */,
+				9464E5F12FA7467200D82BAD /* symbolScale.mm in Sources */,
 				943398242D57E53400287A2D /* jsonParser.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8D2D533E7800973137 /* trade.cpp in Sources */,
@@ -3789,12 +3783,14 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/",
+					"\"$(SRCROOT)/external/\"",
+					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = "";
@@ -3812,12 +3808,14 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/",
+					"\"$(SRCROOT)/external/\"",
+					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = "";
@@ -3836,11 +3834,13 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/",
+					"\"$(SRCROOT)/external/\"",
+					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
@@ -3859,11 +3859,13 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/",
+					"\"$(SRCROOT)/external/\"",
+					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
