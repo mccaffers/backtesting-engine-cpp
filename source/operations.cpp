@@ -24,11 +24,13 @@ void Operations::run(const std::vector<PriceData>& ticks) {
 
         size_t openTrades = tradeManager->reviewAccount();
         
+        // this would be strategy invoke point
         if (openTrades == 0) {
-            std::string tradeId = tradeManager->openTrade(tick, 100000, Direction::LONG);
+            std::string tradeId = tradeManager->openTrade(tick, 1, Direction::LONG);
             std::cout << "Opened trade: " << tradeId << std::endl;
         }
 
+        // this would be a position manager review point
         // randomly check account status every 100 ticks
         if (openTrades > 0 && (std::rand() % 100) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::cout << "Reviewing account at tick timestamp: " << tick.timestamp.time_since_epoch().count() << std::endl;
@@ -42,7 +44,7 @@ void Operations::run(const std::vector<PriceData>& ticks) {
             }
         }
 
-        
+        // strategy review point
         // randomly close trades every 200 ticks
         if (openTrades > 0 && (std::rand() % 200) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::vector<std::string> idsToClose;

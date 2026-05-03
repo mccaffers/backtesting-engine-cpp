@@ -57,8 +57,12 @@ if(APPLE)
     set(OpenMP_C_LIB_NAMES "omp")
     set(OpenMP_CXX_LIB_NAMES "omp")
     set(OpenMP_omp_LIBRARY /opt/homebrew/opt/libomp/lib/libomp.dylib)
+    find_package(OpenMP REQUIRED)
     target_include_directories(BacktestingEngineLib PRIVATE /opt/homebrew/opt/libomp/include)
 endif()
+
+add_subdirectory(external/boost-decimal)
+target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)
 
 find_package(OpenMP REQUIRED)
 target_link_libraries(BacktestingEngineLib PUBLIC pqxx OpenMP::OpenMP_CXX)

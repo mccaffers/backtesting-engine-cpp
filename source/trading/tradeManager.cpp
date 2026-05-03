@@ -16,7 +16,7 @@ std::string nextTradeId() {
 
 std::string TradeManager::openTrade(const PriceData& tick, double size, Direction direction) {
     double price = (direction == Direction::LONG) ? tick.ask : tick.bid;
-    Trade trade(price, size, direction);
+    Trade trade(price, size, direction, tick.symbol);
     trade.id = nextTradeId();
     activeTrades[trade.id] = trade;
     return trade.id;
@@ -32,6 +32,9 @@ bool TradeManager::closeTrade(const std::string& tradeId, double closePrice) {
         Trade closed = it->second;
         closed.closePrice = closePrice;
         closed.closeTime = std::chrono::system_clock::now();
+        double diff = closePrice - closed.entryPrice;
+        if (closed.direction == Direction::SHORT) diff = -diff;
+        closed.pnl = diff * closed.scalingFactor * closed.size;
         closedTrades.push_back(closed);
         activeTrades.erase(it);
         return true;
@@ -50,9 +53,7 @@ const std::vector<Trade>& TradeManager::getClosedTrades() const {
 double TradeManager::calculatePnl() const {
     double pnl = 0.0;
     for (const auto& trade : closedTrades) {
-        double diff = trade.closePrice - trade.entryPrice;
-        if (trade.direction == Direction::SHORT) diff = -diff;
-        pnl += diff * trade.size;
+        pnl += trade.pnl;
     }
     return pnl;
 }

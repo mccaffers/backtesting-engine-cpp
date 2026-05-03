@@ -6,7 +6,10 @@
 
 #pragma once
 #include <string>
+#include <string_view>
 #include <chrono>
+#include "symbolScale.hpp"
+#include <boost/decimal.hpp>
 
 enum class Direction {
     LONG,
@@ -22,7 +25,7 @@ struct Trade {
 
     std::string dealReference;
     std::string symbol;
-    double scalingFactor;
+    int scalingFactor;
     double stopDistancePips;
     double limitDistancePips;
     std::string strategyId;
@@ -30,23 +33,32 @@ struct Trade {
 
     double closePrice;
     std::chrono::system_clock::time_point closeTime;
-    
+    // Realised profit/loss for this trade in pip-points, populated on close.
+    // Pip-PnL = price difference * scalingFactor * size (sign flipped for SHORT).
+    double pnl;
+
     // Default constructor
     Trade() : entryPrice(0), size(0), direction(Direction::LONG),
               scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
-              closePrice(0),
+              closePrice(0), pnl(0),
               openTime(std::chrono::system_clock::now()) {}
-    
+
     // Copy constructor
     Trade(const Trade& other) = default;
-    
-    Trade(double price, double quantity, Direction dir) 
-        : entryPrice(price), 
-          size(quantity), 
+
+    // Member initializers run in declaration order, not the order written
+    // here, so it's safe to derive `scalingFactor` from `tradeSymbol`
+    // regardless of where these appear in the list.
+    Trade(double price, double quantity, Direction dir, std::string_view tradeSymbol)
+        : entryPrice(price),
+          size(quantity),
+          openTime(std::chrono::system_clock::now()),
           direction(dir),
-          scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
-          openTime(std::chrono::system_clock::now()) {
-        
+          symbol(tradeSymbol),
+          scalingFactor(symbol_scale::get(tradeSymbol)),
+          stopDistancePips(0),
+          limitDistancePips(0),
+          pnl(0) {
     }
 
 };
