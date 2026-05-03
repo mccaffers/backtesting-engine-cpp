@@ -18,8 +18,8 @@ enum class Direction {
 
 struct Trade {
     std::string id;
-    double entryPrice;
-    double size;
+    boost::decimal::decimal64_t entryPrice;
+    boost::decimal::decimal64_t size;
     std::chrono::system_clock::time_point openTime;
     Direction direction;
 
@@ -31,11 +31,11 @@ struct Trade {
     std::string strategyId;
     std::string strategyName;
 
-    double closePrice;
+    boost::decimal::decimal64_t closePrice;
     std::chrono::system_clock::time_point closeTime;
     // Realised profit/loss for this trade in pip-points, populated on close.
     // Pip-PnL = price difference * scalingFactor * size (sign flipped for SHORT).
-    double pnl;
+    boost::decimal::decimal64_t pnl;
 
     // Default constructor
     Trade() : entryPrice(0), size(0), direction(Direction::LONG),
@@ -49,7 +49,7 @@ struct Trade {
     // Member initializers run in declaration order, not the order written
     // here, so it's safe to derive `scalingFactor` from `tradeSymbol`
     // regardless of where these appear in the list.
-    Trade(double price, double quantity, Direction dir, std::string_view tradeSymbol)
+    Trade(boost::decimal::decimal64_t price, boost::decimal::decimal64_t quantity, Direction dir, std::string_view tradeSymbol)
         : entryPrice(price),
           size(quantity),
           openTime(std::chrono::system_clock::now()),

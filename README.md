@@ -12,7 +12,7 @@ I'm developing a high-performance C++ backtesting engine designed to analyze fin
 
 I'm extracting results and creating various graphs for trend analyses using SciPy for calculations and Plotly for visualization.
 
-![alt text](images/random-indices-sp500-variable.svg)
+![alt text](documents/images/random-indices-sp500-variable.svg)
 
 *Read more results on https://mccaffers.com/randomly_trading/*
 

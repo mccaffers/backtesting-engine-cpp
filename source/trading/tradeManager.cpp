@@ -14,8 +14,8 @@ std::string nextTradeId() {
 }
 }
 
-std::string TradeManager::openTrade(const PriceData& tick, double size, Direction direction) {
-    double price = (direction == Direction::LONG) ? tick.ask : tick.bid;
+std::string TradeManager::openTrade(const PriceData& tick, boost::decimal::decimal64_t size, Direction direction) {
+    auto price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction, tick.symbol);
     trade.id = nextTradeId();
     activeTrades[trade.id] = trade;
@@ -26,14 +26,16 @@ size_t TradeManager::reviewAccount() const {
     return activeTrades.size();
 }
 
-bool TradeManager::closeTrade(const std::string& tradeId, double closePrice) {
+bool TradeManager::closeTrade(const std::string& tradeId, boost::decimal::decimal64_t closePrice) {
     auto it = activeTrades.find(tradeId);
     if (it != activeTrades.end()) {
         Trade closed = it->second;
         closed.closePrice = closePrice;
         closed.closeTime = std::chrono::system_clock::now();
-        double diff = closePrice - closed.entryPrice;
+        auto diff = closePrice - closed.entryPrice;
         if (closed.direction == Direction::SHORT) diff = -diff;
+        // scalingFactor stays an int — boost::decimal has overloads for builtin
+        // integer types, so no conversion is needed there.
         closed.pnl = diff * closed.scalingFactor * closed.size;
         closedTrades.push_back(closed);
         activeTrades.erase(it);
@@ -50,8 +52,8 @@ const std::vector<Trade>& TradeManager::getClosedTrades() const {
     return closedTrades;
 }
 
-double TradeManager::calculatePnl() const {
-    double pnl = 0.0;
+boost::decimal::decimal64_t TradeManager::calculatePnl() const {
+    boost::decimal::decimal64_t pnl{0};
     for (const auto& trade : closedTrades) {
         pnl += trade.pnl;
     }

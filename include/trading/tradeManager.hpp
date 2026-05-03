@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <boost/decimal.hpp>
 #include "trade.hpp"
 #include "priceData.hpp"
 
@@ -18,10 +19,10 @@ private:
 
 public:
     TradeManager() = default;
-    std::string openTrade(const PriceData& tick, double size, Direction direction);
+    std::string openTrade(const PriceData& tick, boost::decimal::decimal64_t size, Direction direction);
     size_t reviewAccount() const;
-    bool closeTrade(const std::string& tradeId, double closePrice);
+    bool closeTrade(const std::string& tradeId, boost::decimal::decimal64_t closePrice);
     const std::unordered_map<std::string, Trade>& getActiveTrades() const;
     const std::vector<Trade>& getClosedTrades() const;
-    double calculatePnl() const;
+    boost::decimal::decimal64_t calculatePnl() const;
 };
