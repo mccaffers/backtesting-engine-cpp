@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <charconv>
 #include <stdexcept>
+#include <boost/decimal.hpp>
 
 static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
     int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, usec = 0;
@@ -58,14 +59,16 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
 
     for (std::size_t i = 0; i < result.size(); ++i) {
         const auto& row = result[static_cast<pqxx::result::size_type>(i)];
-        double ask, bid;
+        boost::decimal::decimal64_t ask, bid;
         auto symbol = row[0].view();
         auto sv1 = row[1].view();
         auto sv2 = row[2].view();
-        std::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
-        std::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
+        // boost::decimal ships its own from_chars overload — std::from_chars
+        // doesn't know about decimal64_t.
+        boost::decimal::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
+        boost::decimal::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
         results[i] = PriceData(ask, bid, fastParseTimestamp(row[3].c_str()), std::string(symbol));
-    }  
+    }
 
     return results;
 }
