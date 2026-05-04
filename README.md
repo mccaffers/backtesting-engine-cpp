@@ -14,7 +14,7 @@ I'm extracting results and creating various graphs for trend analyses using SciP
 
 ![alt text](documents/images/random-indices-sp500-variable.svg)
 
-*Read more results on https://mccaffers.com/randomly_trading/*
+*Read more results on https://mccaffers.com/quantitative_analysis/randomly_trading/*
 
 ## Setup
 
