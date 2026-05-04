@@ -23,8 +23,9 @@ trading_definitions::Configuration JsonParser::parseConfigurationFromBase64(cons
     }
     catch (json::parse_error& ex) {
         std::cerr << "parse error at byte " << ex.byte << std::endl;
+        throw;
     }
-    
+
     auto config = j.get<trading_definitions::Configuration>();
     std::cout << config.RUN_ID << std::endl;
 
