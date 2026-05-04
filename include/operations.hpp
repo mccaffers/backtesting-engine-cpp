@@ -7,9 +7,11 @@
 #pragma once
 #include <vector>
 #include "models/priceData.hpp"
+#include "trading_definitions/configuration.hpp"
 
 class Operations {
-    
+
 public:
-    static void run(const std::vector<PriceData>& priceData);
+    static void run(const std::vector<PriceData>& priceData,
+                    const trading_definitions::Configuration& config);
 };

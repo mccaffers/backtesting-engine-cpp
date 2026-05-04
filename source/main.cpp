@@ -55,7 +55,7 @@ int main(int argc, const char * argv[]) {
   printf("Total ticks streamed: %zu\n", ticks.size());
 
   // Execute the backtest by replaying all ticks through the strategy logic
-  Operations::run(ticks);
+  Operations::run(ticks, config);
 
   return 0;
   
