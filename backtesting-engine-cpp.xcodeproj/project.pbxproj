@@ -3776,7 +3776,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
-					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = (
@@ -3806,7 +3805,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
 					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
-					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = (

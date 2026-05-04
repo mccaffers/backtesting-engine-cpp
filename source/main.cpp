@@ -20,7 +20,7 @@
 #include "serviceA.hpp"
 #include "databaseConnection.hpp"
 #include "base64.hpp"
-#include "trading_definitions.hpp"  // For everything
+#include "trading_definitions.hpp"
 #include "tradeManager.hpp"
 #include "jsonParser.hpp"
 #include "sqlManager.hpp"
@@ -51,7 +51,11 @@ int main(int argc, const char * argv[]) {
   for (std::string token; std::getline(ss, token, ',');) {
     symbols.push_back(token);
   }
+  
+  // Stream all the tick data into a vector
   std::vector<PriceData> ticks = SqlManager::streamPriceData(db, symbols, config.LAST_MONTHS);
+  
+  // TODO add a condition, if tick.size == zero
   printf("Total ticks streamed: %zu\n", ticks.size());
 
   // Execute the backtest by replaying all ticks through the strategy logic
