@@ -95,8 +95,8 @@
 		94724A822F8B92C10029B940 /* operations.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = operations.cpp; sourceTree = "<group>"; };
 		94724A852F8B92E30029B940 /* operations.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = operations.hpp; sourceTree = "<group>"; };
 		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
-		948A9CED2C906AFE00E23669 /* 2020.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = 2020.csv; sourceTree = "<group>"; };
 		94BBA4512D2EA2640010E04D /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
+		94C331A02FA899A8006BD690 /* decimal_json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = decimal_json.hpp; sourceTree = "<group>"; };
 		94CD832A2D2D22C900041BBA /* config.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = config.yml; sourceTree = "<group>"; };
 		94CD832C2D2D22C900041BBA /* codeql.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = codeql.yml; sourceTree = "<group>"; };
 		94CD832D2D2D22C900041BBA /* stale.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = stale.yml; sourceTree = "<group>"; };
@@ -1330,7 +1330,6 @@
 				94DE4F772C8C3E7C00FE48FF /* include */,
 				9470B5A22C8C5AD0007D9CC6 /* source */,
 				9470B5AD2C8C5B99007D9CC6 /* tests */,
-				948A9CEC2C906ADB00E23669 /* resources */,
 				944D0DCF2C8C3704004DD0FC /* sonar-project.properties */,
 				944D0DD32C8C3704004DD0FC /* CMakeLists.txt */,
 				944D0DC82C8C3704004DD0FC /* LICENSE.MD */,
@@ -1422,17 +1421,10 @@
 			path = tests;
 			sourceTree = "<group>";
 		};
-		948A9CEC2C906ADB00E23669 /* resources */ = {
-			isa = PBXGroup;
-			children = (
-				948A9CED2C906AFE00E23669 /* 2020.csv */,
-			);
-			path = resources;
-			sourceTree = "<group>";
-		};
 		94B8C7932D3D770800E17EB6 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				94C331A02FA899A8006BD690 /* decimal_json.hpp */,
 				94280BA12D2FC00200F1CF56 /* base64.hpp */,
 			);
 			path = utilities;
@@ -3781,6 +3773,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				FRAMEWORK_SEARCH_PATHS = "";
 				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
 					"\"$(SRCROOT)/external/\"",
@@ -3806,6 +3799,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				FRAMEWORK_SEARCH_PATHS = "";
 				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
 					"\"$(SRCROOT)/external/\"",
@@ -3832,6 +3826,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
 					"\"$(SRCROOT)/external/\"",
@@ -3857,6 +3852,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
 					"\"$(SRCROOT)/external/\"",
