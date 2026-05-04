@@ -18,19 +18,18 @@
 
 void Operations::run(const std::vector<PriceData>& ticks) {
 
-    // Create
-    auto tradeManager = new TradeManager();
-        
+    TradeManager tradeManager;
+
     for (const auto& tick : ticks) {
 
-        size_t openTrades = tradeManager->reviewAccount();
+        size_t openTrades = tradeManager.reviewAccount();
         
         // this would be strategy invoke point
         if (openTrades == 0) {
             // decimal64_t's int constructor is `explicit`, so the literal `1`
             // can't implicitly convert — unlike C# where `1m` produces a
             // decimal directly. Construct it explicitly via braced init.
-            std::string tradeId = tradeManager->openTrade(tick, boost::decimal::decimal64_t{1}, Direction::LONG);
+            std::string tradeId = tradeManager.openTrade(tick, boost::decimal::decimal64_t{1}, Direction::LONG);
             std::cout << "Opened trade: " << tradeId << std::endl;
         }
 
@@ -39,7 +38,7 @@ void Operations::run(const std::vector<PriceData>& ticks) {
         if (openTrades > 0 && (std::rand() % 100) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::cout << "Reviewing account at tick timestamp: " << tick.timestamp.time_since_epoch().count() << std::endl;
             std::cout << "Number of open trades: " << openTrades << std::endl;
-            for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
+            for (const auto& [id, trade] : tradeManager.getActiveTrades()) {
                 std::cout << "Trade ID: " << id
                         << " | Entry: " << trade.entryPrice
                         << " | Size: " << trade.size
@@ -52,17 +51,17 @@ void Operations::run(const std::vector<PriceData>& ticks) {
         // randomly close trades every 200 ticks
         if (openTrades > 0 && (std::rand() % 200) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
             std::vector<std::string> idsToClose;
-            for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
+            for (const auto& [id, trade] : tradeManager.getActiveTrades()) {
                 idsToClose.push_back(id);
             }
             for (const auto& id : idsToClose) {
-                bool closed = tradeManager->closeTrade(id, tick.bid);
+                bool closed = tradeManager.closeTrade(id, tick.bid);
                 std::cout << "Closed trade ID: " << id << " - " << (closed ? "success" : "failure") << std::endl;
             }
         }
     }
 
-    std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager->calculatePnl() << std::endl;
+    std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager.calculatePnl() << std::endl;
 
     // bool closed = tradeManager->closeTrade(tradeId);
     // std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
