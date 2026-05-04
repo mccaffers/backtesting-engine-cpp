@@ -3768,6 +3768,7 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/libpqxx/build/include\"",
 					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
@@ -3797,6 +3798,7 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/libpqxx/build/include\"",
 					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
@@ -3828,6 +3830,7 @@
 					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/libpqxx/build/include\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
@@ -3854,6 +3857,7 @@
 					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
+					"\"$(SRCROOT)/external/libpqxx/build/include\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
