@@ -41,7 +41,7 @@ jobs:
           CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
           xcodebuild
           -scheme tests
-          -destination 'platform=macOS'
+          -destination 'platform=macOS,arch=arm64'
           -resultBundlePath TestResult/ 
           -enableCodeCoverage YES 
           -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
