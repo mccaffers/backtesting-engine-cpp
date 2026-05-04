@@ -31,9 +31,9 @@
       "UUID": "",
       "TRADING_VARIABLES": {
           "STRATEGY": "OHLC_RSI",
-          "STOP_DISTANCE_IN_PIPS": 1,
-          "LIMIT_DISTANCE_IN_PIPS": 1,
-          "TRADING_SIZE": 1
+          "STOP_DISTANCE_IN_PIPS": "1",
+          "LIMIT_DISTANCE_IN_PIPS": "1",
+          "TRADING_SIZE": "1"
       },
       "OHLC_VARIABLES": [
           {
