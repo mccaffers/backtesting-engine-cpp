@@ -1,10 +1,11 @@
 on:
   # Triggered on completion of the Build workflow so we can consume its
-  # coverage artifact. workflow_run fires regardless of whether the upstream
-  # was triggered by push or pull_request.
+  # coverage artifact. Limited to runs against main so we only scan the
+  # mainline; PR builds don't trigger Sonar.
   workflow_run:
     workflows: ["Build"]
     types: [completed]
+    branches: [main]
 
 name: SonarCloud Scan
 
