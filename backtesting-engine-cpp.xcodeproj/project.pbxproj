@@ -21,7 +21,6 @@
 		943398252D57E53400287A2D /* jsonParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 943398232D57E53400287A2D /* jsonParser.cpp */; };
 		943398272D57E54000287A2D /* jsonParser.mm in Sources */ = {isa = PBXBuildFile; fileRef = 943398262D57E54000287A2D /* jsonParser.mm */; };
 		94364CB62D416D8D00F35B55 /* db.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94364CB52D416D8000F35B55 /* db.mm */; };
-		944698852D3A545B0070E30F /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
 		9464E5F12FA7467200D82BAD /* symbolScale.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9464E5F02FA7467200D82BAD /* symbolScale.mm */; };
 		94674B872D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
 		94674B882D533B4000973137 /* tradeManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B852D533B4000973137 /* tradeManager.cpp */; };
@@ -32,11 +31,8 @@
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		94724A832F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
 		94724A842F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
-		94CD8B992D2DCDD800041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B982D2DCDD800041BBA /* libpqxx-7.10.a */; };
-		94CD8B9C2D2DD02A00041BBA /* libpqxx-7.10.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8B9A2D2DCF6E00041BBA /* libpqxx-7.10.a */; };
 		94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
 		94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
-		94CD8BA22D2E8FC600041BBA /* libpq.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 94CD8A972D2D34A100041BBA /* libpq.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1265,8 +1261,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				94CD8BA22D2E8FC600041BBA /* libpq.a in Frameworks */,
-				94CD8B992D2DCDD800041BBA /* libpqxx-7.10.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1274,8 +1268,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				944698852D3A545B0070E30F /* libpq.a in Frameworks */,
-				94CD8B9C2D2DD02A00041BBA /* libpqxx-7.10.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3782,11 +3774,14 @@
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
-					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
 					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-lpq",
+					"-lpqxx",
+				);
 				OTHER_LIBTOOLFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
@@ -3808,11 +3803,14 @@
 				INCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
-					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
 					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-lpq",
+					"-lpqxx",
+				);
 				OTHER_LIBTOOLFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
@@ -3827,14 +3825,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
-					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
 					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -3853,14 +3851,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/libpqxx/include\"",
 					"\"$(SRCROOT)/external/libpqxx/include/pqxx/internal\"",
-					"\"$(SRCROOT)/external/\"",
 					"\"$(SRCROOT)/external/boost-decimal/include\"",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/external/libpqxx/build/src\"",
-					"/opt/homebrew/Cellar/postgresql@18/18.3/lib/postgresql",
+					"/opt/homebrew/opt/postgresql@18/lib/postgresql",
 					"\"$(SRCROOT)/external/boost-decimal/build\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;

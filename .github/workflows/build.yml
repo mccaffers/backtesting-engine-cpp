@@ -47,8 +47,6 @@ jobs:
           -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
           -parallelizeTargets
           -jobs "$(sysctl -n hw.logicalcpu)"
-          LIBRARY_SEARCH_PATHS="./external/libpqxx/src/ ./external/libpqxx/build/src/"
-          OTHER_LDFLAGS="-L./external/libpqxx/build/src -lpqxx -lpq -L$(brew --prefix pkgconf)/lib -L$(brew --prefix pkgconf)/lib/pkgconfig -L$(brew --prefix postgresql@18)/lib/postgresql -L$(brew --prefix postgresql@18)/lib/postgresql/pgxs -L$(brew --prefix postgresql@18)/lib/postgresql/pkgconfig"
           clean build test
           | xcpretty -r junit && exit ${PIPESTATUS[0]}
 
