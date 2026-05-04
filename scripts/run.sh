@@ -21,16 +21,16 @@ fi
 
 # "SYMBOLS": "EURUSD,AUSIDXAUD",
 json='{
-  "RUN_ID": "UNIQUE_IDENTIFER",
+  "RUN_ID": "UNIQUE_IDENTIFIER",
   "SYMBOLS": "EURUSD",
   "LAST_MONTHS": 1,
   "STRATEGY": {
       "UUID": "",
       "TRADING_VARIABLES": {
           "STRATEGY": "OHLC_RSI",
-          "STOP_DISTANCE_IN_PIPS": 1,
-          "LIMIT_DISTANCE_IN_PIPS": 1,
-          "TRADING_SIZE": 1
+          "STOP_DISTANCE_IN_PIPS": "1.5",
+          "LIMIT_DISTANCE_IN_PIPS": "1.5",
+          "TRADING_SIZE": "0.01"
       },
       "OHLC_VARIABLES": [
           {
@@ -38,7 +38,7 @@ json='{
               "OHLC_MINUTES": 100
           }
       ],
-      "STRATEGY_VARIABLES" : {
+      "STRATEGY_VARIABLES": {
         "OHLC_RSI_VARIABLES": {
             "RSI_LONG": 60,
             "RSI_SHORT": 40

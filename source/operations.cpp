@@ -16,7 +16,8 @@
 #include <boost/decimal.hpp>
 #include "tradeManager.hpp"
 
-void Operations::run(const std::vector<PriceData>& ticks) {
+void Operations::run(const std::vector<PriceData>& ticks,
+                     const trading_definitions::Configuration& config) {
 
     // Create
     auto tradeManager = new TradeManager();
@@ -27,10 +28,7 @@ void Operations::run(const std::vector<PriceData>& ticks) {
         
         // this would be strategy invoke point
         if (openTrades == 0) {
-            // decimal64_t's int constructor is `explicit`, so the literal `1`
-            // can't implicitly convert — unlike C# where `1m` produces a
-            // decimal directly. Construct it explicitly via braced init.
-            std::string tradeId = tradeManager->openTrade(tick, boost::decimal::decimal64_t{1}, Direction::LONG);
+            std::string tradeId = tradeManager->openTrade(tick, config.STRATEGY.TRADING_VARIABLES.TRADING_SIZE, Direction::LONG);
             std::cout << "Opened trade: " << tradeId << std::endl;
         }
 
