@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <chrono>
+#include <stdexcept>
 #include "symbolScale.hpp"
 #include <boost/decimal.hpp>
 
@@ -59,6 +60,9 @@ struct Trade {
           stopDistancePips(0),
           limitDistancePips(0),
           pnl(0) {
+        if (scalingFactor == symbol_scale::kUnknown) {
+            throw std::invalid_argument("Trade: unknown symbol '" + std::string(tradeSymbol) + "' has no pip scale");
+        }
     }
 
 };
