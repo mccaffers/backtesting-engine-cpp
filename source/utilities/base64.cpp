@@ -7,6 +7,8 @@
 #include <iomanip>  // Add this header for std::get_time
 #include <sstream>
 #include <chrono>
+#include <cctype>
+#include <stdexcept>
 #include "base64.hpp"
 
 static const char* const B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -62,6 +64,31 @@ const std::string Base64::b64encode(const void* data, const size_t &len)
 const std::string Base64::b64decode(const void* data, const size_t &len)
 {
     if (len == 0) return "";
+
+    // Validate up front so the decode loop can rely on a well-formed input.
+    // Without this:
+    //   - len == 1 reads p[len - 2] = p[-1] (out-of-bounds).
+    //   - len == 2 or 3 produces a result string smaller than the padding
+    //     branch writes into.
+    //   - any non-base64 byte silently maps via B64index to 0 ('A'), so the
+    //     decoder returns garbage instead of failing.
+    if (len % 4 != 0) {
+        throw std::invalid_argument("Base64::b64decode: input length must be a multiple of 4");
+    }
+    {
+        const unsigned char* q = static_cast<const unsigned char*>(data);
+        for (size_t i = 0; i < len; ++i) {
+            const unsigned char c = q[i];
+            const bool valid =
+                (c >= 'A' && c <= 'Z') ||
+                (c >= 'a' && c <= 'z') ||
+                (c >= '0' && c <= '9') ||
+                c == '+' || c == '/' || c == '=';
+            if (!valid) {
+                throw std::invalid_argument("Base64::b64decode: invalid character in input");
+            }
+        }
+    }
 
     unsigned char *p = (unsigned char*) data;
     size_t j = 0,
@@ -119,16 +146,30 @@ std::chrono::system_clock::time_point Utilities::parseTimestamp(const std::strin
     std::tm tm = {};
     std::istringstream ss(ts);
     ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-    
-    auto timePoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-    
-    // Parse milliseconds if present
-    if (ss.peek() == '.') {
-        ss.ignore(); // Skip the dot
-        int milliseconds;
-        ss >> milliseconds;
-        timePoint += std::chrono::milliseconds(milliseconds / 1000); // Convert microseconds to milliseconds
+    if (ss.fail()) {
+        throw std::runtime_error("Utilities::parseTimestamp: invalid timestamp format");
     }
-    
+
+    // Treat the parsed time as UTC (timegm), matching fastParseTimestamp in
+    // databaseConnection.cpp. std::mktime would interpret it as local time
+    // and silently shift everything by the host TZ offset.
+    auto timePoint = std::chrono::system_clock::from_time_t(timegm(&tm));
+
+    // Parse fractional seconds if present. The DB may emit any number of
+    // digits (e.g. ".1", ".123", ".123456"); pad/truncate to 6 digits so
+    // the value is always interpreted as microseconds.
+    if (ss.peek() == '.') {
+        ss.ignore();
+        std::string frac;
+        while (std::isdigit(static_cast<unsigned char>(ss.peek()))) {
+            frac.push_back(static_cast<char>(ss.get()));
+        }
+        if (!frac.empty()) {
+            if (frac.size() < 6) frac.append(6 - frac.size(), '0');
+            else if (frac.size() > 6) frac.resize(6);
+            timePoint += std::chrono::microseconds(std::stoi(frac));
+        }
+    }
+
     return timePoint;
 }

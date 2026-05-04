@@ -19,10 +19,20 @@ static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) 
     if (parsedFields != 6 && parsedFields != 7) {
         throw std::runtime_error("Invalid timestamp format");
     }
+    if (month < 1 || month > 12 ||
+        day   < 1 || day   > 31 ||
+        hour  < 0 || hour  > 23 ||
+        min   < 0 || min   > 59 ||
+        sec   < 0 || sec   > 60 ||
+        usec  < 0 || usec  > 999999) {
+        throw std::runtime_error("Invalid timestamp field range");
+    }
 
-    // Cache timegm per date — tick data is time-ordered so date changes rarely
-    static char cachedDate[11] = {};
-    static time_t cachedEpoch = 0;
+    // Cache timegm per date — tick data is time-ordered so date changes rarely.
+    // thread_local: every thread has its own cache, eliminating data races if
+    // streamQuery is ever invoked concurrently.
+    thread_local char cachedDate[11] = {};
+    thread_local time_t cachedEpoch = 0;
     if (std::memcmp(ts, cachedDate, 10) != 0) {
         std::memcpy(cachedDate, ts, 10);
         std::tm tm = {};
