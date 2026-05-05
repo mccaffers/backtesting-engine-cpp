@@ -83,8 +83,7 @@ jobs:
           g++ --version
           cmake --version
       - name: Build C++ Libraries
-        run: >
-            sh ./scripts/build_dep.sh
+        run: bash ./scripts/build_dep.sh
       # SonarQube Server and Cloud (formerly SonarQube and SonarCloud) is a widely used static
       # analysis solution for continuous code quality and security inspection.
       # This action now supports and is the official entrypoint for scanning C++ projects via GitHub actions.
