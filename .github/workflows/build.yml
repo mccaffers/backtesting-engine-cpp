@@ -3,12 +3,14 @@ on:
     branches:
       - main
   pull_request:
-      types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened]
 
 name: Build
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+  BUILD_TYPE: Release
+  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
 
 jobs:
   build:
@@ -60,3 +62,57 @@ jobs:
         name: sonarqube-coverage
         path: sonarqube-generic-coverage.xml
         retention-days: 1
+
+  sonar-scan:
+    name: SonarCloud Scan
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # fetch-depth: 0 gives Sonar full git history for blame-based new-code analysis.
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check compiler version, for debugging
+        run: |
+          g++ --version
+          cmake --version
+      # - name: Build C++ Libraries
+      #   run: >
+      #       sh ./scripts/build.sh
+      # SonarQube Server and Cloud (formerly SonarQube and SonarCloud) is a widely used static
+      # analysis solution for continuous code quality and security inspection.
+      # This action now supports and is the official entrypoint for scanning C++ projects via GitHub actions.
+      # https://github.com/SonarSource/sonarqube-scan-action
+      - name: Install Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4.2.1
+        # This step installs the SonarQube build wrapper, which is necessary for analyzing C/C++ projects.
+
+      # Lands at ./artifact/sonarqube-generic-coverage.xml so the existing
+      # sonar.coverageReportPaths argument keeps working unchanged.
+      - name: Download coverage artifact from build job
+        uses: actions/download-artifact@v5
+        with:
+          name: sonarqube-coverage
+          path: artifact
+
+      # Configures the CMake build system, specifying the source directory and build directory, and setting the build type
+      - name: Configure CMake
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      # Runs the build wrapper to capture build commands and outputs them to the specified directory. Then builds the project using CMake
+      - name: Run build-wrapper
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --clean-first
+
+      # Performs the SonarQube scan using the scan action. Uses captured build commands for analysis and requires GitHub and SonarQube tokens for authentication
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4.2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN  }}
+        with:
+          args: >
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml
