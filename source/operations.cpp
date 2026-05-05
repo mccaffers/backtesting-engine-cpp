@@ -15,21 +15,26 @@
 #include <ctime>
 #include <boost/decimal.hpp>
 #include "tradeManager.hpp"
+#include "strategies/randomStrategy.hpp"
 
 void Operations::run(const std::vector<PriceData>& ticks,
                      const trading_definitions::Configuration& config) {
 
     // Create
     auto tradeManager = new TradeManager();
-        
+    RandomStrategy strategy(config.STRATEGY);
+
     for (const auto& tick : ticks) {
 
         size_t openTrades = tradeManager->reviewAccount();
-        
-        // this would be strategy invoke point
+
+        // strategy invoke point: ask the strategy for a signal. If it
+        // returns std::nullopt the strategy is saying "no trade".
         if (openTrades == 0) {
-            std::string tradeId = tradeManager->openTrade(tick, config.STRATEGY.TRADING_VARIABLES.TRADING_SIZE, Direction::LONG);
-            std::cout << "Opened trade: " << tradeId << std::endl;
+            if (auto signal = strategy.decide(tick)) {
+                std::string tradeId = tradeManager->openTrade(tick, config.STRATEGY.TRADING_VARIABLES.TRADING_SIZE, *signal);
+                std::cout << "Opened trade: " << tradeId << std::endl;
+            }
         }
 
         // this would be a position manager review point

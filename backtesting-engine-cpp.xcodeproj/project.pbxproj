@@ -33,6 +33,8 @@
 		94724A842F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
 		94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
 		94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
+		94D601102FA9CD700066F51A /* randomStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D6010E2FA9CD700066F51A /* randomStrategy.cpp */; };
+		94D601112FA9CD700066F51A /* randomStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D6010E2FA9CD700066F51A /* randomStrategy.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1254,6 +1256,8 @@
 		94CD8B9A2D2DCF6E00041BBA /* libpqxx-7.10.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libpqxx-7.10.a"; path = "build/external/libpqxx/src/libpqxx-7.10.a"; sourceTree = "<group>"; };
 		94CD8B9E2D2E8CE500041BBA /* databaseConnection.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = databaseConnection.hpp; sourceTree = "<group>"; };
 		94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = databaseConnection.cpp; sourceTree = "<group>"; };
+		94D6010E2FA9CD700066F51A /* randomStrategy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = randomStrategy.cpp; sourceTree = "<group>"; };
+		94D601122FA9CD890066F51A /* randomStrategy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = randomStrategy.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1388,6 +1392,7 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				94D6010F2FA9CD700066F51A /* strategies */,
 				94674B8C2D533E7800973137 /* models */,
 				94674B862D533B4000973137 /* trading */,
 				941B54982D3BBAD800E3BF64 /* trading_definitions */,
@@ -3494,9 +3499,26 @@
 			path = "../../../../../opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pgxs";
 			sourceTree = "<group>";
 		};
+		94D6010F2FA9CD700066F51A /* strategies */ = {
+			isa = PBXGroup;
+			children = (
+				94D6010E2FA9CD700066F51A /* randomStrategy.cpp */,
+			);
+			path = strategies;
+			sourceTree = "<group>";
+		};
+		94D601132FA9CD890066F51A /* strategies */ = {
+			isa = PBXGroup;
+			children = (
+				94D601122FA9CD890066F51A /* randomStrategy.hpp */,
+			);
+			path = strategies;
+			sourceTree = "<group>";
+		};
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				94D601132FA9CD890066F51A /* strategies */,
 				94674B842D533B2F00973137 /* trading */,
 				942966D72D48E84100532862 /* models */,
 				94B8C7932D3D770800E17EB6 /* utilities */,
@@ -3616,6 +3638,7 @@
 				940A61132C92CE210083FEB8 /* configManager.cpp in Sources */,
 				94724A842F8B92C10029B940 /* operations.cpp in Sources */,
 				940A61172C92CE960083FEB8 /* serviceA.cpp in Sources */,
+				94D601112FA9CD700066F51A /* randomStrategy.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3630,6 +3653,7 @@
 				94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8D2D533E7800973137 /* trade.cpp in Sources */,
 				941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				94D601102FA9CD700066F51A /* randomStrategy.cpp in Sources */,
 				94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */,
 				94724A832F8B92C10029B940 /* operations.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
