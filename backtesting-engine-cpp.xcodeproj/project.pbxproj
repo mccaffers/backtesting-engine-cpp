@@ -50,6 +50,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9409A61B2FAA6411002C30FF /* strategy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = strategy.hpp; sourceTree = "<group>"; };
 		940A61112C92CE210083FEB8 /* configManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = configManager.cpp; sourceTree = "<group>"; };
 		940A61122C92CE210083FEB8 /* configManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = configManager.hpp; sourceTree = "<group>"; };
 		940A61152C92CE960083FEB8 /* serviceA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = serviceA.cpp; sourceTree = "<group>"; };
@@ -3510,6 +3511,7 @@
 		94D601132FA9CD890066F51A /* strategies */ = {
 			isa = PBXGroup;
 			children = (
+				9409A61B2FAA6411002C30FF /* strategy.hpp */,
 				94D601122FA9CD890066F51A /* randomStrategy.hpp */,
 			);
 			path = strategies;

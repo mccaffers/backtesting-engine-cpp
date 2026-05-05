@@ -24,13 +24,14 @@ void Operations::run(const std::vector<PriceData>& ticks,
     auto tradeManager = new TradeManager();
     RandomStrategy strategy(config.STRATEGY);
 
+    std::size_t tickIndex = 0;
     for (const auto& tick : ticks) {
 
         size_t openTrades = tradeManager->reviewAccount();
 
-        // strategy invoke point: ask the strategy for a signal. If it
-        // returns std::nullopt the strategy is saying "no trade".
+        // only open a trade if there is zero
         if (openTrades == 0) {
+            // optional is false
             if (auto signal = strategy.decide(tick)) {
                 std::string tradeId = tradeManager->openTrade(tick, config.STRATEGY.TRADING_VARIABLES.TRADING_SIZE, *signal);
                 std::cout << "Opened trade: " << tradeId << std::endl;
@@ -51,18 +52,15 @@ void Operations::run(const std::vector<PriceData>& ticks,
             }
         }
 
-        // strategy review point
-        // randomly close trades every 200 ticks
-        if (openTrades > 0 && (std::rand() % 200) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
-            std::vector<std::string> idsToClose;
-            for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
-                idsToClose.push_back(id);
-            }
-            for (const auto& id : idsToClose) {
-                bool closed = tradeManager->closeTrade(id, tick.bid);
-                std::cout << "Closed trade ID: " << id << " - " << (closed ? "success" : "failure") << std::endl;
-            }
-        }
+        // Strategy-driven management hook. The strategy itself decides
+        // whether/when to close positions; the random strategy currently
+        // closes every open trade with a small per-tick probability.
+        // Dereferencing `tradeManager` (a raw pointer) yields a reference
+        // — the parameter type is `TradeManager&`, so `*tradeManager`
+        // is what we hand in.
+        strategy.during(tickIndex, tick, *tradeManager);
+
+        ++tickIndex;
     }
 
     std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager->calculatePnl() << std::endl;

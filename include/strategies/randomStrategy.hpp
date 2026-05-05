@@ -5,15 +5,20 @@
 // ---------------------------------------
 
 #pragma once
+#include <cstddef>
 #include <optional>
 #include <random>
 #include "models/priceData.hpp"
 #include "models/trade.hpp"                       // for Direction enum
+#include "strategies/strategy.hpp"                // IStrategy base class
 #include "trading_definitions/strategy.hpp"
 
+class TradeManager;  // forward declared in strategy.hpp; redeclaring is harmless
+
 // A trivial strategy: on every tick it flips a fair coin and returns
-// LONG or SHORT. Intended as scaffolding for the strategy interface,
-// not as a real trading approach.
+// LONG or SHORT. While trades are open it has a small per-tick chance
+// of closing every active position. Intended as scaffolding for the
+// strategy interface, not as a real trading approach.
 //
 // C# parallels for readers from a C# background:
 //   - `class` here is a value/owning type managed via stack or
@@ -24,7 +29,12 @@
 //   - `std::mt19937` is the modern C++ RNG engine; it replaces the
 //     globally-shared `std::rand()` used elsewhere in this codebase
 //     and gives us the option of seeding for reproducible backtests.
-class RandomStrategy {
+//   - `: public IStrategy` is C++ inheritance syntax. `public` means
+//     the inheritance preserves access — outside code can use a
+//     `RandomStrategy` anywhere an `IStrategy` is expected. The C#
+//     equivalent is `: IStrategy`; C# has no concept of private
+//     inheritance, so the `public` keyword has no analogue there.
+class RandomStrategy : public IStrategy {
 public:
     explicit RandomStrategy(const trading_definitions::Strategy& strategyConfig);
 
@@ -37,10 +47,20 @@ public:
     // Not const because the RNG engine mutates its internal state on
     // each call. The `tick` parameter is unused today but keeps the
     // interface stable for strategies that will look at price.
-    std::optional<Direction> decide(const PriceData& tick);
+    std::optional<Direction> decide(const PriceData& tick) override;
+
+    // Per-tick management hook. With a small probability per tick
+    // (see `closeProb`), closes every currently-open trade at the
+    // tick's bid price. `tradeManager` is passed by mutable reference
+    // because the strategy needs to call mutating methods on it
+    // (`closeTrade`); `getActiveTrades()` is still safely const.
+    void during(std::size_t tickValue,
+                const PriceData& price,
+                TradeManager& tradeManager) override;
 
 private:
     trading_definitions::Strategy config;
     std::mt19937 rng;
-    std::bernoulli_distribution coin;
+    std::bernoulli_distribution coin;       // fair coin flip for entry direction
+    std::bernoulli_distribution closeProb;  // per-tick probability of closing all trades
 };
