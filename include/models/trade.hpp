@@ -26,8 +26,8 @@ struct Trade {
     std::string dealReference;
     std::string symbol;
     int scalingFactor;
-    double stopDistancePips;
-    double limitDistancePips;
+    boost::decimal::decimal64_t stopDistancePips;
+    boost::decimal::decimal64_t limitDistancePips;
     std::string strategyId;
     std::string strategyName;
 

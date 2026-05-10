@@ -14,10 +14,16 @@ std::string nextTradeId() {
 }
 }
 
-std::string TradeManager::openTrade(const PriceData& tick, boost::decimal::decimal64_t size, Direction direction) {
+std::string TradeManager::openTrade(const PriceData& tick,
+                                    boost::decimal::decimal64_t size,
+                                    Direction direction,
+                                    boost::decimal::decimal64_t stopDistancePips,
+                                    boost::decimal::decimal64_t limitDistancePips) {
     auto price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction, tick.symbol);
     trade.id = nextTradeId();
+    trade.stopDistancePips = stopDistancePips;
+    trade.limitDistancePips = limitDistancePips;
     activeTrades[trade.id] = trade;
     return trade.id;
 }

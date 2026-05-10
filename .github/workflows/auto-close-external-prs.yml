@@ -20,7 +20,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr,
-              body: "Thanks for the interest! This repository isn't currently accepting external contributions as I am actively experimenting with different approaches and want to avoid merge conflicts. Therefore, this PR is being closed automatically by Github Bot."
+              body: "Thanks for the interest! This repository isn't currently accepting external contributions as I am actively experimenting with different approaches and want to avoid merge conflicts. Therefore, this PR is being closed automatically by Github Bot. See [CONTRIBUTING.md](https://github.com/mccaffers/backtesting-engine-cpp/blob/main/CONTRIBUTING.md) for how to fork or file an issue instead."
             });
             await github.rest.pulls.update({
               owner: context.repo.owner,
