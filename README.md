@@ -82,5 +82,9 @@ Xcode - Library Path
 
 `bash ./scripts/test.sh`
 
+### Contributing
+
+This is an active solo experiment, so I'm not accepting pull requests right now — but please fork freely and use [GitHub Issues](https://github.com/mccaffers/backtesting-engine-cpp/issues) for bugs, questions, and ideas. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ### License
 [MIT](https://choosealicense.com/licenses/mit/)
