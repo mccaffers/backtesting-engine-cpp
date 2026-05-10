@@ -16,9 +16,11 @@
 class TradeManager;  // forward declared in strategy.hpp; redeclaring is harmless
 
 // A trivial strategy: on every tick it flips a fair coin and returns
-// LONG or SHORT. While trades are open it has a small per-tick chance
-// of closing every active position. Intended as scaffolding for the
-// strategy interface, not as a real trading approach.
+// LONG or SHORT. Exits are not the strategy's responsibility — they
+// are driven by the stop-loss / take-profit pip distances configured
+// on the trade and enforced centrally by Operations. Intended as
+// scaffolding for the strategy interface, not as a real trading
+// approach.
 //
 // C# parallels for readers from a C# background:
 //   - `class` here is a value/owning type managed via stack or
@@ -49,11 +51,12 @@ public:
     // interface stable for strategies that will look at price.
     std::optional<Direction> decide(const PriceData& tick) override;
 
-    // Per-tick management hook. With a small probability per tick
-    // (see `closeProb`), closes every currently-open trade at the
-    // tick's bid price. `tradeManager` is passed by mutable reference
-    // because the strategy needs to call mutating methods on it
-    // (`closeTrade`); `getActiveTrades()` is still safely const.
+    // Per-tick management hook. The default RandomStrategy
+    // implementation is a no-op — Operations closes trades when
+    // their stop-loss or take-profit boundary is hit. `tradeManager`
+    // is passed by mutable reference so future strategies (trailing
+    // stops, partial closes, scale-ins) can act on open positions
+    // here without changing the interface.
     void during(std::size_t tickValue,
                 const PriceData& price,
                 TradeManager& tradeManager) override;
