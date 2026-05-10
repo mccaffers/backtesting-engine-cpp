@@ -9,59 +9,113 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <iomanip>
 #include <cstdio>
 #include <ctime>
 #include <boost/decimal.hpp>
 #include "tradeManager.hpp"
+#include "models/symbolScale.hpp"
+#include "strategies/randomStrategy.hpp"
+
+namespace {
+
+// Decide whether the current tick has hit a trade's stop-loss or
+// take-profit boundary. Returns the price at which the position would
+// close (bid for LONG exits, ask for SHORT exits) along with a flag
+// — `std::nullopt` means "no exit on this tick".
+//
+// Pip → price conversion uses the symbol's scaling factor: a 1.5-pip
+// distance on EURUSD (scale 10000) is 0.00015; on USDJPY (scale 100)
+// it's 0.015. Trades on unknown symbols (scale 0) are skipped — there
+// is no sensible pip distance to apply.
+std::optional<boost::decimal::decimal64_t>
+checkExit(const Trade& trade, const PriceData& tick) {
+    if (trade.scalingFactor == 0) return std::nullopt;
+    if (trade.stopDistancePips == 0 &&
+        trade.limitDistancePips == 0) {
+        return std::nullopt;
+    }
+
+    const auto stopOffset  = trade.stopDistancePips  / trade.scalingFactor;
+    const auto limitOffset = trade.limitDistancePips / trade.scalingFactor;
+
+    if (trade.direction == Direction::LONG) {
+        const auto stopPrice  = trade.entryPrice - stopOffset;
+        const auto limitPrice = trade.entryPrice + limitOffset;
+        // Exit a long at the bid (the price the broker pays us).
+        if (trade.stopDistancePips  != 0 && tick.bid <= stopPrice)  return tick.bid;
+        if (trade.limitDistancePips != 0 && tick.bid >= limitPrice) return tick.bid;
+    } else {
+        const auto stopPrice  = trade.entryPrice + stopOffset;
+        const auto limitPrice = trade.entryPrice - limitOffset;
+        // Exit a short at the ask (the price we pay to buy back).
+        if (trade.stopDistancePips  != 0 && tick.ask >= stopPrice)  return tick.ask;
+        if (trade.limitDistancePips != 0 && tick.ask <= limitPrice) return tick.ask;
+    }
+    return std::nullopt;
+}
+
+// Walk every active trade, close any whose SL/TP has been hit on this
+// tick. Two-phase to avoid invalidating the map iterator while erasing.
+void reviewStopAndLimit(TradeManager& tradeManager, const PriceData& tick) {
+    const auto& openTrades = tradeManager.getActiveTrades();
+    if (openTrades.empty()) return;
+
+    std::vector<std::pair<std::string, boost::decimal::decimal64_t>> toClose;
+    toClose.reserve(openTrades.size());
+    for (const auto& [id, trade] : openTrades) {
+        if (auto exitPrice = checkExit(trade, tick)) {
+            toClose.emplace_back(id, *exitPrice);
+        }
+    }
+    for (const auto& [id, exitPrice] : toClose) {
+        tradeManager.closeTrade(id, exitPrice);
+    }
+}
+
+} // namespace
 
 void Operations::run(const std::vector<PriceData>& ticks,
                      const trading_definitions::Configuration& config) {
 
-    // Create
-    auto tradeManager = new TradeManager();
-        
+    auto tradeManager = std::make_unique<TradeManager>();
+    RandomStrategy strategy(config.STRATEGY);
+
+    const auto& tradingVars = config.STRATEGY.TRADING_VARIABLES;
+
+    std::size_t tickIndex = 0;
     for (const auto& tick : ticks) {
 
+        // Close any trade whose stop-loss or take-profit fired on this tick
+        // before we consider opening a new one — otherwise an exit and an
+        // entry could race within the same tick.
+        reviewStopAndLimit(*tradeManager, tick);
+
         size_t openTrades = tradeManager->reviewAccount();
-        
-        // this would be strategy invoke point
+
+        // only open a trade if there is zero
         if (openTrades == 0) {
-            std::string tradeId = tradeManager->openTrade(tick, config.STRATEGY.TRADING_VARIABLES.TRADING_SIZE, Direction::LONG);
-            std::cout << "Opened trade: " << tradeId << std::endl;
-        }
-
-        // this would be a position manager review point
-        // randomly check account status every 100 ticks
-        if (openTrades > 0 && (std::rand() % 100) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
-            std::cout << "Reviewing account at tick timestamp: " << tick.timestamp.time_since_epoch().count() << std::endl;
-            std::cout << "Number of open trades: " << openTrades << std::endl;
-            for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
-                std::cout << "Trade ID: " << id
-                        << " | Entry: " << trade.entryPrice
-                        << " | Size: " << trade.size
-                        << " | Direction: " << (trade.direction == Direction::LONG ? "LONG" : "SHORT")
-                        << std::endl;
+            // optional is false
+            if (auto signal = strategy.decide(tick)) {
+                tradeManager->openTrade(tick,
+                                        tradingVars.TRADING_SIZE,
+                                        *signal,
+                                        tradingVars.STOP_DISTANCE_IN_PIPS,
+                                        tradingVars.LIMIT_DISTANCE_IN_PIPS);
             }
         }
 
-        // strategy review point
-        // randomly close trades every 200 ticks
-        if (openTrades > 0 && (std::rand() % 200) == 0) { // NOSONAR(cpp:S2245) experimentation only, not security-sensitive
-            std::vector<std::string> idsToClose;
-            for (const auto& [id, trade] : tradeManager->getActiveTrades()) {
-                idsToClose.push_back(id);
-            }
-            for (const auto& id : idsToClose) {
-                bool closed = tradeManager->closeTrade(id, tick.bid);
-                std::cout << "Closed trade ID: " << id << " - " << (closed ? "success" : "failure") << std::endl;
-            }
-        }
+        // Strategy-driven management hook for non-SL/TP exit logic
+        // (e.g. trailing stops, partial closes). The default
+        // RandomStrategy implementation is a no-op now that exits are
+        // handled by reviewStopAndLimit above.
+        strategy.during(tickIndex, tick, *tradeManager);
+
+        ++tickIndex;
     }
 
     std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager->calculatePnl() << std::endl;
-
-    // bool closed = tradeManager->closeTrade(tradeId);
-    // std::cout << "Trade closed: " << (closed ? "yes" : "no") << std::endl;
 }

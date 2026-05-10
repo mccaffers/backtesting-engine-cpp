@@ -41,6 +41,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/models
     ${CMAKE_SOURCE_DIR}/include/trading
     ${CMAKE_SOURCE_DIR}/include/trading_definitions
+    ${CMAKE_SOURCE_DIR}/include/strategies
     ${CMAKE_SOURCE_DIR}/external
 )
 

@@ -8,7 +8,7 @@ Feel free to explore, but this code base is usuable at the moment.
 
 I'm developing a high-performance C++ backtesting engine designed to analyze financial data and evaluate multiple trading strategies at scale.
 
-[![SonarCloud Scan](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonar.yml/badge.svg)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/sonar.yml) [![Build](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
+[![Build](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
 
 I'm extracting results and creating various graphs for trend analyses using SciPy for calculations and Plotly for visualization.
 
@@ -20,7 +20,17 @@ I'm extracting results and creating various graphs for trend analyses using SciP
 
 This backtesting engine can pull tick data from local files or from a Postgres database. I'm using QuestDB.
 
-### Postgres Setup - Requires libpq-dev or its equivalent for your OS:
+### Clone with submodules
+
+The project depends on two vendored libraries (`libpqxx` and `boost-decimal`) tracked as git submodules under `external/`. If you didn't clone with `--recurse-submodules`, run:
+
+```
+git submodule update --init --recursive
+```
+
+`scripts/build_dep.sh` does this for you on first run.
+
+### Install libpq (required by libpqxx)
 
 ```
 For Ubuntu/Debian systems: sudo apt-get install libpq-dev
@@ -30,15 +40,12 @@ For OpenSuse: zypper in postgresql-devel
 For ArchLinux: pacman -S postgresql-libs
 ```
 
-### Postgres Setup (using C++20)
+### Build dependencies
+
+`libpqxx` is built once via CMake. `boost-decimal` is header-only and pulled in via `add_subdirectory` from the top-level `CMakeLists.txt` — nothing to build. The script below handles the libpqxx build:
 
 ```
-cd ./external/libpqxx
-mkdir -p build
-cd ./build
-cmake ..
-./configure CXXFLAGS="-std=c++20 -O3"
-make
+bash ./scripts/build_dep.sh
 ```
 
 Xcode - Link Binary with Libraries (Source & Test)
@@ -63,17 +70,21 @@ Xcode - Library Path
 "/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14"
 ```
 
-### Test the build
+### Build the project
 
-`sh ./scripts/build.sh`
+`bash ./scripts/build.sh`
 
 ### Run via terminal
 
-`sh ./scripts/run.sh`
+`bash ./scripts/run.sh`
 
-### Run via test via terminal
+### Run tests via terminal
 
-`sh ./scripts/test.sh`
+`bash ./scripts/test.sh`
+
+### Contributing
+
+This is an active solo experiment, so I'm not accepting pull requests right now — but please fork freely and use [GitHub Issues](https://github.com/mccaffers/backtesting-engine-cpp/issues) for bugs, questions, and ideas. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ### License
 [MIT](https://choosealicense.com/licenses/mit/)

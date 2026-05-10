@@ -19,7 +19,11 @@ private:
 
 public:
     TradeManager() = default;
-    std::string openTrade(const PriceData& tick, boost::decimal::decimal64_t size, Direction direction);
+    std::string openTrade(const PriceData& tick,
+                          boost::decimal::decimal64_t size,
+                          Direction direction,
+                          boost::decimal::decimal64_t stopDistancePips = boost::decimal::decimal64_t{0},
+                          boost::decimal::decimal64_t limitDistancePips = boost::decimal::decimal64_t{0});
     size_t reviewAccount() const;
     bool closeTrade(const std::string& tradeId, boost::decimal::decimal64_t closePrice);
     const std::unordered_map<std::string, Trade>& getActiveTrades() const;
