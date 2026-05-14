@@ -30,7 +30,7 @@
   "STRATEGY": {
       "UUID": "",
       "TRADING_VARIABLES": {
-          "STRATEGY": "OHLC_RSI",
+          "STRATEGY": "RandomStrategy",
           "STOP_DISTANCE_IN_PIPS": "1",
           "LIMIT_DISTANCE_IN_PIPS": "1",
           "TRADING_SIZE": "1"

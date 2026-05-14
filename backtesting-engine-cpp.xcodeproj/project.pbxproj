@@ -84,6 +84,7 @@
 		9464E5F02FA7467200D82BAD /* symbolScale.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = symbolScale.mm; sourceTree = "<group>"; };
 		94674B822D533B1D00973137 /* trade.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trade.hpp; sourceTree = "<group>"; };
 		94674B832D533B2F00973137 /* tradeManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tradeManager.hpp; sourceTree = "<group>"; };
+		94674BA02D533B2F00973137 /* exitRules.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = exitRules.hpp; sourceTree = "<group>"; };
 		94674B852D533B4000973137 /* tradeManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tradeManager.cpp; sourceTree = "<group>"; };
 		94674B892D533BDA00973137 /* tradeManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tradeManager.mm; sourceTree = "<group>"; };
 		94674B8B2D533E7800973137 /* trade.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = trade.cpp; sourceTree = "<group>"; };
@@ -1362,6 +1363,7 @@
 			isa = PBXGroup;
 			children = (
 				94674B832D533B2F00973137 /* tradeManager.hpp */,
+				94674BA02D533B2F00973137 /* exitRules.hpp */,
 			);
 			path = trading;
 			sourceTree = "<group>";
