@@ -21,9 +21,12 @@ std::string TradeManager::openTrade(const PriceData& tick,
                                     boost::decimal::decimal64_t limitDistancePips) {
     auto price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction, tick.symbol);
+    trade.entryBid = tick.bid;
+    trade.entryAsk = tick.ask;
     trade.id = nextTradeId();
     trade.stopDistancePips = stopDistancePips;
     trade.limitDistancePips = limitDistancePips;
+    trade.exitReferencePrice = (direction == Direction::LONG) ? tick.bid : tick.ask;
     activeTrades[trade.id] = trade;
     return trade.id;
 }
