@@ -8,7 +8,7 @@ This repository isn't currently accepting external contributions. I am actively 
 
 ## Please fork freely
 
-The project is [MIT-licensed](LICENSE.MD), so you're very welcome to fork it and take the code in your own direction. If your fork sparks a discussion or you want to share what you've built on top of it, feel free to open an issue (see below).
+The project is [MIT-licensed](LICENSE.MD), so you're very welcome to fork it and take the code in your own direction.
 
 ## Use GitHub Issues for bugs, questions, and ideas
 
