@@ -23,14 +23,14 @@ fi
 json='{
   "RUN_ID": "UNIQUE_IDENTIFIER",
   "SYMBOLS": "EURUSD",
-  "LAST_MONTHS": 1,
+  "LAST_MONTHS": 2,
   "STRATEGY": {
       "UUID": "",
       "TRADING_VARIABLES": {
-          "STRATEGY": "OHLC_RSI",
+          "STRATEGY": "RandomStrategy",
           "STOP_DISTANCE_IN_PIPS": "1.5",
           "LIMIT_DISTANCE_IN_PIPS": "1.5",
-          "TRADING_SIZE": "0.01"
+          "TRADING_SIZE": "1"
       },
       "OHLC_VARIABLES": [
           {
