@@ -18,47 +18,12 @@
 #include <ctime>
 #include <boost/decimal.hpp>
 #include "tradeManager.hpp"
+#include "exitRules.hpp"
 #include "models/symbolScale.hpp"
 #include "strategies/strategy.hpp"
 #include "strategies/randomStrategy.hpp"
 
 namespace {
-
-// Decide whether the current tick has hit a trade's stop-loss or
-// take-profit boundary. Returns the price at which the position would
-// close (bid for LONG exits, ask for SHORT exits) along with a flag
-// — `std::nullopt` means "no exit on this tick".
-//
-// Pip → price conversion uses the symbol's scaling factor: a 1.5-pip
-// distance on EURUSD (scale 10000) is 0.00015; on USDJPY (scale 100)
-// it's 0.015. Trades on unknown symbols (scale 0) are skipped — there
-// is no sensible pip distance to apply.
-std::optional<boost::decimal::decimal64_t>
-checkExit(const Trade& trade, const PriceData& tick) {
-    if (trade.scalingFactor == 0) return std::nullopt;
-    if (trade.stopDistancePips == 0 &&
-        trade.limitDistancePips == 0) {
-        return std::nullopt;
-    }
-
-    const auto stopOffset  = trade.stopDistancePips  / trade.scalingFactor;
-    const auto limitOffset = trade.limitDistancePips / trade.scalingFactor;
-
-    if (trade.direction == Direction::LONG) {
-        const auto stopPrice  = trade.entryPrice - stopOffset;
-        const auto limitPrice = trade.entryPrice + limitOffset;
-        // Exit a long at the bid (the price the broker pays us).
-        if (trade.stopDistancePips  != 0 && tick.bid <= stopPrice)  return tick.bid;
-        if (trade.limitDistancePips != 0 && tick.bid >= limitPrice) return tick.bid;
-    } else {
-        const auto stopPrice  = trade.entryPrice + stopOffset;
-        const auto limitPrice = trade.entryPrice - limitOffset;
-        // Exit a short at the ask (the price we pay to buy back).
-        if (trade.stopDistancePips  != 0 && tick.ask >= stopPrice)  return tick.ask;
-        if (trade.limitDistancePips != 0 && tick.ask <= limitPrice) return tick.ask;
-    }
-    return std::nullopt;
-}
 
 // Walk every active trade, close any whose SL/TP has been hit on this
 // tick. Two-phase to avoid invalidating the map iterator while erasing.
@@ -69,7 +34,7 @@ void reviewStopAndLimit(TradeManager& tradeManager, const PriceData& tick) {
     std::vector<std::pair<std::string, boost::decimal::decimal64_t>> toClose;
     toClose.reserve(openTrades.size());
     for (const auto& [id, trade] : openTrades) {
-        if (auto exitPrice = checkExit(trade, tick)) {
+        if (auto exitPrice = trading::exit_rules::checkExit(trade, tick)) {
             toClose.emplace_back(id, *exitPrice);
         }
     }
@@ -131,4 +96,50 @@ void Operations::run(const std::vector<PriceData>& ticks,
     }
 
     std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager->calculatePnl() << std::endl;
+
+    const auto& activeTrades = tradeManager->getActiveTrades();
+    const auto& closedTrades = tradeManager->getClosedTrades();
+
+    const std::size_t openedCount = activeTrades.size() + closedTrades.size();
+    const std::size_t closedCount = closedTrades.size();
+
+    std::size_t openedLong = 0;
+    std::size_t openedShort = 0;
+    for (const auto& [id, trade] : activeTrades) {
+        if (trade.direction == Direction::LONG) ++openedLong;
+        else ++openedShort;
+    }
+
+    std::size_t closedLong = 0;
+    std::size_t closedShort = 0;
+    std::size_t winners = 0;
+    std::size_t losers = 0;
+    std::size_t breakeven = 0;
+    boost::decimal::decimal64_t pnlSum{0};
+    const boost::decimal::decimal64_t zero{0};
+    for (const auto& trade : closedTrades) {
+        if (trade.direction == Direction::LONG) ++closedLong;
+        else ++closedShort;
+        if (trade.pnl > zero) ++winners;
+        else if (trade.pnl < zero) ++losers;
+        else ++breakeven;
+        pnlSum += trade.pnl;
+    }
+    openedLong  += closedLong;
+    openedShort += closedShort;
+
+    std::cout << "Trades opened: " << openedCount
+              << "  (LONG: " << openedLong << ", SHORT: " << openedShort << ")" << std::endl;
+    std::cout << "Trades closed: " << closedCount
+              << "  (LONG: " << closedLong << ", SHORT: " << closedShort << ")" << std::endl;
+    std::cout << "Winners: " << winners
+              << "   Losers: " << losers
+              << "   Breakeven: " << breakeven << std::endl;
+    if (closedCount == 0) {
+        std::cout << "Average PnL per closed trade: n/a (0 closed)" << std::endl;
+    } else {
+        const auto avgPnl = pnlSum / boost::decimal::decimal64_t{static_cast<long long>(closedCount)};
+        std::cout << "Average PnL per closed trade: "
+                  << std::fixed << std::setprecision(2) << avgPnl << std::endl;
+    }
 }

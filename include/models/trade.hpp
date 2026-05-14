@@ -19,6 +19,8 @@ enum class Direction {
 struct Trade {
     std::string id;
     boost::decimal::decimal64_t entryPrice;
+    boost::decimal::decimal64_t entryBid;
+    boost::decimal::decimal64_t entryAsk;
     boost::decimal::decimal64_t size;
     std::chrono::system_clock::time_point openTime;
     Direction direction;
@@ -28,6 +30,7 @@ struct Trade {
     int scalingFactor;
     boost::decimal::decimal64_t stopDistancePips;
     boost::decimal::decimal64_t limitDistancePips;
+    boost::decimal::decimal64_t exitReferencePrice;
     std::string strategyId;
     std::string strategyName;
 
@@ -38,8 +41,9 @@ struct Trade {
     boost::decimal::decimal64_t pnl;
 
     // Default constructor
-    Trade() : entryPrice(0), size(0), direction(Direction::LONG),
+    Trade() : entryPrice(0), entryBid(0), entryAsk(0), size(0), direction(Direction::LONG),
               scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
+              exitReferencePrice(0),
               closePrice(0), pnl(0),
               openTime(std::chrono::system_clock::now()) {}
 
@@ -51,6 +55,8 @@ struct Trade {
     // regardless of where these appear in the list.
     Trade(boost::decimal::decimal64_t price, boost::decimal::decimal64_t quantity, Direction dir, std::string_view tradeSymbol)
         : entryPrice(price),
+          entryBid(0),
+          entryAsk(0),
           size(quantity),
           openTime(std::chrono::system_clock::now()),
           direction(dir),
@@ -58,6 +64,7 @@ struct Trade {
           scalingFactor(symbol_scale::get(tradeSymbol)),
           stopDistancePips(0),
           limitDistancePips(0),
+          exitReferencePrice(0),
           pnl(0) {
     }
 
