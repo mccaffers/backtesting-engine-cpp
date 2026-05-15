@@ -64,7 +64,6 @@ void Operations::run(const std::vector<PriceData>& ticks,
 
     const auto& tradingVars = config.STRATEGY.TRADING_VARIABLES;
 
-    std::size_t tickIndex = 0;
     for (const auto& tick : ticks) {
 
         // Close any trade whose stop-loss or take-profit fired on this tick
@@ -90,9 +89,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
         // (e.g. trailing stops, partial closes). The default
         // RandomStrategy implementation is a no-op now that exits are
         // handled by reviewStopAndLimit above.
-        strategy->during(tickIndex, tick, *tradeManager);
-
-        ++tickIndex;
+        strategy->during(tick, *tradeManager);
     }
 
     std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager->calculatePnl() << std::endl;

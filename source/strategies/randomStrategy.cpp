@@ -23,8 +23,7 @@ std::optional<Direction> RandomStrategy::decide(const PriceData& /*tick*/) {
     return coin(rng) ? Direction::LONG : Direction::SHORT;
 }
 
-void RandomStrategy::during(std::size_t /*tickValue*/,
-                            const PriceData& /*price*/,
+void RandomStrategy::during(const PriceData& /*price*/,
                             TradeManager& /*tradeManager*/) {
     // Exits are handled centrally by Operations using each trade's
     // stop-loss / take-profit pip distances. Strategies that want
