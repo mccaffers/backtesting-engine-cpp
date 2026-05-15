@@ -25,7 +25,9 @@ public:
                           boost::decimal::decimal64_t stopDistancePips = boost::decimal::decimal64_t{0},
                           boost::decimal::decimal64_t limitDistancePips = boost::decimal::decimal64_t{0});
     size_t reviewAccount() const;
-    bool closeTrade(const std::string& tradeId, boost::decimal::decimal64_t closePrice);
+    bool closeTrade(const std::string& tradeId,
+                    boost::decimal::decimal64_t closePrice,
+                    const PriceData& tick);
     const std::unordered_map<std::string, Trade>& getActiveTrades() const;
     const std::vector<Trade>& getClosedTrades() const;
     boost::decimal::decimal64_t calculatePnl() const;
