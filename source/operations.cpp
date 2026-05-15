@@ -39,7 +39,7 @@ void reviewStopAndLimit(TradeManager& tradeManager, const PriceData& tick) {
         }
     }
     for (const auto& [id, exitPrice] : toClose) {
-        tradeManager.closeTrade(id, exitPrice);
+        tradeManager.closeTrade(id, exitPrice, tick);
     }
 }
 

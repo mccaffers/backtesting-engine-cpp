@@ -39,7 +39,7 @@ using namespace boost::decimal::literals;
 - (void)testCloseTrade {
     PriceData tick("100.0"_dd, "99.0"_dd, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = self.manager->openTrade(tick, "1.0"_dd, Direction::LONG);
-    bool closed = self.manager->closeTrade(tradeId, "110.0"_dd);
+    bool closed = self.manager->closeTrade(tradeId, "110.0"_dd, tick);
     XCTAssertTrue(closed, "Trade should be closed successfully");
     XCTAssertEqual(self.manager->reviewAccount(), 0, "Should have 0 active trades");
 }

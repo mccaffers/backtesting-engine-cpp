@@ -6,6 +6,11 @@
 
 #include "tradeManager.hpp"
 #include <atomic>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
 namespace {
 std::string nextTradeId() {
@@ -35,12 +40,14 @@ size_t TradeManager::reviewAccount() const {
     return activeTrades.size();
 }
 
-bool TradeManager::closeTrade(const std::string& tradeId, boost::decimal::decimal64_t closePrice) {
+bool TradeManager::closeTrade(const std::string& tradeId,
+                              boost::decimal::decimal64_t closePrice,
+                              const PriceData& tick) {
     auto it = activeTrades.find(tradeId);
     if (it != activeTrades.end()) {
         Trade closed = it->second;
         closed.closePrice = closePrice;
-        closed.closeTime = std::chrono::system_clock::now();
+        closed.closeTime = tick.timestamp;
         auto diff = closePrice - closed.entryPrice;
         if (closed.direction == Direction::SHORT) diff = -diff;
         // scalingFactor stays an int — boost::decimal has overloads for builtin
@@ -48,6 +55,20 @@ bool TradeManager::closeTrade(const std::string& tradeId, boost::decimal::decima
         closed.pnl = diff * closed.scalingFactor * closed.size;
         closedTrades.push_back(closed);
         activeTrades.erase(it);
+
+        auto t = std::chrono::system_clock::to_time_t(tick.timestamp);
+        std::tm utc{};
+        gmtime_r(&t, &utc);
+        std::ostringstream ts;
+        ts << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+
+        const char* side = (closed.direction == Direction::LONG) ? "BUY" : "SELL";
+        std::cout << ts.str()
+                  << ", Trade Closed, " << closed.symbol
+                  << ", " << side
+                  << ", " << std::showpos << std::fixed << std::setprecision(2) << closed.pnl
+                  << std::noshowpos
+                  << std::endl;
         return true;
     }
     return false;
