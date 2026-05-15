@@ -13,7 +13,13 @@
 #include <boost/decimal.hpp>
 
 static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
-    int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, usec = 0;
+    int year = 0;
+    int month = 0;
+    int day = 0;
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
+    int usec = 0;
     const int parsedFields =
         std::sscanf(ts, "%4d-%2d-%2d %2d:%2d:%2d.%d", &year, &month, &day, &hour, &min, &sec, &usec);
     if (parsedFields != 6 && parsedFields != 7) {
@@ -59,7 +65,8 @@ std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query)
 
     for (std::size_t i = 0; i < result.size(); ++i) {
         const auto& row = result[static_cast<pqxx::result::size_type>(i)];
-        boost::decimal::decimal64_t ask, bid;
+        boost::decimal::decimal64_t ask;
+        boost::decimal::decimal64_t bid;
         auto symbol = row[0].view();
         auto sv1 = row[1].view();
         auto sv2 = row[2].view();
