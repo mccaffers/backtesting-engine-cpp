@@ -33,10 +33,10 @@ std::string Base64::checkInput(const std::string& base64_input) {
 }
 
 // Code adapted from Stack Overflow https://stackoverflow.com/a/37109258/20806857
-const std::string Base64::b64encode(const void* data, const size_t &len)
+const std::string Base64::b64encode(const unsigned char* data, const size_t &len)
 {
     std::string result((len + 2) / 3 * 4, '=');
-    unsigned char *p = (unsigned  char*) data;
+    const unsigned char *p = data;
     char *str = &result[0];
     size_t j = 0, pad = len % 3;
     const size_t last = len - pad;
@@ -59,11 +59,11 @@ const std::string Base64::b64encode(const void* data, const size_t &len)
     return result;
 }
 
-const std::string Base64::b64decode(const void* data, const size_t &len)
+const std::string Base64::b64decode(const unsigned char* data, const size_t &len)
 {
     if (len == 0) return "";
 
-    unsigned char *p = (unsigned char*) data;
+    const unsigned char *p = data;
     size_t j = 0,
         pad1 = len % 4 || p[len - 1] == '=',
         pad2 = pad1 && (len % 4 > 2 || p[len - 2] != '=');
@@ -93,12 +93,12 @@ const std::string Base64::b64decode(const void* data, const size_t &len)
 
 std::string Base64::b64encode(const std::string& str)
 {
-    return b64encode(str.c_str(), str.size());
+    return b64encode(reinterpret_cast<const unsigned char*>(str.c_str()), str.size());
 }
 
 std::string Base64::b64decode(const std::string& str64)
 {
-    return b64decode(str64.c_str(), str64.size());
+    return b64decode(reinterpret_cast<const unsigned char*>(str64.c_str()), str64.size());
 }
 
 bool Base64::isValidBase64(const std::string& input) {
