@@ -56,7 +56,6 @@ public:
     // analogue is just passing the manager as a parameter; C# has no
     // distinction between reference and pointer so the by-ref nature
     // is implicit there.
-    virtual void during(std::size_t tickValue,
-                        const PriceData& price,
+    virtual void during(const PriceData& price,
                         TradeManager& tradeManager) = 0;
 };

@@ -57,8 +57,7 @@ public:
     // is passed by mutable reference so future strategies (trailing
     // stops, partial closes, scale-ins) can act on open positions
     // here without changing the interface.
-    void during(std::size_t tickValue,
-                const PriceData& price,
+    void during(const PriceData& price,
                 TradeManager& tradeManager) override;
 
 private:
