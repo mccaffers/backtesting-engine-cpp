@@ -19,10 +19,9 @@ else
     exit 1
 fi
 
-# "SYMBOLS": "EURUSD,AUSIDXAUD",
 json='{
   "RUN_ID": "UNIQUE_IDENTIFIER",
-  "SYMBOLS": "EURUSD",
+  "SYMBOLS": "EURUSD,AUDUSD",
   "LAST_MONTHS": 2,
   "STRATEGY": {
       "UUID": "",

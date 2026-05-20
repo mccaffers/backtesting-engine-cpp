@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 #include "tradeManager.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <ctime>
@@ -38,6 +39,13 @@ std::string TradeManager::openTrade(const PriceData& tick,
 
 size_t TradeManager::reviewAccount() const {
     return activeTrades.size();
+}
+
+bool TradeManager::hasActiveTradeForSymbol(std::string_view symbol) const {
+    return std::any_of(activeTrades.begin(), activeTrades.end(),
+                       [symbol](const auto& pair) {
+                           return pair.second.symbol == symbol;
+                       });
 }
 
 bool TradeManager::closeTrade(const std::string& tradeId,

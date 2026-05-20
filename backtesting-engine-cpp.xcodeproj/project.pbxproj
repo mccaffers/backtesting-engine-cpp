@@ -27,6 +27,8 @@
 		94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94674B892D533BDA00973137 /* tradeManager.mm */; };
 		94674B8D2D533E7800973137 /* trade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B8B2D533E7800973137 /* trade.cpp */; };
 		94674B8E2D533E7800973137 /* trade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94674B8B2D533E7800973137 /* trade.cpp */; };
+		946EFF7E2FB9F44E008D9647 /* reporting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 946EFF7D2FB9F44E008D9647 /* reporting.cpp */; };
+		946EFF7F2FB9F44E008D9647 /* reporting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 946EFF7D2FB9F44E008D9647 /* reporting.cpp */; };
 		9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		94724A832F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
@@ -84,11 +86,14 @@
 		9464E5F02FA7467200D82BAD /* symbolScale.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = symbolScale.mm; sourceTree = "<group>"; };
 		94674B822D533B1D00973137 /* trade.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trade.hpp; sourceTree = "<group>"; };
 		94674B832D533B2F00973137 /* tradeManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tradeManager.hpp; sourceTree = "<group>"; };
-		94674BA02D533B2F00973137 /* exitRules.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = exitRules.hpp; sourceTree = "<group>"; };
 		94674B852D533B4000973137 /* tradeManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tradeManager.cpp; sourceTree = "<group>"; };
 		94674B892D533BDA00973137 /* tradeManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = tradeManager.mm; sourceTree = "<group>"; };
 		94674B8B2D533E7800973137 /* trade.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = trade.cpp; sourceTree = "<group>"; };
+		94674BA02D533B2F00973137 /* exitRules.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = exitRules.hpp; sourceTree = "<group>"; };
+		94674BA12F8B92C10029B940 /* reviewStopAndLimit.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = reviewStopAndLimit.hpp; sourceTree = "<group>"; };
 		94685CCE2D384A8B00863D04 /* json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = json.hpp; sourceTree = "<group>"; };
+		946EFF7D2FB9F44E008D9647 /* reporting.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = reporting.cpp; sourceTree = "<group>"; };
+		946EFF802FB9F457008D9647 /* reporting.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = reporting.hpp; sourceTree = "<group>"; };
 		9470B5A12C8C5AD0007D9CC6 /* source */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = source; sourceTree = BUILT_PRODUCTS_DIR; };
 		9470B5A32C8C5AD0007D9CC6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1362,8 +1367,10 @@
 		94674B842D533B2F00973137 /* trading */ = {
 			isa = PBXGroup;
 			children = (
+				946EFF802FB9F457008D9647 /* reporting.hpp */,
 				94674B832D533B2F00973137 /* tradeManager.hpp */,
 				94674BA02D533B2F00973137 /* exitRules.hpp */,
+				94674BA12F8B92C10029B940 /* reviewStopAndLimit.hpp */,
 			);
 			path = trading;
 			sourceTree = "<group>";
@@ -1371,6 +1378,7 @@
 		94674B862D533B4000973137 /* trading */ = {
 			isa = PBXGroup;
 			children = (
+				946EFF7D2FB9F44E008D9647 /* reporting.cpp */,
 				94674B852D533B4000973137 /* tradeManager.cpp */,
 			);
 			path = trading;
@@ -3637,6 +3645,7 @@
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8E2D533E7800973137 /* trade.cpp in Sources */,
 				941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				946EFF7E2FB9F44E008D9647 /* reporting.cpp in Sources */,
 				94674B872D533B4000973137 /* tradeManager.cpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
 				940A61132C92CE210083FEB8 /* configManager.cpp in Sources */,
@@ -3662,6 +3671,7 @@
 				94724A832F8B92C10029B940 /* operations.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
 				94674B882D533B4000973137 /* tradeManager.cpp in Sources */,
+				946EFF7F2FB9F44E008D9647 /* reporting.cpp in Sources */,
 				943398272D57E54000287A2D /* jsonParser.mm in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
 				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
