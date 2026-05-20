@@ -2,6 +2,10 @@
 
 git submodule update --init --recursive
 
+if [ -z "$(ls -A ./external/boost-decimal 2>/dev/null)" ] || [ -z "$(ls -A ./external/libpqxx 2>/dev/null)" ]; then
+    ./scripts/build_dep.sh
+fi
+
 BUILD_DIR="build"
 # Variables
 EXECUTABLE_NAME="BacktestingEngine"

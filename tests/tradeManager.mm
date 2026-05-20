@@ -8,6 +8,7 @@
 #import <boost/decimal/literals.hpp>
 #import "tradeManager.hpp"
 #import "exitRules.hpp"
+#import "reviewStopAndLimit.hpp"
 
 // Pulls in the _dd user-defined literal so "1.23"_dd produces a decimal64_t
 // directly. decimal64_t has no implicit conversion from double — the closest
@@ -198,6 +199,128 @@ using namespace boost::decimal::literals;
     XCTAssertTrue(exit.has_value(), "SHORT TP should fire when ask hits entry-ask - 1 pip");
     XCTAssertEqual(*exit, nextTick.ask, "SHORT TP closes at the current ask");
     XCTAssertEqual(*exit, "1.10001"_dd, "SHORT TP close price should equal next-tick ask");
+}
+
+// Cross-symbol tick must not close a EURUSD trade. Without the symbol filter
+// in reviewStopAndLimit, an AUSIDXAUD price (~7000) fed through checkExit
+// against a EURUSD LONG (exit reference ~1.10, scale 10000) trivially trips
+// the stop because the bid is thousands above the limit price and thousands
+// below… well, it doesn't matter which side fires — the point is that any
+// non-matching tick lands far outside the EURUSD price band, so without the
+// guard the trade would close at a nonsensical price.
+- (void)testReviewStopAndLimit_SkipsTradesForOtherSymbols {
+    PriceData entryTick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(entryTick, "1.0"_dd, Direction::LONG,
+                                                  "1"_dd, "1"_dd);
+
+    PriceData ausTick("7000.0"_dd, "7000.0"_dd, std::chrono::system_clock::now(), "AUSIDXAUD");
+    trading::reviewStopAndLimit(*self.manager, ausTick);
+
+    XCTAssertEqual(self.manager->reviewAccount(), 1,
+                   "EURUSD trade must remain open when an AUSIDXAUD tick arrives");
+    auto trades = self.manager->getActiveTrades();
+    XCTAssertNotEqual(trades.find(tradeId), trades.end(),
+                      "EURUSD trade should still be in active trades");
+}
+
+// Matching-symbol tick still closes — the filter must not over-block exits
+// when the tick's symbol matches the trade's symbol.
+- (void)testReviewStopAndLimit_MatchingSymbolTickClosesTrade {
+    PriceData entryTick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(entryTick, "1.0"_dd, Direction::LONG,
+                                                  "1"_dd, "1"_dd);
+
+    PriceData stopTick("1.1000"_dd, "1.0999"_dd, std::chrono::system_clock::now(), "EURUSD");
+    trading::reviewStopAndLimit(*self.manager, stopTick);
+
+    auto active = self.manager->getActiveTrades();
+    XCTAssertEqual(active.find(tradeId), active.end(),
+                   "EURUSD trade should have been removed from active trades");
+
+    const auto& closed = self.manager->getClosedTrades();
+    XCTAssertEqual(closed.size(), 1, "Exactly one trade should be in closed trades");
+    XCTAssertEqual(closed.front().id, tradeId, "Closed trade id should match the opened trade");
+    XCTAssertEqual(closed.front().closePrice, stopTick.bid,
+                   "LONG close price should equal the EURUSD tick bid");
+    XCTAssertEqual(closed.front().closePrice, "1.0999"_dd,
+                   "Recorded close price should be 1.0999");
+}
+
+// Symmetric cross-symbol case: an AUSIDXAUD trade (scale 1, price ~7000) must
+// not close on a EURUSD tick (~1.10). Without the guard, the EURUSD bid sits
+// far below the AUSIDXAUD stop level and would trip `tick.bid <= stopPrice`
+// for a LONG, closing the trade at a nonsensical EURUSD price.
+- (void)testReviewStopAndLimit_AusTradeNotClosedByEurUsdTick {
+    PriceData entryTick("7000.5"_dd, "7000.0"_dd, std::chrono::system_clock::now(), "AUSIDXAUD");
+    std::string tradeId = self.manager->openTrade(entryTick, "1.0"_dd, Direction::LONG,
+                                                  "1"_dd, "1"_dd);
+
+    PriceData eurTick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    trading::reviewStopAndLimit(*self.manager, eurTick);
+
+    XCTAssertEqual(self.manager->reviewAccount(), 1,
+                   "AUSIDXAUD trade must remain open when a EURUSD tick arrives");
+    auto trades = self.manager->getActiveTrades();
+    XCTAssertNotEqual(trades.find(tradeId), trades.end(),
+                      "AUSIDXAUD trade should still be in active trades");
+}
+
+- (void)testHasActiveTradeForSymbol_EmptyManagerReturnsFalse {
+    XCTAssertFalse(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                   "Empty TradeManager must report no active trade for any symbol");
+}
+
+- (void)testHasActiveTradeForSymbol_TrueForOpenedSymbolFalseForOther {
+    PriceData tick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    self.manager->openTrade(tick, "1.0"_dd, Direction::LONG);
+
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD should be reported as active after openTrade");
+    XCTAssertFalse(self.manager->hasActiveTradeForSymbol("GBPUSD"),
+                   "GBPUSD must not be reported as active when only EURUSD is open");
+}
+
+- (void)testHasActiveTradeForSymbol_FalseAfterCloseTrade {
+    PriceData tick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, "1.0"_dd, Direction::LONG);
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "Pre-condition: EURUSD should be active before close");
+
+    bool closed = self.manager->closeTrade(tradeId, "1.1000"_dd, tick);
+    XCTAssertTrue(closed, "closeTrade should succeed for an open trade id");
+    XCTAssertFalse(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                   "EURUSD must no longer be active after the trade is closed");
+}
+
+- (void)testCanOpenTradesOnDifferentSymbolsSimultaneously {
+    PriceData eurTick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    self.manager->openTrade(eurTick, "1.0"_dd, Direction::LONG);
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD should be active after the first open");
+    XCTAssertFalse(self.manager->hasActiveTradeForSymbol("AUSIDXAUD"),
+                   "AUSIDXAUD must not be active before its trade is opened");
+
+    PriceData ausTick("7000.1"_dd, "7000.0"_dd, std::chrono::system_clock::now(), "AUSIDXAUD");
+    self.manager->openTrade(ausTick, "1.0"_dd, Direction::LONG);
+
+    XCTAssertEqual(self.manager->getActiveTrades().size(), 2,
+                   "Both EURUSD and AUSIDXAUD trades should be active simultaneously");
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD should still be active after opening AUSIDXAUD");
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("AUSIDXAUD"),
+                  "AUSIDXAUD should be active after its trade is opened");
+}
+
+// TradeManager::openTrade (source/trading/tradeManager.cpp:23-38) does not
+// enforce same-symbol uniqueness, so callers (e.g. source/operations.cpp:57)
+// rely on hasActiveTradeForSymbol to gate same-symbol re-entry. This test
+// pins the invariant that a single open is enough to flip the helper to true.
+- (void)testHelperStillReportsSymbolActiveAfterFirstOpen {
+    PriceData tick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    self.manager->openTrade(tick, "1.0"_dd, Direction::LONG);
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD must report as active after a single openTrade — production "
+                  "re-entry gating depends on this");
 }
 
 @end

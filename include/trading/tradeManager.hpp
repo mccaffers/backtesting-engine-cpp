@@ -6,6 +6,7 @@
 
 #pragma once
 #include <unordered_map>
+#include <string_view>
 #include <vector>
 #include <memory>
 #include <boost/decimal.hpp>
@@ -25,6 +26,7 @@ public:
                           boost::decimal::decimal64_t stopDistancePips = boost::decimal::decimal64_t{0},
                           boost::decimal::decimal64_t limitDistancePips = boost::decimal::decimal64_t{0});
     size_t reviewAccount() const;
+    bool hasActiveTradeForSymbol(std::string_view symbol) const;
     bool closeTrade(const std::string& tradeId,
                     boost::decimal::decimal64_t closePrice,
                     const PriceData& tick);

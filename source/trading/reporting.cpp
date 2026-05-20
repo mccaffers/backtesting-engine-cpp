@@ -1,0 +1,62 @@
+// Backtesting Engine in C++
+//
+// (c) 2026 Ryan McCaffery | https://mccaffers.com
+// This code is licensed under MIT license (see LICENSE.txt for details)
+// ---------------------------------------
+
+#include "reporting.hpp"
+#include <iostream>
+#include <iomanip>
+#include <cstddef>
+#include <boost/decimal.hpp>
+#include "trade.hpp"
+
+void Reporting::summarise(const TradeManager& tradeManager) {
+    std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager.calculatePnl() << std::endl;
+
+    const auto& activeTrades = tradeManager.getActiveTrades();
+    const auto& closedTrades = tradeManager.getClosedTrades();
+
+    const std::size_t openedCount = activeTrades.size() + closedTrades.size();
+    const std::size_t closedCount = closedTrades.size();
+
+    std::size_t openedLong = 0;
+    std::size_t openedShort = 0;
+    for (const auto& [id, trade] : activeTrades) {
+        if (trade.direction == Direction::LONG) ++openedLong;
+        else ++openedShort;
+    }
+
+    std::size_t closedLong = 0;
+    std::size_t closedShort = 0;
+    std::size_t winners = 0;
+    std::size_t losers = 0;
+    std::size_t breakeven = 0;
+    boost::decimal::decimal64_t pnlSum{0};
+    const boost::decimal::decimal64_t zero{0};
+    for (const auto& trade : closedTrades) {
+        if (trade.direction == Direction::LONG) ++closedLong;
+        else ++closedShort;
+        if (trade.pnl > zero) ++winners;
+        else if (trade.pnl < zero) ++losers;
+        else ++breakeven;
+        pnlSum += trade.pnl;
+    }
+    openedLong  += closedLong;
+    openedShort += closedShort;
+
+    std::cout << "Trades opened: " << openedCount
+              << "  (LONG: " << openedLong << ", SHORT: " << openedShort << ")" << std::endl;
+    std::cout << "Trades closed: " << closedCount
+              << "  (LONG: " << closedLong << ", SHORT: " << closedShort << ")" << std::endl;
+    std::cout << "Winners: " << winners
+              << "   Losers: " << losers
+              << "   Breakeven: " << breakeven << std::endl;
+    if (closedCount == 0) {
+        std::cout << "Average PnL per closed trade: n/a (0 closed)" << std::endl;
+    } else {
+        const auto avgPnl = pnlSum / boost::decimal::decimal64_t{static_cast<long long>(closedCount)};
+        std::cout << "Average PnL per closed trade: "
+                  << std::fixed << std::setprecision(2) << avgPnl << std::endl;
+    }
+}
