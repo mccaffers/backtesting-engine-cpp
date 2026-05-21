@@ -19,6 +19,11 @@ else
     exit 1
 fi
 
+if ! redis-cli -h localhost ping >/dev/null 2>&1; then
+    echo "redis-server not reachable on localhost:6379 — skipping"
+    exit 0
+fi
+
 json='{
   "RUN_ID": "UNIQUE_IDENTIFIER",
   "SYMBOLS": "EURUSD,AUDUSD",
@@ -46,13 +51,15 @@ json='{
   }
 }'
 
-output=$(echo "$json" | base64)
+if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load "$json"; then
+    exit 1
+fi
 
-
-# Step 6: Run the tests for now (/executable) from the root directory
-# Passing two arguements, the destination of the QuestDB and the Strategy JSON (in base64)
 start_time=$(date +%s%N)
-./"$BUILD_DIR/$EXECUTABLE_NAME" localhost "$output"
+# Invoke the `run` subcommand: BacktestingEngine pops a Base64-encoded
+# strategy off the Redis `strategy_queue` and executes it against the
+# QuestDB host passed as the second argument (here, localhost).
+./"$BUILD_DIR/$EXECUTABLE_NAME" run localhost
 end_time=$(date +%s%N)
 elapsed=$(( (end_time - start_time) / 1000000 ))
 echo "Execution time: ${elapsed}ms"

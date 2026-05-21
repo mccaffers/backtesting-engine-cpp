@@ -13,3 +13,4 @@ check_and_install() {
 # Install packages if they don't exist
 check_and_install postgresql@18 # Check and install PostgreSQL (which includes libpq)
 check_and_install pkg-config  # Check and install pkg-config
+check_and_install boost # Check and install pkg-config
