@@ -14,11 +14,11 @@ I'm extracting results and creating various graphs for trend analyses using SciP
 
 ![alt text](documents/images/random-indices-sp500-variable.svg)
 
-*Read more results on https://mccaffers.com/randomly_trading/*
+*Read more results on https://mccaffers.com/quantitative_analysis/randomly_trading/*
 
 ## Setup
 
-This backtesting engine can pull tick data from local files or from a Postgres database. I'm using QuestDB.
+This backtesting engine can pull tick data from local files or from a Postgres database (I'm using QuestDB). Strategy execution is dispatched via a Redis list called `strategy_queue`, with each entry a Base64-encoded JSON payload — the `load` subcommand enqueues strategies (LPUSH) and the `run` subcommand dequeues and executes them (RPOP). The default workflow expects a local `redis-server` listening on `127.0.0.1:6379`.
 
 ### Clone with submodules
 
@@ -39,6 +39,19 @@ For Mac Homebrew: brew install postgresql
 For OpenSuse: zypper in postgresql-devel
 For ArchLinux: pacman -S postgresql-libs
 ```
+
+### Install Boost, OpenSSL, and Redis
+
+Boost.Redis is header-only but its single translation unit (compiled via `<boost/redis/src.hpp>` from `source/redisRunner.cpp`) pulls in Boost.Asio's SSL layer, so OpenSSL is a transitive requirement. A local `redis-server` on `127.0.0.1:6379` is also needed for the default `load`/`run` workflow.
+
+```
+For Mac Homebrew: brew install boost openssl redis
+For Ubuntu/Debian systems: sudo apt-get install libboost-all-dev libssl-dev redis-server
+```
+
+The canonical CI prerequisite list lives in `.github/workflows/scripts/brew.sh` (`postgresql`, `pkg-config`, `boost`).
+
+![alt text](documents/flow.png)
 
 ### Build dependencies
 
@@ -76,7 +89,28 @@ Xcode - Library Path
 
 ### Run via terminal
 
-`bash ./scripts/run.sh`
+`bash ./scripts/run.sh` builds the project, then — if `redis-cli ping` reaches a local Redis — enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal.
+
+The `BacktestingEngine` binary exposes a subcommand CLI:
+
+```
+BacktestingEngine load <path> [path...]
+    Read each file as raw JSON, Base64-encode it, and LPUSH onto the Redis
+    `strategy_queue` list.
+
+BacktestingEngine run <questdb-host>
+    RPOP one Base64-encoded strategy from `strategy_queue` and execute it
+    against the supplied QuestDB host.
+
+BacktestingEngine run <questdb-host> <base64-config>
+    Decode the supplied Base64 strategy and execute it directly, bypassing
+    Redis.
+
+BacktestingEngine -h | --help
+    Show usage.
+```
+
+Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for the list key (see `include/redisRunner.hpp` and `include/redisLoader.hpp`).
 
 ### Run tests via terminal
 
