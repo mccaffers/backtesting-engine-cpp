@@ -51,7 +51,11 @@ json='{
   }
 }'
 
-if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load "$json"; then
+tmp=$(mktemp -t backtesting-load.XXXXXX)
+trap 'rm -f "$tmp"' EXIT
+printf '%s' "$json" > "$tmp"
+
+if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load "$tmp"; then
     exit 1
 fi
 

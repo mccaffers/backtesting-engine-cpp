@@ -15,4 +15,9 @@ public:
                     const std::string& redisHost = "127.0.0.1",
                     int redisPort = 6379,
                     const std::string& queueKey = "strategy_queue");
+
+    static int loadPayload(const std::string& redisHost,
+                           int redisPort,
+                           const std::string& queueKey,
+                           const std::string& rawJson);
 };

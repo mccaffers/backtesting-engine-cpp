@@ -5,87 +5,47 @@
 // ---------------------------------------
 
 // std headers
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
-
-// Single TU that pulls in the Boost.Redis implementation.
-#include <boost/redis/src.hpp>
 
 // backtesting engine headers
+#include "backtestRunner.hpp"
+#include "jsonParser.hpp"
 #include "redisLoader.hpp"
 #include "redisRunner.hpp"
+
+static int runBacktest(const std::string& questdbHost,
+                       const std::string& base64Config) {
+  auto config = JsonParser::parseConfigurationFromBase64(base64Config);
+  return runBacktest(questdbHost, config);
+}
 
 static void printUsage(std::ostream& out) {
   out << "Usage: BacktestingEngine <subcommand> [args...]\n"
       << "\n"
       << "Subcommands:\n"
-      << "  load <strategy.json|dir>...   LPUSH base64-encoded strategy JSON(s)\n"
-      << "                                onto the Redis `strategy_queue`.\n"
-      << "  run <questdb-host>            RPOP a strategy from `strategy_queue`\n"
-      << "                                and execute it against QuestDB.\n"
+      << "  load <path> [path...]         Push Base64-encoded JSON strategies\n"
+      << "                                from path(s) onto Redis\n"
+      << "                                `strategy_queue`.\n"
+      << "  run <questdb-host>            Pop one Base64 strategy from the\n"
+      << "                                Redis `strategy_queue` and execute\n"
+      << "                                it.\n"
+      << "  run <questdb-host> <base64-config>\n"
+      << "                                Decode the supplied Base64 strategy\n"
+      << "                                and execute it.\n"
       << "  -h, --help                    Show this help message."
       << std::endl;
 }
 
-static int loadStrategies(const std::vector<std::string>& paths) {
-  namespace fs = std::filesystem;
-
-  std::vector<fs::path> jsonFiles;
-  for (const auto& raw : paths) {
-    fs::path p(raw);
-    std::error_code ec;
-    if (fs::is_directory(p, ec)) {
-      for (auto it = fs::recursive_directory_iterator(p, ec);
-           !ec && it != fs::recursive_directory_iterator(); it.increment(ec)) {
-        if (it->is_regular_file() && it->path().extension() == ".json") {
-          jsonFiles.push_back(it->path());
-        }
-      }
-      if (ec) {
-        std::cerr << "load: failed to enumerate " << p << ": " << ec.message()
-                  << std::endl;
-        return 1;
-      }
-    } else if (fs::is_regular_file(p, ec)) {
-      jsonFiles.push_back(p);
-    } else {
-      std::cerr << "load: path is not a file or directory: " << p << std::endl;
-      return 1;
-    }
-  }
-
-  if (jsonFiles.empty()) {
-    std::cerr << "load: no strategy JSON files found" << std::endl;
-    return 1;
-  }
-
-  for (const auto& file : jsonFiles) {
-    std::ifstream in(file);
-    if (!in) {
-      std::cerr << "load: failed to open " << file << std::endl;
-      return 1;
-    }
-    std::ostringstream buf;
-    buf << in.rdbuf();
-
-    const int rc = RedisLoader::load(buf.str());
-    if (rc != 0) {
-      return rc;
-    }
-  }
-
-  return 0;
-}
-
 // Entry point. Dispatches on argv[1] to one of the BacktestingEngine
-// subcommands: `load <strategy.json|dir>...` enqueues base64-encoded
-// strategy JSON onto the Redis `strategy_queue` (LPUSH); `run <questdb-host>`
-// RPOPs the next strategy and executes it against QuestDB; `-h`/`--help`
-// prints usage.
+// subcommands: `load <raw-json>` is the Redis enqueue path — it LPUSHes a
+// base64-encoded JSON payload onto `strategy_queue` via RedisLoader, pairing
+// with the dequeue side handled by `RedisRunner`; `run <questdb-host>` RPOPs
+// the next strategy from `strategy_queue` and executes it against QuestDB,
+// while `run <questdb-host> <base64-config>` skips Redis and executes the
+// supplied Base64 strategy directly; `-h`/`--help` prints usage.
 int main(int argc, const char * argv[]) {
   if (argc < 2) {
     printUsage(std::cerr);
@@ -100,25 +60,46 @@ int main(int argc, const char * argv[]) {
   }
 
   if (subcommand == "load") {
-    std::vector<std::string> paths(argv + 2, argv + argc);
-    if (paths.empty()) {
-      printUsage(std::cerr);
+    if (argc < 3) {
+      std::cerr << "Usage: " << argv[0] << " load <path> [path...]"
+                << std::endl;
       return 1;
     }
-    try {
-      return loadStrategies(paths);
-    } catch (const std::exception& ex) {
-      std::cerr << "load: " << ex.what() << std::endl;
-      return 1;
+    for (int i = 2; i < argc; ++i) {
+      const std::string path = argv[i];
+      std::ifstream ifs(path);
+      if (!ifs) {
+        std::cerr << "BacktestingEngine: failed to open file: " << path
+                  << std::endl;
+        return 1;
+      }
+      std::ostringstream buffer;
+      buffer << ifs.rdbuf();
+      if (ifs.bad()) {
+        std::cerr << "BacktestingEngine: failed to read file: " << path
+                  << std::endl;
+        return 1;
+      }
+      const int rc = RedisLoader::load(buffer.str(), "127.0.0.1", 6379,
+                                       "strategy_queue");
+      if (rc != 0) {
+        return rc;
+      }
     }
+    return 0;
   }
 
   if (subcommand == "run") {
     if (argc < 3) {
-      std::cerr << "Usage: BacktestingEngine run <questdb-host>" << std::endl;
+      std::cerr << "Usage: BacktestingEngine run <questdb-host>\n"
+                << "       BacktestingEngine run <questdb-host> <base64-config>"
+                << std::endl;
       return 1;
     }
-    return RedisRunner::run(argv[2]);
+    if (argc == 3) {
+      return RedisRunner::run(argv[2]);
+    }
+    return runBacktest(argv[2], argv[3]);
   }
 
   printUsage(std::cerr);

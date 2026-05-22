@@ -16,6 +16,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/redis/connection.hpp>
+// Single TU that compiles the Boost.Redis implementation.
+#include <boost/redis/src.hpp>
 
 #include "backtestRunner.hpp"
 #include "jsonParser.hpp"

@@ -63,8 +63,9 @@ if(APPLE)
 endif()
 
 # Boost (Homebrew) — Boost.Redis is header-only but its implementation is
-# compiled into one TU via <boost/redis/src.hpp> (included in main.cpp).
-# It pulls in Boost.Asio's SSL layer, which needs OpenSSL.
+# compiled into one TU via <boost/redis/src.hpp> (included in
+# source/redisRunner.cpp). It pulls in Boost.Asio's SSL layer, which needs
+# OpenSSL.
 find_package(Boost REQUIRED CONFIG)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)

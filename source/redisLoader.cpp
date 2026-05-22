@@ -6,6 +6,8 @@
 
 #include "redisLoader.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -22,6 +24,7 @@
 #include <nlohmann/json.hpp>
 
 #include "base64.hpp"
+#include "jsonParser.hpp"
 
 namespace asio = boost::asio;
 namespace redis = boost::redis;
@@ -48,6 +51,11 @@ int RedisLoader::load(const std::string& rawJson,
                       const std::string& redisHost,
                       int redisPort,
                       const std::string& queueKey) {
+    if (rawJson.empty()) {
+        std::cerr << "RedisLoader: empty JSON payload" << std::endl;
+        return 1;
+    }
+
     nlohmann::json parsed;
     try {
         parsed = nlohmann::json::parse(rawJson);
@@ -93,6 +101,63 @@ int RedisLoader::load(const std::string& rawJson,
     const auto runId = parsed.value("RUN_ID", std::string{});
     std::cout << "RedisLoader: LPUSH " << queueKey << " RUN_ID=" << runId
               << std::endl;
+
+    return 0;
+}
+
+int RedisLoader::loadPayload(const std::string& redisHost,
+                             int redisPort,
+                             const std::string& queueKey,
+                             const std::string& rawJson) {
+    const bool isBlank = std::all_of(rawJson.begin(), rawJson.end(),
+                                     [](unsigned char c) {
+                                         return std::isspace(c);
+                                     });
+    if (isBlank) {
+        std::cerr << "RedisLoader: empty payload rejected" << std::endl;
+        return 1;
+    }
+
+    const std::string encoded = Base64::b64encode(rawJson);
+
+    asio::io_context ioc;
+    auto conn = std::make_shared<redis::connection>(ioc);
+
+    redis::config cfg;
+    cfg.addr.host = redisHost;
+    cfg.addr.port = std::to_string(redisPort);
+
+    conn->async_run(cfg, {}, asio::consign(asio::detached, conn));
+
+    std::exception_ptr pushError;
+
+    asio::co_spawn(
+        ioc,
+        pushOnce(conn, queueKey, encoded),
+        [&pushError](std::exception_ptr e) {
+            if (e) {
+                pushError = e;
+            }
+        });
+
+    ioc.run();
+
+    if (pushError) {
+        try {
+            std::rethrow_exception(pushError);
+        } catch (const std::exception& ex) {
+            std::cerr << "Redis LPUSH failed: " << ex.what() << std::endl;
+        }
+        return 3;
+    }
+
+    try {
+        JsonParser::parseConfigurationFromBase64(encoded);
+    } catch (const std::exception& ex) {
+        std::cerr << "RedisLoader: failed to parse payload: " << ex.what()
+                  << std::endl;
+        return 2;
+    }
 
     return 0;
 }
