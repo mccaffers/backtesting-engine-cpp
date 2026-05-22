@@ -78,6 +78,21 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - name: Install dependencies
+        run: sudo apt install -y libssl-dev libpq-dev
+      # Ubuntu's apt Boost (1.83 on 24.04) predates Boost.Redis, which was added
+      # in Boost 1.84, so <boost/redis.hpp> is absent. Install a newer Boost.
+      # Boost.Redis/Asio are header-only, so we only need the headers plus the
+      # CMake package config — building just Boost.System generates both quickly.
+      - name: Install Boost >= 1.84 (for Boost.Redis)
+        run: |
+          BOOST_VERSION=1.86.0
+          BOOST_DIR="boost_${BOOST_VERSION//./_}"
+          wget -q "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_DIR}.tar.gz"
+          tar xzf "${BOOST_DIR}.tar.gz"
+          cd "${BOOST_DIR}"
+          ./bootstrap.sh
+          sudo ./b2 install --prefix=/usr/local --with-system -j"$(nproc)"
       - name: Check compiler version, for debugging
         run: |
           g++ --version

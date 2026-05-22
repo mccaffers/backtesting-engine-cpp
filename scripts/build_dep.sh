@@ -24,7 +24,9 @@ build_dep() {
         cmake .. \
           -DCMAKE_CXX_STANDARD=20 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DSKIP_BUILD_TEST=ON
+          -DSKIP_BUILD_TEST=ON \
+          -DCMAKE_CXX_FLAGS="-w" \
+          -DCMAKE_C_FLAGS="-w"
         cmake --build . --parallel "$JOBS"
     )
 }

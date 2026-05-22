@@ -62,6 +62,19 @@ if(APPLE)
     target_include_directories(BacktestingEngineLib PRIVATE /opt/homebrew/opt/libomp/include)
 endif()
 
+# Boost (Homebrew) — Boost.Redis is header-only but its implementation is
+# compiled into one TU via <boost/redis/src.hpp> (included in
+# source/redisRunner.cpp). It pulls in Boost.Asio's SSL layer, which needs
+# OpenSSL.
+find_package(Boost REQUIRED CONFIG)
+find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
+target_link_libraries(BacktestingEngineLib PUBLIC
+    Boost::headers
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    Threads::Threads)
+
 add_subdirectory(external/boost-decimal)
 target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)
 
