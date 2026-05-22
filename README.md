@@ -18,7 +18,7 @@ I'm extracting results and creating various graphs for trend analyses using SciP
 
 ## Setup
 
-This backtesting engine can pull tick data from local files or from a Postgres database (I'm using QuestDB). Strategy execution is dispatched via a Redis list called `strategy_queue`, with each entry a Base64-encoded JSON payload — the `load` subcommand enqueues strategies (LPUSH) and the `run` subcommand dequeues and executes them (RPOP). The default workflow expects a local `redis-server` listening on `127.0.0.1:6379`.
+This backtesting engine can pull tick data from local files or from a Postgres database (I'm using QuestDB). Strategy execution is dispatched via a Redis list called `strategy_queue`, with each entry a Base64-encoded JSON payload, the `load` subcommand enqueues strategies (LPUSH) and the `run` subcommand dequeues and executes them (RPOP). The default workflow expects a local `redis-server` listening on `127.0.0.1:6379`.
 
 ### Clone with submodules
 
@@ -55,7 +55,7 @@ The canonical CI prerequisite list lives in `.github/workflows/scripts/brew.sh` 
 
 ### Build dependencies
 
-`libpqxx` is built once via CMake. `boost-decimal` is header-only and pulled in via `add_subdirectory` from the top-level `CMakeLists.txt` — nothing to build. The script below handles the libpqxx build:
+`libpqxx` is built once via CMake. `boost-decimal` is header-only and pulled in via `add_subdirectory` from the top-level `CMakeLists.txt`, nothing to build. The script below handles the libpqxx build:
 
 ```
 bash ./scripts/build_dep.sh
@@ -89,7 +89,7 @@ Xcode - Library Path
 
 ### Run via terminal
 
-`bash ./scripts/run.sh` builds the project, then — if `redis-cli ping` reaches a local Redis — enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal.
+`bash ./scripts/run.sh` builds the project, then, if `redis-cli ping` reaches a local Redis, enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal.
 
 The `BacktestingEngine` binary exposes a subcommand CLI:
 
@@ -118,7 +118,7 @@ Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for th
 
 ### Contributing
 
-This is an active solo experiment, so I'm not accepting pull requests right now — but please fork freely and use [GitHub Issues](https://github.com/mccaffers/backtesting-engine-cpp/issues) for bugs, questions, and ideas. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+This is an active solo experiment, so I'm not accepting pull requests right now, but please fork freely and use [GitHub Issues](https://github.com/mccaffers/backtesting-engine-cpp/issues) for bugs, questions, and ideas. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ### License
 [MIT](https://choosealicense.com/licenses/mit/)
