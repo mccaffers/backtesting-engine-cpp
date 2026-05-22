@@ -14,6 +14,7 @@
 #include "reporting.hpp"
 #include "strategies/strategy.hpp"
 #include "strategies/randomStrategy.hpp"
+#include "strategies/strategyErrors.hpp"
 
 namespace {
 
@@ -25,7 +26,7 @@ selectStrategy(const trading_definitions::Configuration& config) {
     if (name == "RandomStrategy") {
         return std::make_unique<RandomStrategy>(config.STRATEGY);
     }
-    throw std::runtime_error("Unknown strategy: '" + name + "'");
+    throw UnknownStrategyError(name);
 }
 
 } // namespace
