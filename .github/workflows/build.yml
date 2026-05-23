@@ -91,8 +91,10 @@ jobs:
           wget -q "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_DIR}.tar.gz"
           tar xzf "${BOOST_DIR}.tar.gz"
           cd "${BOOST_DIR}"
-          ./bootstrap.sh
-          sudo ./b2 install --prefix=/usr/local --with-system -j"$(nproc)"
+          ./bootstrap.sh > /dev/null
+          # -d0 silences per-action output (otherwise b2 prints one line per
+          # copied header — ~15k lines just for the header install).
+          sudo ./b2 install -d0 --prefix=/usr/local --with-system -j"$(nproc)"
       - name: Check compiler version, for debugging
         run: |
           g++ --version

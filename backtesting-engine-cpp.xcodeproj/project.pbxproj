@@ -43,6 +43,10 @@
 		94724A842F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
 		94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
 		94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
+		94D3A7262FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D3A7242FC1B3AD00EBEA32 /* loadCommand.cpp */; };
+		94D3A7272FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D3A7242FC1B3AD00EBEA32 /* loadCommand.cpp */; };
+		94D3A7292FC1B41500EBEA32 /* runCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D3A7282FC1B41500EBEA32 /* runCommand.cpp */; };
+		94D3A72A2FC1B41500EBEA32 /* runCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D3A7282FC1B41500EBEA32 /* runCommand.cpp */; };
 		94D601102FA9CD700066F51A /* randomStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D6010E2FA9CD700066F51A /* randomStrategy.cpp */; };
 		94D601112FA9CD700066F51A /* randomStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D6010E2FA9CD700066F51A /* randomStrategy.cpp */; };
 /* End PBXBuildFile section */
@@ -1279,6 +1283,10 @@
 		94CD8B9A2D2DCF6E00041BBA /* libpqxx-7.10.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libpqxx-7.10.a"; path = "build/external/libpqxx/src/libpqxx-7.10.a"; sourceTree = "<group>"; };
 		94CD8B9E2D2E8CE500041BBA /* databaseConnection.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = databaseConnection.hpp; sourceTree = "<group>"; };
 		94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = databaseConnection.cpp; sourceTree = "<group>"; };
+		94D3A7222FC1B3A600EBEA32 /* loadCommand.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = loadCommand.hpp; sourceTree = "<group>"; };
+		94D3A7242FC1B3AD00EBEA32 /* loadCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = loadCommand.cpp; sourceTree = "<group>"; };
+		94D3A7282FC1B41500EBEA32 /* runCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = runCommand.cpp; sourceTree = "<group>"; };
+		94D3A72B2FC1B41D00EBEA32 /* runCommand.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = runCommand.hpp; sourceTree = "<group>"; };
 		94D6010E2FA9CD700066F51A /* randomStrategy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = randomStrategy.cpp; sourceTree = "<group>"; };
 		94D601122FA9CD890066F51A /* randomStrategy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = randomStrategy.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1420,14 +1428,15 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				941B54982D3BBAD800E3BF64 /* trading_definitions */,
+				94674B862D533B4000973137 /* trading */,
+				94674B8C2D533E7800973137 /* models */,
+				94D6010F2FA9CD700066F51A /* strategies */,
+				94D3A7252FC1B3AD00EBEA32 /* commands */,
+				94280BA72D2FC29F00F1CF56 /* utilities */,
 				942EC5642FBEF95000CCBB5D /* backtestRunner.cpp */,
 				942EC5652FBEF95000CCBB5D /* redisLoader.cpp */,
 				942EC5662FBEF95000CCBB5D /* redisRunner.cpp */,
-				94D6010F2FA9CD700066F51A /* strategies */,
-				94674B8C2D533E7800973137 /* models */,
-				94674B862D533B4000973137 /* trading */,
-				941B54982D3BBAD800E3BF64 /* trading_definitions */,
-				94280BA72D2FC29F00F1CF56 /* utilities */,
 				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
 				940A61112C92CE210083FEB8 /* configManager.cpp */,
 				940A61152C92CE960083FEB8 /* serviceA.cpp */,
@@ -3531,6 +3540,24 @@
 			path = "../../../../../opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14/pgxs";
 			sourceTree = "<group>";
 		};
+		94D3A7232FC1B3A600EBEA32 /* commands */ = {
+			isa = PBXGroup;
+			children = (
+				94D3A72B2FC1B41D00EBEA32 /* runCommand.hpp */,
+				94D3A7222FC1B3A600EBEA32 /* loadCommand.hpp */,
+			);
+			path = commands;
+			sourceTree = "<group>";
+		};
+		94D3A7252FC1B3AD00EBEA32 /* commands */ = {
+			isa = PBXGroup;
+			children = (
+				94D3A7282FC1B41500EBEA32 /* runCommand.cpp */,
+				94D3A7242FC1B3AD00EBEA32 /* loadCommand.cpp */,
+			);
+			path = commands;
+			sourceTree = "<group>";
+		};
 		94D6010F2FA9CD700066F51A /* strategies */ = {
 			isa = PBXGroup;
 			children = (
@@ -3551,6 +3578,7 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				94D3A7232FC1B3A600EBEA32 /* commands */,
 				942EC55E2FBEF93A00CCBB5D /* backtestRunner.hpp */,
 				942EC55F2FBEF93A00CCBB5D /* redisLoader.hpp */,
 				942EC5602FBEF93A00CCBB5D /* redisRunner.hpp */,
@@ -3664,8 +3692,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				941408AE2D59F93F000ED1F9 /* sqlManager.cpp in Sources */,
+				94D3A7272FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
 				943398252D57E53400287A2D /* jsonParser.cpp in Sources */,
+				94D3A72A2FC1B41500EBEA32 /* runCommand.cpp in Sources */,
 				942EC56A2FBEF95000CCBB5D /* backtestRunner.cpp in Sources */,
 				942EC56B2FBEF95000CCBB5D /* redisLoader.cpp in Sources */,
 				942EC56C2FBEF95000CCBB5D /* redisRunner.cpp in Sources */,
@@ -3694,10 +3724,12 @@
 				943398242D57E53400287A2D /* jsonParser.cpp in Sources */,
 				942EC5672FBEF95000CCBB5D /* backtestRunner.cpp in Sources */,
 				942EC5682FBEF95000CCBB5D /* redisLoader.cpp in Sources */,
+				94D3A7262FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */,
 				942EC5692FBEF95000CCBB5D /* redisRunner.cpp in Sources */,
 				94280BA42D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8D2D533E7800973137 /* trade.cpp in Sources */,
 				941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				94D3A7292FC1B41500EBEA32 /* runCommand.cpp in Sources */,
 				94D601102FA9CD700066F51A /* randomStrategy.cpp in Sources */,
 				94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */,
 				94724A832F8B92C10029B940 /* operations.cpp in Sources */,
