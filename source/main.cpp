@@ -12,19 +12,22 @@
 #include "loadCommand.hpp"
 #include "runCommand.hpp"
 
+// Entry point
 int main(int argc, const char* argv[]) {
+
   if (argc < 2) {
-    std::cerr << "BacktestingEngine: missing subcommand. See README.md for usage."
+    std::cerr << "BacktestingEngine: missing a subcommand. See README.md for usage"
               << std::endl;
     return 1;
   }
 
   const std::string_view subcommand = argv[1];
 
-  if (subcommand == "load") return LoadCommand::run(argc, argv);
+  if (subcommand == "load") return LoadCommand::run();
   if (subcommand == "run")  return RunCommand::run(argc, argv);
 
   std::cerr << "BacktestingEngine: unknown subcommand. See README.md for usage."
             << std::endl;
+            
   return 1;
 }

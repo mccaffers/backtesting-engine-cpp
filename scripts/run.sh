@@ -24,38 +24,7 @@ if ! redis-cli -h localhost ping >/dev/null 2>&1; then
     exit 0
 fi
 
-json='{
-  "RUN_ID": "UNIQUE_IDENTIFIER",
-  "SYMBOLS": "EURUSD,AUDUSD",
-  "LAST_MONTHS": 2,
-  "STRATEGY": {
-      "UUID": "",
-      "TRADING_VARIABLES": {
-          "STRATEGY": "RandomStrategy",
-          "STOP_DISTANCE_IN_PIPS": "1.5",
-          "LIMIT_DISTANCE_IN_PIPS": "1.5",
-          "TRADING_SIZE": "1"
-      },
-      "OHLC_VARIABLES": [
-          {
-              "OHLC_COUNT": 60,
-              "OHLC_MINUTES": 100
-          }
-      ],
-      "STRATEGY_VARIABLES": {
-        "OHLC_RSI_VARIABLES": {
-            "RSI_LONG": 60,
-            "RSI_SHORT": 40
-        }
-      }
-  }
-}'
-
-tmp=$(mktemp -t backtesting-load.XXXXXX)
-trap 'rm -f "$tmp"' EXIT
-printf '%s' "$json" > "$tmp"
-
-if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load "$tmp"; then
+if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load; then
     exit 1
 fi
 
