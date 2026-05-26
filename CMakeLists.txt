@@ -70,11 +70,13 @@ endif()
 find_package(Boost REQUIRED CONFIG)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
+find_package(CURL REQUIRED)
 target_link_libraries(BacktestingEngineLib PUBLIC
     Boost::headers
     OpenSSL::SSL
     OpenSSL::Crypto
-    Threads::Threads)
+    Threads::Threads
+    CURL::libcurl)
 
 add_subdirectory(external/boost-decimal)
 target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)

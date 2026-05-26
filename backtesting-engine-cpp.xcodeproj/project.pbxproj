@@ -25,6 +25,12 @@
 		942EC56A2FBEF95000CCBB5D /* backtestRunner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942EC5642FBEF95000CCBB5D /* backtestRunner.cpp */; };
 		942EC56B2FBEF95000CCBB5D /* redisLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942EC5652FBEF95000CCBB5D /* redisLoader.cpp */; };
 		942EC56C2FBEF95000CCBB5D /* redisRunner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942EC5662FBEF95000CCBB5D /* redisRunner.cpp */; };
+		942FDDE02FC5C8B20096F318 /* tradingResults.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942FDDDF2FC5C8B20096F318 /* tradingResults.cpp */; };
+		942FDDE12FC5C8B20096F318 /* elasticClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942FDDDE2FC5C8B20096F318 /* elasticClient.cpp */; };
+		942FDDE22FC5C8B20096F318 /* tradingResults.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942FDDDF2FC5C8B20096F318 /* tradingResults.cpp */; };
+		942FDDE32FC5C8B20096F318 /* elasticClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942FDDDE2FC5C8B20096F318 /* elasticClient.cpp */; };
+		942FDDE52FC5C9D30096F318 /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 942FDDE42FC5C9D30096F318 /* libcurl.4.tbd */; };
+		942FDDE62FC5C9DB0096F318 /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 942FDDE42FC5C9D30096F318 /* libcurl.4.tbd */; };
 		943398242D57E53400287A2D /* jsonParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 943398232D57E53400287A2D /* jsonParser.cpp */; };
 		943398252D57E53400287A2D /* jsonParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 943398232D57E53400287A2D /* jsonParser.cpp */; };
 		943398272D57E54000287A2D /* jsonParser.mm in Sources */ = {isa = PBXBuildFile; fileRef = 943398262D57E54000287A2D /* jsonParser.mm */; };
@@ -90,6 +96,11 @@
 		942EC5642FBEF95000CCBB5D /* backtestRunner.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = backtestRunner.cpp; sourceTree = "<group>"; };
 		942EC5652FBEF95000CCBB5D /* redisLoader.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = redisLoader.cpp; sourceTree = "<group>"; };
 		942EC5662FBEF95000CCBB5D /* redisRunner.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = redisRunner.cpp; sourceTree = "<group>"; };
+		942FDDDC2FC5C8950096F318 /* elasticClient.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = elasticClient.hpp; sourceTree = "<group>"; };
+		942FDDDD2FC5C8A30096F318 /* tradingResults.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tradingResults.hpp; sourceTree = "<group>"; };
+		942FDDDE2FC5C8B20096F318 /* elasticClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = elasticClient.cpp; sourceTree = "<group>"; };
+		942FDDDF2FC5C8B20096F318 /* tradingResults.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tradingResults.cpp; sourceTree = "<group>"; };
+		942FDDE42FC5C9D30096F318 /* libcurl.4.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.4.tbd; path = usr/lib/libcurl.4.tbd; sourceTree = SDKROOT; };
 		943398222D57E52900287A2D /* jsonParser.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = jsonParser.hpp; sourceTree = "<group>"; };
 		943398232D57E53400287A2D /* jsonParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = jsonParser.cpp; sourceTree = "<group>"; };
 		943398262D57E54000287A2D /* jsonParser.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = jsonParser.mm; sourceTree = "<group>"; };
@@ -1296,6 +1307,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				942FDDE62FC5C9DB0096F318 /* libcurl.4.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1303,6 +1315,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				942FDDE52FC5C9D30096F318 /* libcurl.4.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1436,6 +1449,8 @@
 				94280BA72D2FC29F00F1CF56 /* utilities */,
 				942EC5642FBEF95000CCBB5D /* backtestRunner.cpp */,
 				942EC5652FBEF95000CCBB5D /* redisLoader.cpp */,
+				942FDDDE2FC5C8B20096F318 /* elasticClient.cpp */,
+				942FDDDF2FC5C8B20096F318 /* tradingResults.cpp */,
 				942EC5662FBEF95000CCBB5D /* redisRunner.cpp */,
 				9470B5A32C8C5AD0007D9CC6 /* main.cpp */,
 				940A61112C92CE210083FEB8 /* configManager.cpp */,
@@ -2218,6 +2233,7 @@
 		94CD87342D2D2EE100041BBA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				942FDDE42FC5C9D30096F318 /* libcurl.4.tbd */,
 				94CD8B982D2DCDD800041BBA /* libpqxx-7.10.a */,
 				94CD8B9A2D2DCF6E00041BBA /* libpqxx-7.10.a */,
 				94CD8B712D2D34C800041BBA /* config */,
@@ -3579,17 +3595,19 @@
 			isa = PBXGroup;
 			children = (
 				94D3A7232FC1B3A600EBEA32 /* commands */,
-				942EC55E2FBEF93A00CCBB5D /* backtestRunner.hpp */,
-				942EC55F2FBEF93A00CCBB5D /* redisLoader.hpp */,
-				942EC5602FBEF93A00CCBB5D /* redisRunner.hpp */,
-				94D601132FA9CD890066F51A /* strategies */,
-				94674B842D533B2F00973137 /* trading */,
 				942966D72D48E84100532862 /* models */,
+				94674B842D533B2F00973137 /* trading */,
+				94D601132FA9CD890066F51A /* strategies */,
 				94B8C7932D3D770800E17EB6 /* utilities */,
 				941B548F2D3BBA3B00E3BF64 /* trading_definitions */,
 				941B549C2D3BBFB900E3BF64 /* trading_definitions.hpp */,
+				942EC55E2FBEF93A00CCBB5D /* backtestRunner.hpp */,
+				942EC55F2FBEF93A00CCBB5D /* redisLoader.hpp */,
+				942EC5602FBEF93A00CCBB5D /* redisRunner.hpp */,
 				940A61162C92CE960083FEB8 /* serviceA.hpp */,
+				942FDDDC2FC5C8950096F318 /* elasticClient.hpp */,
 				943398222D57E52900287A2D /* jsonParser.hpp */,
+				942FDDDD2FC5C8A30096F318 /* tradingResults.hpp */,
 				940A61122C92CE210083FEB8 /* configManager.hpp */,
 				941408B02D59F954000ED1F9 /* sqlManager.hpp */,
 				94724A852F8B92E30029B940 /* operations.hpp */,
@@ -3695,6 +3713,8 @@
 				94D3A7272FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */,
 				9470B5A42C8C5AD0007D9CC6 /* main.cpp in Sources */,
 				943398252D57E53400287A2D /* jsonParser.cpp in Sources */,
+				942FDDE02FC5C8B20096F318 /* tradingResults.cpp in Sources */,
+				942FDDE12FC5C8B20096F318 /* elasticClient.cpp in Sources */,
 				94D3A72A2FC1B41500EBEA32 /* runCommand.cpp in Sources */,
 				942EC56A2FBEF95000CCBB5D /* backtestRunner.cpp in Sources */,
 				942EC56B2FBEF95000CCBB5D /* redisLoader.cpp in Sources */,
@@ -3737,6 +3757,8 @@
 				94674B882D533B4000973137 /* tradeManager.cpp in Sources */,
 				946EFF7F2FB9F44E008D9647 /* reporting.cpp in Sources */,
 				943398272D57E54000287A2D /* jsonParser.mm in Sources */,
+				942FDDE22FC5C8B20096F318 /* tradingResults.cpp in Sources */,
+				942FDDE32FC5C8B20096F318 /* elasticClient.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
 				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
 				940A61142C92CE210083FEB8 /* configManager.cpp in Sources */,
