@@ -49,12 +49,17 @@ int RedisRunner::run(const std::string& questdbHost,
                      const std::string& redisHost,
                      int redisPort,
                      const std::string& queueKey) {
+                        
+    // Event loop that drives all async Redis I/O on this thread.
     asio::io_context ioc;
     auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
 
+    // Outputs of the coroutine — filled in by the completion handler below.
     std::optional<std::string> popped;
     std::exception_ptr popError;
 
+    // Schedule popOnce() onto the io_context. When the coroutine finishes,
+    // the lambda is invoked with either an exception or the popped value.
     asio::co_spawn(
         ioc,
         popOnce(conn, queueKey),
@@ -67,6 +72,7 @@ int RedisRunner::run(const std::string& questdbHost,
             popped = std::move(r);
         });
 
+    // Block until the coroutine (and the Redis connection loop) finish.
     ioc.run();
 
     if (popError) {
