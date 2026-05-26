@@ -59,6 +59,12 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
 
+    // Require TLS 1.2 or newer and enforce certificate / hostname verification
+    // for any HTTPS endpoint (Sonar cpp:S4423 / S5527).
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
     const CURLcode rc = curl_easy_perform(curl);
 
     long httpStatus = 0;
