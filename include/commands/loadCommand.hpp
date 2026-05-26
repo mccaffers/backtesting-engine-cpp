@@ -6,9 +6,9 @@
 
 #pragma once
 
-// Backs the `load` subcommand: reads each strategy file from disk and LPUSHes
-// it onto the Redis `strategy_queue` via RedisLoader.
+// Backs the `load` subcommand: LPUSHes a strategy JSON (defined in
+// source/commands/loadCommand.cpp) onto the Redis `strategy_queue`.
 class LoadCommand {
 public:
-    static int run(int argc, const char* argv[]);
+    static int run();
 };

@@ -94,8 +94,9 @@ Xcode - Library Path
 The `BacktestingEngine` binary exposes a subcommand CLI:
 
 ```
-BacktestingEngine load <path> [path...]
-    Read each file as raw JSON, Base64-encode it, and LPUSH onto the Redis
+BacktestingEngine load
+    Base64-encode a built-in strategy JSON (defined in
+    source/commands/loadCommand.cpp) and LPUSH it onto the Redis
     `strategy_queue` list.
 
 BacktestingEngine run <questdb-host>
@@ -105,9 +106,6 @@ BacktestingEngine run <questdb-host>
 BacktestingEngine run <questdb-host> <base64-config>
     Decode the supplied Base64 strategy and execute it directly, bypassing
     Redis.
-
-BacktestingEngine -h | --help
-    Show usage.
 ```
 
 Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for the list key (see `include/redisRunner.hpp` and `include/redisLoader.hpp`).
