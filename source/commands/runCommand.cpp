@@ -10,6 +10,7 @@
 #include <string>
 
 #include "backtestRunner.hpp"
+#include "env.hpp"
 #include "jsonParser.hpp"
 #include "redisRunner.hpp"
 
@@ -31,7 +32,7 @@ int RunCommand::run(int argc, const char* argv[]) {
         return 1;
     }
     if (argc == 3) {
-        return RedisRunner::run(argv[2]);
+        return RedisRunner::run(argv[2], env::getOr("REDIS_HOST", "127.0.0.1"));
     }
     return runBacktestFromBase64(argv[2], argv[3]);
 }

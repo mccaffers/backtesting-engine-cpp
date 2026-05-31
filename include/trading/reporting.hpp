@@ -6,9 +6,11 @@
 
 #pragma once
 #include "tradeManager.hpp"
+#include "tradingResults.hpp"
 
 class Reporting {
 
 public:
+    static TradingResultsStats collect(const TradeManager& tradeManager);
     static void summarise(const TradeManager& tradeManager);
 };

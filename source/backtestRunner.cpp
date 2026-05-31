@@ -17,14 +17,17 @@
 
 int runBacktest(const std::string& questdbHost,
                 const trading_definitions::Configuration& config) {
+
   DatabaseConnection db(questdbHost, 8812, "qdb", "admin", "quest");
 
+  // Get a list of symbols
   std::vector<std::string> symbols;
   std::istringstream ss(config.SYMBOLS);
   for (std::string token; std::getline(ss, token, ',');) {
     symbols.push_back(token);
   }
 
+  // Get all the tick data out of QuestDB for these symbols
   std::vector<PriceData> ticks =
       SqlManager::streamPriceData(db, symbols, config.LAST_MONTHS);
 

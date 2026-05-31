@@ -23,6 +23,7 @@ int main(int argc, const char* argv[]) {
 
   const std::string_view subcommand = argv[1];
 
+  // Two paths, load or run
   if (subcommand == "load") return LoadCommand::run();
   if (subcommand == "run")  return RunCommand::run(argc, argv);
 

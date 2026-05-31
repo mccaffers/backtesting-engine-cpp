@@ -1,6 +1,16 @@
 #!/bin/bash
 # This executes the run script
 
+required_vars=(ELASTIC_HOST ELASTIC_USER ELASTIC_USER_PASSWORD REDIS_HOST)
+missing=()
+for var in "${required_vars[@]}"; do
+    [[ -z "${!var}" ]] && missing+=("$var")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Error: missing required environment variables: ${missing[*]}"
+    exit 1
+fi
+
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Build the source code
@@ -22,10 +32,6 @@ fi
 if ! redis-cli -h localhost ping >/dev/null 2>&1; then
     echo "redis-server not reachable on localhost:6379 — skipping"
     exit 0
-fi
-
-if ! ./"$BUILD_DIR/$EXECUTABLE_NAME" load; then
-    exit 1
 fi
 
 start_time=$(date +%s%N)

@@ -9,8 +9,9 @@
 #include "tradingResults.hpp"
 
 // Minimal Elasticsearch HTTP client — PUT-only, for indexing TradingResults.
-// Host is read from $ELASTICSEARCH_URL (default http://localhost:9200);
-// docs land in index "trading_results" with a freshly generated UUID per put.
+// Host is read from $ELASTIC_HOST (default http://localhost:9200) with optional
+// HTTP basic auth from $ELASTIC_USER / $ELASTIC_USER_PASSWORD; docs land in
+// index "trading_results" with a freshly generated UUID per put.
 class ElasticClient {
 public:
     static int putTradingResults(const TradingResults& results);
