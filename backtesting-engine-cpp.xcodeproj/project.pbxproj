@@ -47,6 +47,8 @@
 		9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9470B5A32C8C5AD0007D9CC6 /* main.cpp */; };
 		94724A832F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
 		94724A842F8B92C10029B940 /* operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94724A822F8B92C10029B940 /* operations.cpp */; };
+		94829FC52FCC1D1A00710E6E /* env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94829FC42FCC1D1A00710E6E /* env.cpp */; };
+		94829FC62FCC1D1A00710E6E /* env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94829FC42FCC1D1A00710E6E /* env.cpp */; };
 		94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
 		94CD8BA12D2E8CE500041BBA /* databaseConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94CD8B9F2D2E8CE500041BBA /* databaseConnection.cpp */; };
 		94D3A7262FC1B3AD00EBEA32 /* loadCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94D3A7242FC1B3AD00EBEA32 /* loadCommand.cpp */; };
@@ -130,6 +132,8 @@
 		9470B5AC2C8C5B99007D9CC6 /* tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		94724A822F8B92C10029B940 /* operations.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = operations.cpp; sourceTree = "<group>"; };
 		94724A852F8B92E30029B940 /* operations.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = operations.hpp; sourceTree = "<group>"; };
+		94829FC32FCC1D1200710E6E /* env.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = env.hpp; sourceTree = "<group>"; };
+		94829FC42FCC1D1A00710E6E /* env.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = env.cpp; sourceTree = "<group>"; };
 		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
 		94BBA4512D2EA2640010E04D /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		94C331A02FA899A8006BD690 /* decimal_json.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = decimal_json.hpp; sourceTree = "<group>"; };
@@ -1346,6 +1350,7 @@
 		94280BA72D2FC29F00F1CF56 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				94829FC42FCC1D1A00710E6E /* env.cpp */,
 				942EC5612FBEF94700CCBB5D /* redisConnection.cpp */,
 				94280BA22D2FC00200F1CF56 /* base64.cpp */,
 				943398232D57E53400287A2D /* jsonParser.cpp */,
@@ -1476,6 +1481,7 @@
 		94B8C7932D3D770800E17EB6 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				94829FC32FCC1D1200710E6E /* env.hpp */,
 				942EC55D2FBEF92F00CCBB5D /* redisConnection.hpp */,
 				94C331A02FA899A8006BD690 /* decimal_json.hpp */,
 				94280BA12D2FC00200F1CF56 /* base64.hpp */,
@@ -3718,6 +3724,7 @@
 				94D3A72A2FC1B41500EBEA32 /* runCommand.cpp in Sources */,
 				942EC56A2FBEF95000CCBB5D /* backtestRunner.cpp in Sources */,
 				942EC56B2FBEF95000CCBB5D /* redisLoader.cpp in Sources */,
+				94829FC52FCC1D1A00710E6E /* env.cpp in Sources */,
 				942EC56C2FBEF95000CCBB5D /* redisRunner.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
 				94674B8E2D533E7800973137 /* trade.cpp in Sources */,
@@ -3752,6 +3759,7 @@
 				94D3A7292FC1B41500EBEA32 /* runCommand.cpp in Sources */,
 				94D601102FA9CD700066F51A /* randomStrategy.cpp in Sources */,
 				94674B8A2D533BDA00973137 /* tradeManager.mm in Sources */,
+				94829FC62FCC1D1A00710E6E /* env.cpp in Sources */,
 				94724A832F8B92C10029B940 /* operations.cpp in Sources */,
 				940A61182C92CE960083FEB8 /* serviceA.cpp in Sources */,
 				94674B882D533B4000973137 /* tradeManager.cpp in Sources */,
