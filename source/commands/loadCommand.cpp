@@ -9,6 +9,7 @@
 #include <boost/decimal/literals.hpp>
 #include <nlohmann/json.hpp>
 
+#include "env.hpp"
 #include "redisLoader.hpp"
 #include "trading_definitions.hpp"
 
@@ -38,5 +39,5 @@ int LoadCommand::run() {
     };
 
     const nlohmann::json j = config;
-    return RedisLoader::load(j.dump());
+    return RedisLoader::load(j.dump(), env::getOr("REDIS_HOST", "127.0.0.1"));
 }

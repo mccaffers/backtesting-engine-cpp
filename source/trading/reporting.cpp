@@ -10,10 +10,9 @@
 #include <cstddef>
 #include <boost/decimal.hpp>
 #include "trade.hpp"
+#include "tradingResults.hpp"
 
-void Reporting::summarise(const TradeManager& tradeManager) {
-    std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << tradeManager.calculatePnl() << std::endl;
-
+TradingResultsStats Reporting::collect(const TradeManager& tradeManager) {
     const auto& activeTrades = tradeManager.getActiveTrades();
     const auto& closedTrades = tradeManager.getClosedTrades();
 
@@ -45,18 +44,40 @@ void Reporting::summarise(const TradeManager& tradeManager) {
     openedLong  += closedLong;
     openedShort += closedShort;
 
-    std::cout << "Trades opened: " << openedCount
-              << "  (LONG: " << openedLong << ", SHORT: " << openedShort << ")" << std::endl;
-    std::cout << "Trades closed: " << closedCount
-              << "  (LONG: " << closedLong << ", SHORT: " << closedShort << ")" << std::endl;
-    std::cout << "Winners: " << winners
-              << "   Losers: " << losers
-              << "   Breakeven: " << breakeven << std::endl;
+    TradingResultsStats stats;
+    stats.finalPnl     = tradeManager.calculatePnl();
+    stats.tradesOpened = openedCount;
+    stats.tradesClosed = closedCount;
+    stats.openedLong   = openedLong;
+    stats.openedShort  = openedShort;
+    stats.closedLong   = closedLong;
+    stats.closedShort  = closedShort;
+    stats.winners      = winners;
+    stats.losers       = losers;
+    stats.breakeven    = breakeven;
     if (closedCount == 0) {
+        stats.avgPnl = std::nullopt;
+    } else {
+        stats.avgPnl = pnlSum / boost::decimal::decimal64_t{static_cast<long long>(closedCount)};
+    }
+    return stats;
+}
+
+void Reporting::summarise(const TradeManager& tradeManager) {
+    const auto stats = collect(tradeManager);
+
+    std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << stats.finalPnl << std::endl;
+    std::cout << "Trades opened: " << stats.tradesOpened
+              << "  (LONG: " << stats.openedLong << ", SHORT: " << stats.openedShort << ")" << std::endl;
+    std::cout << "Trades closed: " << stats.tradesClosed
+              << "  (LONG: " << stats.closedLong << ", SHORT: " << stats.closedShort << ")" << std::endl;
+    std::cout << "Winners: " << stats.winners
+              << "   Losers: " << stats.losers
+              << "   Breakeven: " << stats.breakeven << std::endl;
+    if (!stats.avgPnl) {
         std::cout << "Average PnL per closed trade: n/a (0 closed)" << std::endl;
     } else {
-        const auto avgPnl = pnlSum / boost::decimal::decimal64_t{static_cast<long long>(closedCount)};
         std::cout << "Average PnL per closed trade: "
-                  << std::fixed << std::setprecision(2) << avgPnl << std::endl;
+                  << std::fixed << std::setprecision(2) << *stats.avgPnl << std::endl;
     }
 }

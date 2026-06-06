@@ -20,6 +20,7 @@
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/redis.hpp>
 #include <boost/redis/connection.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -92,7 +93,7 @@ int RedisLoader::load(const std::string& rawJson,
     if (pushError) {
         try {
             std::rethrow_exception(pushError);
-        } catch (const std::exception& ex) {
+        } catch (const boost::system::system_error& ex) {
             std::cerr << "Redis LPUSH failed: " << ex.what() << std::endl;
         }
         return 3;
@@ -145,7 +146,7 @@ int RedisLoader::loadPayload(const std::string& redisHost,
     if (pushError) {
         try {
             std::rethrow_exception(pushError);
-        } catch (const std::exception& ex) {
+        } catch (const boost::system::system_error& ex) {
             std::cerr << "Redis LPUSH failed: " << ex.what() << std::endl;
         }
         return 3;
@@ -153,7 +154,7 @@ int RedisLoader::loadPayload(const std::string& redisHost,
 
     try {
         JsonParser::parseConfigurationFromBase64(encoded);
-    } catch (const std::exception& ex) {
+    } catch (const nlohmann::json::exception& ex) {
         std::cerr << "RedisLoader: failed to parse payload: " << ex.what()
                   << std::endl;
         return 2;

@@ -87,9 +87,28 @@ Xcode - Library Path
 
 `bash ./scripts/build.sh`
 
+### Environment variables
+
+The engine reads its connection configuration from the environment. The following variables are **required** — `scripts/run.sh` validates them up front and aborts if any are missing or empty:
+
+| Variable | Used for |
+| --- | --- |
+| `ELASTIC_HOST` | Elasticsearch base URL that trading results are PUT to (e.g. `https://elastic.example.com:9200`) |
+| `ELASTIC_USER` | Elasticsearch HTTP basic-auth username |
+| `ELASTIC_USER_PASSWORD` | Elasticsearch HTTP basic-auth password |
+| `REDIS_HOST` | Redis host for the `strategy_queue` list |
+
+I manage these secrets with [Infisical](https://infisical.com/), which injects them into the process environment at runtime, so I run the engine with:
+
+```
+infisical run -- sh ./scripts/run.sh
+```
+
+If you're not using Infisical, export the variables yourself (e.g. via your shell profile or a sourced `.env`) before invoking the script.
+
 ### Run via terminal
 
-`bash ./scripts/run.sh` builds the project, then, if `redis-cli ping` reaches a local Redis, enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal.
+`bash ./scripts/run.sh` builds the project, then, if `redis-cli ping` reaches a local Redis, enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal. The script requires the [environment variables](#environment-variables) listed above; with Infisical that becomes `infisical run -- sh ./scripts/run.sh`.
 
 The `BacktestingEngine` binary exposes a subcommand CLI:
 

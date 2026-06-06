@@ -9,8 +9,14 @@
 #include <pqxx/pqxx>
 #include <cstdio>
 #include <charconv>
+#include <format>
 #include <stdexcept>
 #include <boost/decimal.hpp>
+
+class InvalidTimestampFormatError : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 
 static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
     int year = 0;
@@ -23,14 +29,15 @@ static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) 
     const int parsedFields =
         std::sscanf(ts, "%4d-%2d-%2d %2d:%2d:%2d.%d", &year, &month, &day, &hour, &min, &sec, &usec);
     if (parsedFields != 6 && parsedFields != 7) {
-        throw std::runtime_error("Invalid timestamp format");
+        throw InvalidTimestampFormatError("Invalid timestamp format: " + std::string(ts));
     }
 
     // Cache timegm per date — tick data is time-ordered so date changes rarely
-    static char cachedDate[11] = {};
+    static std::string cachedDate;
     static time_t cachedEpoch = 0;
-    if (std::memcmp(ts, cachedDate, 10) != 0) {
-        std::memcpy(cachedDate, ts, 10);
+    const std::string_view date(ts, 10);
+    if (cachedDate != date) {
+        cachedDate.assign(date);
         std::tm tm = {};
         tm.tm_year = year - 1900;
         tm.tm_mon  = month - 1;
@@ -46,13 +53,9 @@ static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) 
 DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
                                      const std::string& dbname, const std::string& user,
                                      const std::string& password) {
-    connection_string =
-        "host=" + endpoint + " "
-        "port=" + std::to_string(port) + " "
-        "dbname=" + dbname + " "
-        "user=" + user + " "
-        "password=" + password + " "
-        "connect_timeout=3";
+    connection_string = std::format(
+        "host={} port={} dbname={} user={} password={} connect_timeout=3",
+        endpoint, port, dbname, user, password);
 
 }
 

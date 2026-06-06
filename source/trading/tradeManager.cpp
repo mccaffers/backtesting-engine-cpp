@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <ctime>
+#include <format>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -16,7 +17,7 @@
 namespace {
 std::string nextTradeId() {
     static std::atomic<uint64_t> counter{0};
-    return "T" + std::to_string(counter.fetch_add(1));
+    return std::format("T{}", counter.fetch_add(1));
 }
 }
 
