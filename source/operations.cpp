@@ -14,7 +14,7 @@
 #include "reviewStopAndLimit.hpp"
 #include "reporting.hpp"
 #include "tradingResults.hpp"
-#include "elasticClient.hpp"
+#include "reporting/elasticClient.hpp"
 #include "strategies/strategy.hpp"
 #include "strategies/randomStrategy.hpp"
 #include "strategies/strategyErrors.hpp"
