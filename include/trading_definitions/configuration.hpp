@@ -7,7 +7,7 @@
 #pragma once
 #include <string>
 #include <nlohmann/json.hpp>
-#include "strategy.hpp"
+#include "trading_definitions/strategy.hpp"
 
 namespace trading_definitions {
 struct Configuration {

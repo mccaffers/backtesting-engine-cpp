@@ -28,7 +28,7 @@
 #include "queueKeys.hpp"
 #include "redisLoader.hpp"
 #include "run_configuration.hpp"
-#include "strategy.hpp"
+#include "trading_definitions/strategy.hpp"
 
 namespace {
 

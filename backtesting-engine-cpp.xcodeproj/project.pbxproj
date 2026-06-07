@@ -116,7 +116,6 @@
 		944D0DCA2C8C3704004DD0FC /* clean.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clean.sh; sourceTree = "<group>"; };
 		944D0DCC2C8C3704004DD0FC /* run.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = run.sh; sourceTree = "<group>"; };
 		944D0DCD2C8C3704004DD0FC /* test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = test.sh; sourceTree = "<group>"; };
-		944D0DCF2C8C3704004DD0FC /* sonar-project.properties */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "sonar-project.properties"; sourceTree = "<group>"; };
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		945F475C2FD5607E00D19164 /* queueKeys.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = queueKeys.hpp; sourceTree = "<group>"; };
@@ -1401,7 +1400,6 @@
 				94DE4F772C8C3E7C00FE48FF /* include */,
 				9470B5A22C8C5AD0007D9CC6 /* source */,
 				9470B5AD2C8C5B99007D9CC6 /* tests */,
-				944D0DCF2C8C3704004DD0FC /* sonar-project.properties */,
 				944D0DD32C8C3704004DD0FC /* CMakeLists.txt */,
 				944D0DC82C8C3704004DD0FC /* LICENSE.MD */,
 				944D0DD02C8C3704004DD0FC /* README.md */,
