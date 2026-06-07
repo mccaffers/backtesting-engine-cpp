@@ -7,17 +7,23 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 // LPUSH pairs with RedisRunner's RPOP so consumers observe FIFO ordering.
 class RedisLoader {
 public:
-    static int load(const std::string& rawJson,
-                    const std::string& redisHost = "127.0.0.1",
-                    int redisPort = 6379,
-                    const std::string& queueKey = "strategy_queue");
-
+    // LPUSHes a single Base64-encoded payload onto queueKey without assuming a
+    // payload type (run descriptor or strategy).
     static int loadPayload(const std::string& redisHost,
                            int redisPort,
                            const std::string& queueKey,
                            const std::string& rawJson);
+
+    // LPUSHes many payloads onto queueKey over one connection. Each payload is
+    // Base64-encoded; order is preserved (RedisRunner's RPOP then yields them
+    // in insertion order).
+    static int loadPayloadBatch(const std::string& redisHost,
+                                int redisPort,
+                                const std::string& queueKey,
+                                const std::vector<std::string>& rawJsonPayloads);
 };

@@ -24,12 +24,14 @@
 
 #include "env.hpp"
 #include "parameterSweep.hpp"
+#include "queueKeys.hpp"
 #include "redisLoader.hpp"
 #include "trading_definitions.hpp"
 
 namespace {
 
-using trading_definitions::Configuration;
+using trading_definitions::RunConfiguration;
+using trading_definitions::Strategy;
 
 // Converts a swept double into a decimal64_t via its shortest round-trip decimal
 // string. Routing through text (rather than constructing from the binary double)
@@ -56,41 +58,47 @@ boost::decimal::decimal64_t toDecimal(double value) {
 // edit: register it here, then read it back in makeConfiguration().
 sweep::ParameterGenerator buildRandomStrategySweep() {
     sweep::ParameterGenerator generator;
-    generator.addRange("OHLC_COUNT", 80, 20, 140);  // 80, 100, 120, 140
-    generator.addList("OHLC_MINUTES", {1, 3, 5, 8});
+    // generator.addRange("OHLC_COUNT", 80, 20, 140);  // 80, 100, 120, 140
+    // generator.addList("OHLC_MINUTES", {1, 3, 5, 8});
     generator.addList("STOP_DISTANCE_IN_PIPS", {1.0, 1.5, 2.0});
     generator.addList("LIMIT_DISTANCE_IN_PIPS", {1.0, 1.5, 2.0});
     return generator;
 }
 
-// Maps one point in the parameter grid onto a fully-formed Configuration. Fields
-// not being swept keep their fixed defaults; swept fields are pulled from `combo`.
-Configuration makeConfiguration(const std::string& runId,
-                                const sweep::Combination& combo) {
-    using namespace boost::decimal::literals;
-    using namespace trading_definitions;
-
-    return Configuration{
+// The run-level descriptor: what tick data to pull from QuestDB. Shared by every
+// strategy in this sweep and linked to them by RUN_ID.
+RunConfiguration makeRunConfiguration(const std::string& runId) {
+    return RunConfiguration{
         .RUN_ID = runId,
         .SYMBOLS = "EURUSD,AUDUSD",
         .LAST_MONTHS = 2,
-        .STRATEGY = Strategy{
-            .UUID = "",
-            .TRADING_VARIABLES = TradingVariables{
-                .STRATEGY = "RandomStrategy",
-                .STOP_DISTANCE_IN_PIPS = toDecimal(combo.get("STOP_DISTANCE_IN_PIPS")),
-                .LIMIT_DISTANCE_IN_PIPS = toDecimal(combo.get("LIMIT_DISTANCE_IN_PIPS")),
-                .TRADING_SIZE = 1_DD,
+    };
+}
+
+// Maps one point in the parameter grid onto a Strategy. Fields not being swept
+// keep their fixed defaults; swept fields are pulled from `combo`.
+Strategy makeStrategy(const sweep::Combination& combo) {
+    using namespace boost::decimal::literals;
+    using namespace trading_definitions;
+
+    return Strategy{
+        .UUID = "",
+        .TRADING_VARIABLES = TradingVariables{
+            .STRATEGY = "RandomStrategy",
+            .STOP_DISTANCE_IN_PIPS = toDecimal(combo.get("STOP_DISTANCE_IN_PIPS")),
+            .LIMIT_DISTANCE_IN_PIPS = toDecimal(combo.get("LIMIT_DISTANCE_IN_PIPS")),
+            .TRADING_SIZE = 1_DD,
+        },
+        .OHLC_VARIABLES = {
+            OHLCVariables{
+                // Only read OHLC params when the sweep actually registers them;
+                // they default to 0 otherwise (see buildRandomStrategySweep).
+                .OHLC_COUNT = combo.has("OHLC_COUNT") ? combo.getInt("OHLC_COUNT") : 0,
+                .OHLC_MINUTES = combo.has("OHLC_MINUTES") ? combo.getInt("OHLC_MINUTES") : 0,
             },
-            .OHLC_VARIABLES = {
-                OHLCVariables{
-                    .OHLC_COUNT = combo.getInt("OHLC_COUNT"),
-                    .OHLC_MINUTES = combo.getInt("OHLC_MINUTES"),
-                },
-            },
-            .STRATEGY_VARIABLES = StrategyVariables{
-                .OHLC_RSI_VARIABLES = OHLCRSIVariables{.RSI_LONG = 60, .RSI_SHORT = 40},
-            },
+        },
+        .STRATEGY_VARIABLES = StrategyVariables{
+            .OHLC_RSI_VARIABLES = OHLCRSIVariables{.RSI_LONG = 60, .RSI_SHORT = 40},
         },
     };
 }
@@ -103,20 +111,34 @@ int LoadCommand::run() {
     const std::string runId = boost::uuids::to_string(boost::uuids::random_generator()());
     const std::string redisHost = env::getOr("REDIS_HOST", "127.0.0.1");
 
+    // Build random here
     const sweep::ParameterGenerator generator = buildRandomStrategySweep();
+
     const std::vector<sweep::Combination> combinations = generator.generateAllCombinations();
 
     std::cout << "LoadCommand: sweeping " << combinations.size()
               << " parameter combination(s) for RUN_ID=" << runId << std::endl;
 
-    int status = 0;
+    // Serialise every swept strategy first.
+    std::vector<std::string> strategyPayloads;
+    strategyPayloads.reserve(combinations.size());
     for (const sweep::Combination& combo : combinations) {
-        const Configuration config = makeConfiguration(runId, combo);
-        const nlohmann::json j = config;
-        const int result = RedisLoader::load(j.dump(), redisHost);
-        if (result != 0) {
-            status = result;  // remember a failure but keep loading the rest
-        }
+        const nlohmann::json j = makeStrategy(combo);
+        strategyPayloads.push_back(j.dump());
     }
-    return status;
+
+    // Push all strategies BEFORE the run descriptor. A worker that sees the run
+    // immediately drains the strategy list and retires the run when empty, so the
+    // full set must already be present the moment the run becomes visible.
+    const std::string strategyKey = queue_keys::strategyKey(runId);
+    const int strategyStatus = RedisLoader::loadPayloadBatch(
+        redisHost, 6379, strategyKey, strategyPayloads);
+    if (strategyStatus != 0) {
+        return strategyStatus;
+    }
+
+    // Now advertise the run so workers can pick it up.
+    const nlohmann::json runJson = makeRunConfiguration(runId);
+    return RedisLoader::loadPayload(redisHost, 6379, queue_keys::RUN,
+                                    runJson.dump());
 }

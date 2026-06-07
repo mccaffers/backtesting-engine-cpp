@@ -119,6 +119,8 @@
 		944D0DCF2C8C3704004DD0FC /* sonar-project.properties */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "sonar-project.properties"; sourceTree = "<group>"; };
 		944D0DD02C8C3704004DD0FC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		944D0DD32C8C3704004DD0FC /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		945F475C2FD5607E00D19164 /* queueKeys.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = queueKeys.hpp; sourceTree = "<group>"; };
+		945F475D2FD5614600D19164 /* run_configuration.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = run_configuration.hpp; sourceTree = "<group>"; };
 		9464E5EF2FA7466900D82BAD /* symbolScale.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = symbolScale.hpp; sourceTree = "<group>"; };
 		9464E5F02FA7467200D82BAD /* symbolScale.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = symbolScale.mm; sourceTree = "<group>"; };
 		94674B822D533B1D00973137 /* trade.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = trade.hpp; sourceTree = "<group>"; };
@@ -1333,6 +1335,7 @@
 		941B548F2D3BBA3B00E3BF64 /* trading_definitions */ = {
 			isa = PBXGroup;
 			children = (
+				945F475D2FD5614600D19164 /* run_configuration.hpp */,
 				941B54972D3BBAA200E3BF64 /* configuration.hpp */,
 				941B54942D3BBA8300E3BF64 /* strategy.hpp */,
 				941B54932D3BBA7300E3BF64 /* strategy_variables.hpp */,
@@ -1502,6 +1505,7 @@
 		94B8C7932D3D770800E17EB6 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				945F475C2FD5607E00D19164 /* queueKeys.hpp */,
 				943770432FD4351100317424 /* parameterSweep.hpp */,
 				94829FC32FCC1D1200710E6E /* env.hpp */,
 				942EC55D2FBEF92F00CCBB5D /* redisConnection.hpp */,

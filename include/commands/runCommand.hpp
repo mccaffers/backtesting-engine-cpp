@@ -6,8 +6,9 @@
 
 #pragma once
 
-// Backs the `run` subcommand: executes one strategy popped from the Redis
-// `strategy_queue`, or a Base64 config supplied directly on the command line.
+// Backs the `run` subcommand: drains BACKTESTING_QUEUE_RUN (loading each run's
+// QuestDB ticks once, then running its strategies), or runs a single Base64
+// Configuration supplied directly on the command line.
 class RunCommand {
 public:
     static int run(int argc, const char* argv[]);
