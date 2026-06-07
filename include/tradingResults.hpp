@@ -36,6 +36,7 @@ struct TradingResultsStats {
 struct TradingResults {
     std::string RUN_ID;
     std::string timestamp;
+    double durationSeconds;          // wall-clock seconds for this run's backtest
     trading_definitions::Configuration config;
     TradingResultsStats results;
 

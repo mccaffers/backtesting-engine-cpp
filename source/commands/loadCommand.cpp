@@ -8,7 +8,8 @@
 
 #include <array>
 #include <charconv>
-#include <iostream>
+#include <print>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -26,7 +27,8 @@
 #include "parameterSweep.hpp"
 #include "queueKeys.hpp"
 #include "redisLoader.hpp"
-#include "trading_definitions.hpp"
+#include "run_configuration.hpp"
+#include "strategy.hpp"
 
 namespace {
 
@@ -60,8 +62,8 @@ sweep::ParameterGenerator buildRandomStrategySweep() {
     sweep::ParameterGenerator generator;
     // generator.addRange("OHLC_COUNT", 80, 20, 140);  // 80, 100, 120, 140
     // generator.addList("OHLC_MINUTES", {1, 3, 5, 8});
-    generator.addList("STOP_DISTANCE_IN_PIPS", {1.0, 1.5, 2.0});
-    generator.addList("LIMIT_DISTANCE_IN_PIPS", {1.0, 1.5, 2.0});
+    generator.addList("STOP_DISTANCE_IN_PIPS", {1.0, 1.5, 10.0});
+    generator.addList("LIMIT_DISTANCE_IN_PIPS", {1.0, 1.5, 10.0});
     return generator;
 }
 
@@ -70,8 +72,8 @@ sweep::ParameterGenerator buildRandomStrategySweep() {
 RunConfiguration makeRunConfiguration(const std::string& runId) {
     return RunConfiguration{
         .RUN_ID = runId,
-        .SYMBOLS = "EURUSD,AUDUSD",
-        .LAST_MONTHS = 2,
+        .SYMBOLS = "EURUSD",
+        .LAST_MONTHS = 6,
     };
 }
 
@@ -82,7 +84,9 @@ Strategy makeStrategy(const sweep::Combination& combo) {
     using namespace trading_definitions;
 
     return Strategy{
-        .UUID = "",
+        // Each parameter combination gets its own UUID so a single backtest
+        // result is uniquely identifiable and traceable back to its inputs.
+        .UUID = boost::uuids::to_string(boost::uuids::random_generator()()),
         .TRADING_VARIABLES = TradingVariables{
             .STRATEGY = "RandomStrategy",
             .STOP_DISTANCE_IN_PIPS = toDecimal(combo.get("STOP_DISTANCE_IN_PIPS")),
@@ -108,36 +112,40 @@ Strategy makeStrategy(const sweep::Combination& combo) {
 int LoadCommand::run() {
     // One RUN_ID identifies the whole sweep; each combination becomes its own
     // queue entry, distinguished by its parameter values.
-    const std::string runId = boost::uuids::to_string(boost::uuids::random_generator()());
-    const std::string redisHost = env::getOr("REDIS_HOST", "127.0.0.1");
+    const auto runId = boost::uuids::to_string(boost::uuids::random_generator()());
+    const auto redisHost = env::getOr("REDIS_HOST", "127.0.0.1");
 
     // Build random here
-    const sweep::ParameterGenerator generator = buildRandomStrategySweep();
+    const auto generator = buildRandomStrategySweep();
 
-    const std::vector<sweep::Combination> combinations = generator.generateAllCombinations();
+    const auto combinations = generator.generateAllCombinations();
 
-    std::cout << "LoadCommand: sweeping " << combinations.size()
-              << " parameter combination(s) for RUN_ID=" << runId << std::endl;
+    std::println("LoadCommand: sweeping {} parameter combination(s) for RUN_ID={}",
+                 combinations.size(), runId);
 
-    // Serialise every swept strategy first.
-    std::vector<std::string> strategyPayloads;
-    strategyPayloads.reserve(combinations.size());
-    for (const sweep::Combination& combo : combinations) {
-        const nlohmann::json j = makeStrategy(combo);
-        strategyPayloads.push_back(j.dump());
-    }
+    // Serialise every swept strategy first. combinations is a sized range, so
+    // std::ranges::to reserves up front (no manual reserve needed). The json type
+    // is pinned explicitly because makeStrategy returns a Strategy and relies on
+    // the implicit conversion for .dump().
+    const auto strategyPayloads =
+        combinations | std::views::transform([](const sweep::Combination& combo) {
+            const nlohmann::json j = makeStrategy(combo);
+            return j.dump();
+        }) | std::ranges::to<std::vector<std::string>>();
 
     // Push all strategies BEFORE the run descriptor. A worker that sees the run
     // immediately drains the strategy list and retires the run when empty, so the
     // full set must already be present the moment the run becomes visible.
-    const std::string strategyKey = queue_keys::strategyKey(runId);
-    const int strategyStatus = RedisLoader::loadPayloadBatch(
+    const auto strategyKey = queue_keys::strategyKey(runId);
+    const auto strategyStatus = RedisLoader::loadPayloadBatch(
         redisHost, 6379, strategyKey, strategyPayloads);
     if (strategyStatus != 0) {
         return strategyStatus;
     }
 
-    // Now advertise the run so workers can pick it up.
+    // Now advertise the run so workers can pick it up. runJson is pinned to
+    // nlohmann::json (not auto) because makeRunConfiguration returns a
+    // RunConfiguration and relies on the implicit conversion for .dump().
     const nlohmann::json runJson = makeRunConfiguration(runId);
     return RedisLoader::loadPayload(redisHost, 6379, queue_keys::RUN,
                                     runJson.dump());

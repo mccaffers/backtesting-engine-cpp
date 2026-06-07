@@ -26,7 +26,7 @@ SDK_PATH="$(xcrun --show-sdk-path 2>/dev/null || true)"
 build_dep() {
     local dep_dir="$1"
     local -a cmake_args=(
-        -DCMAKE_CXX_STANDARD=20
+        -DCMAKE_CXX_STANDARD=23
         -DCMAKE_BUILD_TYPE=Release
         -DSKIP_BUILD_TEST=ON
         -DCMAKE_CXX_FLAGS="-w"

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include "backtestLog.hpp"
 
 namespace {
 std::string nextTradeId() {
@@ -65,19 +66,23 @@ bool TradeManager::closeTrade(const std::string& tradeId,
         closedTrades.push_back(closed);
         activeTrades.erase(it);
 
-        auto t = std::chrono::system_clock::to_time_t(tick.timestamp);
-        std::tm utc{};
-        gmtime_r(&t, &utc);
-        std::ostringstream ts;
-        ts << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+        // Per-trade chatter is skipped under concurrent backtests (quiet),
+        // which also avoids the formatting work below.
+        if (!backtest_log::quiet) {
+            auto t = std::chrono::system_clock::to_time_t(tick.timestamp);
+            std::tm utc{};
+            gmtime_r(&t, &utc);
+            std::ostringstream ts;
+            ts << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
 
-        const char* side = (closed.direction == Direction::LONG) ? "BUY" : "SELL";
-        std::cout << ts.str()
-                  << ", Trade Closed, " << closed.symbol
-                  << ", " << side
-                  << ", " << std::showpos << std::fixed << std::setprecision(2) << closed.pnl
-                  << std::noshowpos
-                  << std::endl;
+            const char* side = (closed.direction == Direction::LONG) ? "BUY" : "SELL";
+            std::cout << ts.str()
+                      << ", Trade Closed, " << closed.symbol
+                      << ", " << side
+                      << ", " << std::showpos << std::fixed << std::setprecision(2) << closed.pnl
+                      << std::noshowpos
+                      << std::endl;
+        }
         return true;
     }
     return false;

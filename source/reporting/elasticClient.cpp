@@ -14,6 +14,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <nlohmann/json.hpp>
 
+#include "backtestLog.hpp"
 #include "env.hpp"
 
 namespace {
@@ -31,9 +32,21 @@ std::string generateUuid() {
     return boost::uuids::to_string(gen());
 }
 
+// Swallow the response body so curl does not dump it to stdout (its default
+// behaviour when no write callback is configured).
+size_t discardResponse(char* /*ptr*/, size_t size, size_t nmemb, void* /*userdata*/) {
+    return size * nmemb;
+}
+
 }  // namespace
 
 int ElasticClient::putTradingResults(const TradingResults& results) {
+    // Allow runs to opt out of result reporting entirely (e.g. local backtests
+    // with no Elastic instance). On by default to preserve existing behaviour.
+    if (env::getOr("ELASTIC_ENABLED", "1") == "0") {
+        return 0;
+    }
+
     ensureCurlInit();
 
     const std::string host = env::getOr("ELASTIC_HOST", "http://localhost:9200");
@@ -44,7 +57,7 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
 
     CURL* curl = curl_easy_init();
     if (!curl) {
-        std::cerr << "ElasticClient: curl_easy_init failed" << std::endl;
+        backtest_log::error("ElasticClient: curl_easy_init failed");
         return 1;
     }
 
@@ -64,6 +77,9 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
 
+    // Discard the response body instead of letting curl print it to stdout.
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, discardResponse);
+
     // Require TLS 1.2 or newer and enforce certificate / hostname verification
     // for any HTTPS endpoint (Sonar cpp:S4423 / S5527).
     curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
@@ -79,16 +95,19 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
     curl_easy_cleanup(curl);
 
     if (rc != CURLE_OK) {
-        std::cerr << "ElasticClient: PUT failed: " << curl_easy_strerror(rc)
-                  << std::endl;
+        backtest_log::error(std::string("ElasticClient: PUT failed: ")
+                            + curl_easy_strerror(rc));
         return 2;
     }
     if (httpStatus < 200 || httpStatus >= 300) {
-        std::cerr << "ElasticClient: HTTP " << httpStatus << " from " << url
-                  << std::endl;
+        backtest_log::error("ElasticClient: HTTP " + std::to_string(httpStatus)
+                            + " from " + url);
         return 3;
     }
-    std::cout << "ElasticClient: PUT " << url << " (HTTP " << httpStatus << ")"
-              << std::endl;
+    // Per-strategy success line is skipped under concurrent backtests (quiet).
+    if (!backtest_log::quiet) {
+        std::cout << "ElasticClient: PUT " << url << " (HTTP " << httpStatus << ")"
+                  << std::endl;
+    }
     return 0;
 }
