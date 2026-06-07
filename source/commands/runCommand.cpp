@@ -6,6 +6,7 @@
 
 #include "runCommand.hpp"
 
+#include <print>
 #include <string>
 
 #include "backtestRunner.hpp"
