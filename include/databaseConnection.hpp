@@ -4,7 +4,6 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 #pragma once
-#include <iostream>
 #include <pqxx/pqxx>
 #include "models/priceData.hpp"
 
@@ -20,7 +19,7 @@ public:
                         const std::string& password = "");
   
   void printResults(const std::vector<PriceData>& results) const;
-  std::vector<PriceData> streamQuery(const std::string& query) const;
+  std::vector<PriceData> executeQuery(const std::string& query) const;
   
   const std::string& getConnectionString() const {
     return connection_string;

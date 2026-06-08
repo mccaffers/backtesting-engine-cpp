@@ -11,7 +11,7 @@ execute_process(
 project(BacktestingEngine)
 
 # Set the C++ standard
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Configure libpqxx build
@@ -40,6 +40,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/commands
     ${CMAKE_SOURCE_DIR}/include/utilities
     ${CMAKE_SOURCE_DIR}/include/models
+    ${CMAKE_SOURCE_DIR}/include/reporting
     ${CMAKE_SOURCE_DIR}/include/trading
     ${CMAKE_SOURCE_DIR}/include/trading_definitions
     ${CMAKE_SOURCE_DIR}/include/strategies
@@ -64,9 +65,9 @@ if(APPLE)
 endif()
 
 # Boost (Homebrew) — Boost.Redis is header-only but its implementation is
-# compiled into one TU via <boost/redis/src.hpp> (included in
-# source/redisRunner.cpp). It pulls in Boost.Asio's SSL layer, which needs
-# OpenSSL.
+# compiled into one dedicated TU via <boost/redis/src.hpp> (source/
+# boostRedisImpl.cpp), which isolates its macro/SSL pollution from the rest of
+# the build. It pulls in Boost.Asio's SSL layer, which needs OpenSSL.
 find_package(Boost REQUIRED CONFIG)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)

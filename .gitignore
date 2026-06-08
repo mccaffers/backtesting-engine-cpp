@@ -40,4 +40,7 @@ xcuserdata/
 xcuserstate/
 TestResult.xcresult/
 sonarqube-generic-coverage.xml
-external/libpqxx
+.cache/clangd/
+.clangd
+dump.rdb
+.infisical.json

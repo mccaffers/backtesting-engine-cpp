@@ -11,3 +11,4 @@
 #include "trading_definitions/strategy_variables.hpp"
 #include "trading_definitions/strategy.hpp"
 #include "trading_definitions/configuration.hpp"
+#include "trading_definitions/run_configuration.hpp"

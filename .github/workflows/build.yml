@@ -80,6 +80,15 @@ jobs:
           fetch-depth: 0
       - name: Install dependencies
         run: sudo apt install -y libssl-dev libpq-dev libcurl4-openssl-dev
+      # ubuntu-latest (24.04) defaults to GCC 13, whose libstdc++ lacks the
+      # C++23 <print> header (std::print/std::println). That header was added
+      # in GCC 14, so install it and make it the default compiler for every
+      # subsequent step (dependency build, CMake configure, build-wrapper).
+      - name: Install GCC 14 (for C++23 <print>)
+        run: |
+          sudo apt install -y gcc-14 g++-14
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
       # Ubuntu's apt Boost (1.83 on 24.04) predates Boost.Redis, which was added
       # in Boost 1.84, so <boost/redis.hpp> is absent. Install a newer Boost.
       # Boost.Redis/Asio are header-only, so we only need the headers plus the

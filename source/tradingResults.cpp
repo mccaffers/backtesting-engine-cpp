@@ -43,6 +43,7 @@ void to_json(nlohmann::json& j, const TradingResults& r) {
     j = nlohmann::json{
         {"RUN_ID", r.RUN_ID},
         {"@timestamp", r.timestamp},
+        {"durationSeconds", r.durationSeconds},
         {"config", r.config},
         {"results", r.results},
     };

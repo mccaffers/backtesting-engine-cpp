@@ -13,4 +13,6 @@
 class JsonParser {
 public:
     static trading_definitions::Configuration parseConfigurationFromBase64(const std::string& input);
+    static trading_definitions::RunConfiguration parseRunConfigurationFromBase64(const std::string& input);
+    static trading_definitions::Strategy parseStrategyFromBase64(const std::string& input);
 };

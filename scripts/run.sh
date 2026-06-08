@@ -8,6 +8,8 @@ for var in "${required_vars[@]}"; do
 done
 if [[ ${#missing[@]} -gt 0 ]]; then
     echo "Error: missing required environment variables: ${missing[*]}"
+    echo "eg. infisical run -- sh ./scripts/run.sh (if using infisical)"
+    echo "or ELASTIC_HOST=localhost ELASTIC_USER=elastic ELASTIC_USER_PASSWORD=password REDIS_HOST=localhost sh scripts/run.sh"
     exit 1
 fi
 

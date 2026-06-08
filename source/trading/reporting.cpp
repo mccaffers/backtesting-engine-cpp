@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <cstddef>
 #include <boost/decimal.hpp>
+#include "backtestLog.hpp"
 #include "trade.hpp"
 #include "tradingResults.hpp"
 
@@ -64,6 +65,11 @@ TradingResultsStats Reporting::collect(const TradeManager& tradeManager) {
 }
 
 void Reporting::summarise(const TradeManager& tradeManager) {
+    // Per-strategy summary is skipped under concurrent backtests (quiet).
+    if (backtest_log::quiet) {
+        return;
+    }
+
     const auto stats = collect(tradeManager);
 
     std::cout << "Final PnL: " << std::fixed << std::setprecision(2) << stats.finalPnl << std::endl;

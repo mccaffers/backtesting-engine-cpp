@@ -5,16 +5,18 @@
 // ---------------------------------------
 
 #include "operations.hpp"
+#include <chrono>
+#include <print>
 #include <vector>
 #include <memory>
 #include <string>
 #include <exception>
-#include <iostream>
+#include "backtestLog.hpp"
 #include "tradeManager.hpp"
-#include "reviewStopAndLimit.hpp"
+#include "runLoop.hpp"
 #include "reporting.hpp"
 #include "tradingResults.hpp"
-#include "elasticClient.hpp"
+#include "reporting/elasticClient.hpp"
 #include "strategies/strategy.hpp"
 #include "strategies/randomStrategy.hpp"
 #include "strategies/strategyErrors.hpp"
@@ -36,36 +38,38 @@ std::unique_ptr<IStrategy> selectStrategy(const trading_definitions::Configurati
 void Operations::run(const std::vector<PriceData>& ticks,
                      const trading_definitions::Configuration& config) {
 
+    // Function-local (stack) start time: each worker thread times only its own
+    // run. steady_clock is monotonic, the correct clock for elapsed durations.
+    const auto runStart = std::chrono::steady_clock::now();
+
+    std::println("Operations: new run starting RUN_ID={} strategy={}",
+                 config.RUN_ID,
+                 config.STRATEGY.TRADING_VARIABLES.STRATEGY);
+
     auto tradeManager = std::make_unique<TradeManager>();
     auto strategy = selectStrategy(config);
 
-    const auto& tradingVars = config.STRATEGY.TRADING_VARIABLES;
-
-    for (const auto& tick : ticks) {
-
-        // Close any trade whose stop-loss or take-profit fired on this tick
-        // before we consider opening a new one otherwise an exit and an
-        // entry could race within the same tick.
-        trading::reviewStopAndLimit(*tradeManager, tick);
-
-        if (!tradeManager->hasActiveTradeForSymbol(tick.symbol)) {
-            if (auto signal = strategy->decide(tick)) {
-                tradeManager->openTrade(tick,
-                                        tradingVars.TRADING_SIZE,
-                                        *signal,
-                                        tradingVars.STOP_DISTANCE_IN_PIPS,
-                                        tradingVars.LIMIT_DISTANCE_IN_PIPS);
-            }
-        }
-
-        // Strategy-driven management hook for non-SL/TP exit logic
-        // (e.g. trailing stops, partial closes). The default
-        // RandomStrategy implementation is a no-op now that exits are
-        // handled by reviewStopAndLimit above.
-        strategy->during(tick, *tradeManager);
-    }
+    // The per-tick loop (exit review -> re-entry gate -> entry -> manage) lives
+    // in trading::runTicks so it can be driven with a deterministic strategy and
+    // an inspectable TradeManager under test. Behaviour here is unchanged.
+    trading::runTicks(*tradeManager, *strategy, ticks,
+                      config.STRATEGY.TRADING_VARIABLES);
 
     Reporting::summarise(*tradeManager);
+
+    // Elapsed backtest time for this run, measured from the top of run(). The
+    // Elasticsearch PUT below is deliberately excluded so the duration reflects
+    // compute, not network latency.
+    const std::chrono::duration<double> elapsed =
+        std::chrono::steady_clock::now() - runStart;
+    const double durationSeconds = elapsed.count();
+
+    // Per-run completion line, suppressed under concurrent (quiet) sweeps to
+    // match the other per-run logs.
+    if (!backtest_log::quiet) {
+        std::println("Operations: run RUN_ID={} completed in {:.3f}s",
+                     config.RUN_ID, durationSeconds);
+    }
 
     // Best-effort: persist this run's results to Elasticsearch. The backtest
     // has already produced its summary, so nothing here may abort the run.
@@ -77,15 +81,15 @@ void Operations::run(const std::vector<PriceData>& ticks,
         const TradingResults results{
             config.RUN_ID,
             TradingResults::nowIsoUtc(),
+            durationSeconds,
             config,
             Reporting::collect(*tradeManager),
         };
         ElasticClient::putTradingResults(results);
     } catch (const std::exception& e) {
-        std::cerr << "Operations: trading-results put failed: " << e.what()
-                  << std::endl;
+        backtest_log::error(std::string("Operations: trading-results put failed: ")
+                            + e.what());
     } catch (...) {
-        std::cerr << "Operations: trading-results put failed: unknown error"
-                  << std::endl;
+        backtest_log::error("Operations: trading-results put failed: unknown error");
     }
 }

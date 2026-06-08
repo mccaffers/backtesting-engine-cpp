@@ -5,15 +5,85 @@
 // ---------------------------------------
 
 #import <XCTest/XCTest.h>
+#import <stdlib.h>            // setenv — disable Elastic reporting for run() smoke tests
+#import <optional>
+#import <utility>
+#import <vector>
 #import <boost/decimal/literals.hpp>
 #import "tradeManager.hpp"
 #import "exitRules.hpp"
 #import "reviewStopAndLimit.hpp"
+#import "runLoop.hpp"
+#import "operations.hpp"
+#import "strategies/strategy.hpp"
+#import "trading_definitions/configuration.hpp"
 
 // Pulls in the _dd user-defined literal so "1.23"_dd produces a decimal64_t
 // directly. decimal64_t has no implicit conversion from double — the closest
 // C# analogue is having to write `1.23m` instead of `1.23` for a decimal.
 using namespace boost::decimal::literals;
+
+namespace {
+
+// Minimal Configuration that drives Operations::run down the RandomStrategy
+// path. selectStrategy only reads STRATEGY.TRADING_VARIABLES.STRATEGY, and
+// RandomStrategy ignores everything else in the strategy block, so the OHLC
+// and strategy-variable sections are left default-constructed. The pip / size
+// values are plausible but irrelevant to the no-throw assertions below.
+trading_definitions::Configuration makeRandomStrategyConfig() {
+    trading_definitions::Configuration config;
+    config.RUN_ID = "TEST_RUN";
+    config.SYMBOLS = "EURUSD";
+    config.LAST_MONTHS = 1;
+    config.STRATEGY.UUID = "test-strategy-uuid";
+    auto& vars = config.STRATEGY.TRADING_VARIABLES;
+    vars.STRATEGY = "RandomStrategy";
+    vars.STOP_DISTANCE_IN_PIPS = "10"_dd;
+    vars.LIMIT_DISTANCE_IN_PIPS = "10"_dd;
+    vars.TRADING_SIZE = "1.0"_dd;
+    return config;
+}
+
+// Per-test TradingVariables so each runTicks case can dial SL/TP independently
+// (e.g. stop=0 to isolate the take-profit path). STRATEGY is unused by runTicks.
+trading_definitions::TradingVariables makeVars(boost::decimal::decimal64_t stopPips,
+                                               boost::decimal::decimal64_t limitPips,
+                                               boost::decimal::decimal64_t size) {
+    trading_definitions::TradingVariables vars;
+    vars.STRATEGY = "Scripted";
+    vars.STOP_DISTANCE_IN_PIPS = stopPips;
+    vars.LIMIT_DISTANCE_IN_PIPS = limitPips;
+    vars.TRADING_SIZE = size;
+    return vars;
+}
+
+// Deterministic strategy that replays a pre-scripted sequence of signals, one
+// per decide() call, returning nullopt ("no trade") once exhausted. This is the
+// injectable seam that lets us assert exact bid/ask outcomes from the run loop
+// without RandomStrategy's coin flips.
+struct ScriptedStrategy : IStrategy {
+    std::vector<std::optional<Direction>> script;
+    std::size_t index = 0;
+
+    explicit ScriptedStrategy(std::vector<std::optional<Direction>> signals)
+        : script(std::move(signals)) {}
+
+    std::optional<Direction> decide(const PriceData& /*tick*/) override {
+        return index < script.size() ? script[index++] : std::nullopt;
+    }
+    void during(const PriceData& /*tick*/, TradeManager& /*tradeManager*/) override {}
+};
+
+// Always signals LONG — used to probe re-entry behaviour (gating while a
+// position is open; same-tick re-entry after a stop-out).
+struct AlwaysLongStrategy : IStrategy {
+    std::optional<Direction> decide(const PriceData& /*tick*/) override {
+        return Direction::LONG;
+    }
+    void during(const PriceData& /*tick*/, TradeManager& /*tradeManager*/) override {}
+};
+
+}  // namespace
 
 @interface TradeManagerTests : XCTestCase
 @property (nonatomic) TradeManager* manager;
@@ -23,6 +93,10 @@ using namespace boost::decimal::literals;
 
 - (void)setUp {
     self.manager = new TradeManager();
+    // Operations::run finishes by PUTting results to Elasticsearch. There is no
+    // Elastic instance under test, so opt out: putTradingResults returns early
+    // (no network, no JSON serialisation) when ELASTIC_ENABLED=0.
+    setenv("ELASTIC_ENABLED", "0", 1);
 }
 
 - (void)tearDown {
@@ -321,6 +395,326 @@ using namespace boost::decimal::literals;
     XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
                   "EURUSD must report as active after a single openTrade — production "
                   "re-entry gating depends on this");
+}
+
+#pragma mark - Entry-side bid/ask handling
+
+// Simple round-number spread (ask 100, bid 99) to pin which side of the spread
+// each direction uses on entry. A LONG buys at the ask, but its stop/limit must
+// be measured from the bid (the price it would exit at), so:
+//   entryPrice == ask, exitReferencePrice == bid.
+// entryBid/entryAsk record the raw spread regardless of direction.
+- (void)testOpenTrade_LongEntersAtAskAndRecordsSpread {
+    PriceData tick("100.0"_dd, "99.0"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, "1.0"_dd, Direction::LONG);
+    auto trades = self.manager->getActiveTrades();
+    auto trade = trades.find(tradeId);
+    XCTAssertNotEqual(trade, trades.end(), "Trade should exist");
+
+    XCTAssertEqual(trade->second.entryPrice, "100.0"_dd, "LONG executes at the ask");
+    XCTAssertEqual(trade->second.exitReferencePrice, "99.0"_dd,
+                   "LONG exit reference is the entry bid (close side)");
+    XCTAssertEqual(trade->second.entryAsk, "100.0"_dd, "entryAsk records the tick ask");
+    XCTAssertEqual(trade->second.entryBid, "99.0"_dd, "entryBid records the tick bid");
+}
+
+// Symmetric SHORT: sells at the bid, exit reference is the ask.
+- (void)testOpenTrade_ShortEntersAtBidAndRecordsSpread {
+    PriceData tick("100.0"_dd, "99.0"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string tradeId = self.manager->openTrade(tick, "1.0"_dd, Direction::SHORT);
+    auto trades = self.manager->getActiveTrades();
+    auto trade = trades.find(tradeId);
+    XCTAssertNotEqual(trade, trades.end(), "Trade should exist");
+
+    XCTAssertEqual(trade->second.entryPrice, "99.0"_dd, "SHORT executes at the bid");
+    XCTAssertEqual(trade->second.exitReferencePrice, "100.0"_dd,
+                   "SHORT exit reference is the entry ask (close side)");
+    XCTAssertEqual(trade->second.entryAsk, "100.0"_dd, "entryAsk records the tick ask");
+    XCTAssertEqual(trade->second.entryBid, "99.0"_dd, "entryBid records the tick bid");
+}
+
+#pragma mark - Operations::run loop invariants
+
+// Operations::run gates same-symbol re-entry on hasActiveTradeForSymbol and
+// runs reviewStopAndLimit *before* the entry check on each tick, so a trade
+// that stops out on a tick frees its symbol for re-entry on a later tick.
+// This drives that exact sequence through the public building blocks the loop
+// uses (reviewStopAndLimit + hasActiveTradeForSymbol) without invoking the
+// random strategy, pinning the ordering the smoke tests below cannot observe.
+- (void)testRunLoopInvariant_ExitFreesSymbolForReentry {
+    PriceData entryTick("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD");
+    std::string firstId = self.manager->openTrade(entryTick, "1.0"_dd, Direction::LONG,
+                                                  "1"_dd, "1"_dd);
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD must be active after the first open — re-entry is gated on this");
+
+    // Stop tick: bid drops 1 pip below the entry bid, so the LONG stops out.
+    PriceData stopTick("1.1000"_dd, "1.0999"_dd, std::chrono::system_clock::now(), "EURUSD");
+    trading::reviewStopAndLimit(*self.manager, stopTick);
+
+    XCTAssertFalse(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                   "Symbol must be free again once the trade stops out");
+    const auto& closed = self.manager->getClosedTrades();
+    XCTAssertEqual(closed.size(), 1, "Exactly one trade should have closed");
+    XCTAssertEqual(closed.front().closePrice, stopTick.bid,
+                   "LONG closes at the tick bid (the exit side)");
+
+    // The gate is open, so the loop would now allow a fresh entry on this symbol.
+    std::string secondId = self.manager->openTrade(stopTick, "1.0"_dd, Direction::LONG,
+                                                   "1"_dd, "1"_dd);
+    XCTAssertNotEqual(firstId, secondId, "Re-entry must be a distinct trade");
+    XCTAssertTrue(self.manager->hasActiveTradeForSymbol("EURUSD"),
+                  "EURUSD active again after re-entry");
+}
+
+#pragma mark - Operations::run smoke tests
+
+// Operations::run owns its TradeManager internally and reports only to stdout
+// and Elasticsearch, so there is no return value to assert against. These are
+// deliberately smoke tests: with ELASTIC_ENABLED=0 (see setUp) the run must
+// drive the full per-tick loop, summarise, and results path without throwing.
+// The deterministic bid/ask behaviour the loop relies on is covered by the
+// building-block tests above; RandomStrategy makes per-trade outcomes here
+// non-deterministic, so only the no-throw contract is checked.
+
+- (void)testOperationsRun_EmptyTicks_DoesNotThrow {
+    const std::vector<PriceData> ticks;
+    const auto config = makeRandomStrategyConfig();
+    XCTAssertNoThrow(Operations::run(ticks, config),
+                     "run must handle an empty tick stream without throwing");
+}
+
+- (void)testOperationsRun_SingleTick_DoesNotThrow {
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD"),
+    };
+    const auto config = makeRandomStrategyConfig();
+    XCTAssertNoThrow(Operations::run(ticks, config),
+                     "run must process a single tick without throwing");
+}
+
+- (void)testOperationsRun_MultipleTicks_DoesNotThrow {
+    // A drifting EURUSD series so the 10-pip SL/TP can actually fire across the
+    // run, exercising both the entry and the reviewStopAndLimit exit paths.
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.1011"_dd, "1.1010"_dd, now, "EURUSD"),
+        PriceData("1.1021"_dd, "1.1020"_dd, now, "EURUSD"),
+        PriceData("1.1006"_dd, "1.1005"_dd, now, "EURUSD"),
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),
+    };
+    const auto config = makeRandomStrategyConfig();
+    XCTAssertNoThrow(Operations::run(ticks, config),
+                     "run must process a multi-tick stream without throwing");
+}
+
+#pragma mark - Operations run loop (deterministic, end-to-end)
+
+// These drive trading::runTicks — the exact per-tick loop Operations::run
+// executes — with a deterministic injected strategy and a TradeManager we own,
+// so trade outcomes (entry side, exit side, realised PnL) can be asserted
+// directly. EURUSD scale is 10000, so 1 pip == 0.0001.
+
+// LONG entry executes at the ask; the stop/limit reference is the bid (the
+// close side), and both raw spread prices are recorded on the trade.
+- (void)testRunTicks_LongOpensAtAsk {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});
+    const auto vars = makeVars("10"_dd, "10"_dd, "1.0"_dd);
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD"),
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 1, "Exactly one trade should be open");
+    XCTAssertEqual(tm.getClosedTrades().size(), 0, "Nothing should have closed");
+    const Trade& trade = tm.getActiveTrades().begin()->second;
+    XCTAssertTrue(trade.direction == Direction::LONG, "Trade should be LONG");
+    XCTAssertEqual(trade.entryPrice, "1.1001"_dd, "LONG executes at the ask");
+    XCTAssertEqual(trade.exitReferencePrice, "1.1000"_dd, "LONG exit reference is the bid");
+    XCTAssertEqual(trade.entryAsk, "1.1001"_dd, "entryAsk records the tick ask");
+    XCTAssertEqual(trade.entryBid, "1.1000"_dd, "entryBid records the tick bid");
+}
+
+// Symmetric SHORT: executes at the bid, exit reference is the ask.
+- (void)testRunTicks_ShortOpensAtBid {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::SHORT});
+    const auto vars = makeVars("10"_dd, "10"_dd, "1.0"_dd);
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, std::chrono::system_clock::now(), "EURUSD"),
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 1, "Exactly one trade should be open");
+    const Trade& trade = tm.getActiveTrades().begin()->second;
+    XCTAssertTrue(trade.direction == Direction::SHORT, "Trade should be SHORT");
+    XCTAssertEqual(trade.entryPrice, "1.1000"_dd, "SHORT executes at the bid");
+    XCTAssertEqual(trade.exitReferencePrice, "1.1001"_dd, "SHORT exit reference is the ask");
+    XCTAssertEqual(trade.entryAsk, "1.1001"_dd, "entryAsk records the tick ask");
+    XCTAssertEqual(trade.entryBid, "1.1000"_dd, "entryBid records the tick bid");
+}
+
+// No signal -> no position, across many ticks.
+- (void)testRunTicks_NoSignalOpensNothing {
+    TradeManager tm;
+    ScriptedStrategy strategy({});  // empty script: decide() always returns nullopt
+    const auto vars = makeVars("10"_dd, "10"_dd, "1.0"_dd);
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.1011"_dd, "1.1010"_dd, now, "EURUSD"),
+        PriceData("1.1021"_dd, "1.1020"_dd, now, "EURUSD"),
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "No trade should open without a signal");
+    XCTAssertEqual(tm.getClosedTrades().size(), 0, "Nothing should close either");
+}
+
+// Re-entry is gated while a position is open: an always-signalling strategy on
+// flat ticks (price never reaches the 10-pip SL/TP) must still open only one
+// trade for the symbol, not one per tick.
+- (void)testRunTicks_ReentryGatedWhileActive {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars("10"_dd, "10"_dd, "1.0"_dd);
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 1,
+                   "Gate must suppress duplicate same-symbol entries while one is open");
+    XCTAssertEqual(tm.getClosedTrades().size(), 0, "Flat price must not trigger SL/TP");
+}
+
+// LONG take-profit: a 10-pip favourable move nets only 9 pips because entry was
+// at the ask (1.1001) while the TP is measured from the entry bid (1.1000) and
+// closes at the bid. This pins that the spread is accounted for end-to-end.
+- (void)testRunTicks_LongTP_ClosesAtBid_PnlNetOfSpread {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});       // opens once, no re-entry
+    const auto vars = makeVars("0"_dd, "10"_dd, "1.0"_dd);   // TP only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // open LONG @ ask 1.1001
+        PriceData("1.1011"_dd, "1.1010"_dd, now, "EURUSD"),   // bid 1.1010 hits TP (ref 1.1000 + 10p)
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "Position should be closed by TP");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "Exactly one closed trade");
+    const Trade& closed = tm.getClosedTrades().front();
+    XCTAssertEqual(closed.closePrice, "1.1010"_dd, "LONG TP closes at the tick bid");
+    XCTAssertEqual(closed.pnl, "9"_dd, "10-pip move nets 9 pips after the 1-pip spread");
+}
+
+// Symmetric SHORT take-profit: enters at the bid (1.1000), TP measured from the
+// entry ask (1.1001), closes at the ask. Again 9 pips net of the spread.
+- (void)testRunTicks_ShortTP_ClosesAtAsk_PnlNetOfSpread {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::SHORT});
+    const auto vars = makeVars("0"_dd, "10"_dd, "1.0"_dd);   // TP only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // open SHORT @ bid 1.1000
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // ask 1.0991 hits TP (ref 1.1001 - 10p)
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "Position should be closed by TP");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "Exactly one closed trade");
+    const Trade& closed = tm.getClosedTrades().front();
+    XCTAssertEqual(closed.closePrice, "1.0991"_dd, "SHORT TP closes at the tick ask");
+    XCTAssertEqual(closed.pnl, "9"_dd, "10-pip move nets 9 pips after the 1-pip spread");
+}
+
+// LONG stop-loss: a 10-pip adverse move (entry bid 1.1000 down to 1.0990) loses
+// 11 pips because entry was at the ask 1.1001. Loss includes the spread.
+- (void)testRunTicks_LongSL_ClosesAtBid_NegativePnl {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});
+    const auto vars = makeVars("10"_dd, "0"_dd, "1.0"_dd);   // SL only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // open LONG @ ask 1.1001
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // bid 1.0990 hits SL (ref 1.1000 - 10p)
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "Position should be stopped out");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "Exactly one closed trade");
+    const Trade& closed = tm.getClosedTrades().front();
+    XCTAssertEqual(closed.closePrice, "1.0990"_dd, "LONG SL closes at the tick bid");
+    XCTAssertEqual(closed.pnl, -"11"_dd, "10-pip adverse move loses 11 pips including the spread");
+}
+
+// Exit-before-entry ordering within a single tick: on the tick that stops the
+// first LONG out, reviewStopAndLimit closes it first, the symbol frees, and the
+// always-LONG strategy immediately re-enters on that same tick — at the new
+// tick's ask. Pins that the loop reviews exits before considering entries.
+- (void)testRunTicks_ExitThenSameTickReentry {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars("10"_dd, "0"_dd, "1.0"_dd);   // SL only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // LONG#1 @ ask 1.1001
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // stops LONG#1, re-opens LONG#2
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "The first LONG should have closed");
+    XCTAssertEqual(tm.getActiveTrades().size(), 1, "A re-entry should be open on the same tick");
+
+    const Trade& closed = tm.getClosedTrades().front();
+    XCTAssertEqual(closed.entryPrice, "1.1001"_dd, "Closed trade was LONG#1, entered at tick1 ask");
+    XCTAssertEqual(closed.closePrice, "1.0990"_dd, "LONG#1 stopped out at tick2 bid");
+
+    const Trade& reentry = tm.getActiveTrades().begin()->second;
+    XCTAssertTrue(reentry.direction == Direction::LONG, "Re-entry should be LONG");
+    XCTAssertEqual(reentry.entryPrice, "1.0991"_dd, "Re-entry executes at tick2 ask");
+    XCTAssertEqual(reentry.exitReferencePrice, "1.0990"_dd, "Re-entry exit reference is tick2 bid");
+}
+
+// Two symbols open simultaneously, each entering on the correct side of its own
+// spread regardless of price scale (EURUSD ~1.10 vs AUSIDXAUD ~7000).
+- (void)testRunTicks_MultiSymbol {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG});
+    const auto vars = makeVars("0"_dd, "0"_dd, "1.0"_dd);    // no exits — both persist
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("7000.5"_dd, "7000.0"_dd, now, "AUSIDXAUD"),
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    XCTAssertEqual(tm.getActiveTrades().size(), 2, "Both symbols should be open");
+    const Trade* eur = nullptr;
+    const Trade* aus = nullptr;
+    for (const auto& [id, trade] : tm.getActiveTrades()) {
+        if (trade.symbol == "EURUSD") eur = &trade;
+        else if (trade.symbol == "AUSIDXAUD") aus = &trade;
+    }
+    XCTAssertTrue(eur != nullptr, "EURUSD trade should exist");
+    XCTAssertTrue(aus != nullptr, "AUSIDXAUD trade should exist");
+    XCTAssertEqual(eur->entryPrice, "1.1001"_dd, "EURUSD LONG enters at its ask");
+    XCTAssertEqual(aus->entryPrice, "7000.5"_dd, "AUSIDXAUD LONG enters at its ask");
 }
 
 @end

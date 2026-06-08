@@ -27,7 +27,7 @@ fi
 
 # 1. Generate build files (Passing your CXX flags directly to CMake instead of configure)
 cmake .. \
-  -DCMAKE_CXX_STANDARD=20 \
+  -DCMAKE_CXX_STANDARD=23 \
   -DCMAKE_BUILD_TYPE=Release \
   -DSKIP_BUILD_TEST=ON \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON

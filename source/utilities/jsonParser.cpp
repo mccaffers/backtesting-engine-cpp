@@ -30,3 +30,31 @@ trading_definitions::Configuration JsonParser::parseConfigurationFromBase64(cons
 
     return config;
 }
+
+trading_definitions::RunConfiguration JsonParser::parseRunConfigurationFromBase64(const std::string& input) {
+    const std::string output = Base64::b64decode(input);
+
+    json j;
+    try {
+        j = json::parse(output);
+    }
+    catch (json::parse_error& ex) {
+        std::cerr << "parse error at byte " << ex.byte << std::endl;
+    }
+
+    return j.get<trading_definitions::RunConfiguration>();
+}
+
+trading_definitions::Strategy JsonParser::parseStrategyFromBase64(const std::string& input) {
+    const std::string output = Base64::b64decode(input);
+
+    json j;
+    try {
+        j = json::parse(output);
+    }
+    catch (json::parse_error& ex) {
+        std::cerr << "parse error at byte " << ex.byte << std::endl;
+    }
+
+    return j.get<trading_definitions::Strategy>();
+}

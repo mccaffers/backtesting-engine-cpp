@@ -1,3 +1,4 @@
+#!/bin/bash
 rm -rf ./TestResult;
 rm -rf ./TestResult.xcresult;
 rm -rf ./sonarqube-generic-coverage.xml
@@ -15,4 +16,4 @@ xcodebuild \
 -derivedDataPath "/tmp" \
 clean build test
 
-bash ./.github/workflows/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
+bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
