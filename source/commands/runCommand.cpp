@@ -15,8 +15,8 @@
 #include "redisRunner.hpp"
 
 int RunCommand::run(int argc, const char* argv[]) {
+    
     if (argc < 3) {
-        // C++23 std::println is faster, safer, and cleaner than iostreams
         std::println(stderr, "Usage: BacktestingEngine run <questdb-host>\n"
                              "       BacktestingEngine run <questdb-host> <base64-config>");
         return 1;

@@ -140,6 +140,7 @@
 		94829FC32FCC1D1200710E6E /* env.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = env.hpp; sourceTree = "<group>"; };
 		94829FC42FCC1D1A00710E6E /* env.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = env.cpp; sourceTree = "<group>"; };
 		948A9CCD2C906A5600E23669 /* CONVENTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONVENTIONS.md; sourceTree = "<group>"; };
+		94B1A5992FD735F100CB7C9F /* runLoop.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = runLoop.hpp; sourceTree = "<group>"; };
 		94B4F02A2FD618B300B08FB4 /* backtestLog.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = backtestLog.hpp; sourceTree = "<group>"; };
 		94B4F02B2FD618B300B08FB4 /* threadPool.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = threadPool.hpp; sourceTree = "<group>"; };
 		94BBA4512D2EA2640010E04D /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
@@ -1433,6 +1434,7 @@
 		94674B842D533B2F00973137 /* trading */ = {
 			isa = PBXGroup;
 			children = (
+				94B1A5992FD735F100CB7C9F /* runLoop.hpp */,
 				946EFF802FB9F457008D9647 /* reporting.hpp */,
 				94674B832D533B2F00973137 /* tradeManager.hpp */,
 				94674BA02D533B2F00973137 /* exitRules.hpp */,

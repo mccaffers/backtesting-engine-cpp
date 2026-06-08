@@ -10,9 +10,9 @@
 #include <chrono>
 #include <cstddef>
 #include <exception>
-#include <iostream>
 #include <memory>
 #include <optional>
+#include <print>
 #include <string>
 #include <thread>
 #include <utility>
@@ -93,13 +93,13 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
     int exitCode = 0;
 
     try {
-        // One pool for the whole worker, reused across every run. Sized to the
-        // machine but capped at 6 backtests in flight as a starting point.
+
+        // Get CPU threads available, max of 6
         const unsigned hw = std::thread::hardware_concurrency();
         ThreadPool pool(std::clamp(hw == 0 ? 6u : hw, 1u, 6u));
 
         // Loop forever, claiming one run per iteration. An empty queue makes us
-        // wait and re-peek (below); only an exception leaves this loop.
+        // wait and re-peek (below); only an exception blows the loop
         bool waitingLogged = false;
         for (;;) {
             const std::optional<std::string> descriptorB64 = co_await peekRunTail(conn);
@@ -108,8 +108,7 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
                 // is co_awaited, so this suspends (not a busy wait) while keeping
                 // the io_context and the Redis connection alive.
                 if (!waitingLogged) {
-                    std::cout << "RedisRunner: queue empty, waiting for work..."
-                              << std::endl;
+                    std::println("RedisRunner: queue empty, waiting for work...");
                     waitingLogged = true;
                 }
                 asio::steady_timer timer(co_await asio::this_coro::executor);
@@ -119,17 +118,12 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
             }
             waitingLogged = false;  // got a run; re-arm the idle log for next time
 
-            const trading_definitions::RunConfiguration runCfg =
-                JsonParser::parseRunConfigurationFromBase64(*descriptorB64);
-            const std::string strategyKey =
-                queue_keys::strategyKey(runCfg.RUN_ID);
-            std::cout << "RedisRunner: picked up RUN_ID=" << runCfg.RUN_ID
-                      << " SYMBOLS=" << runCfg.SYMBOLS
-                      << " LAST_MONTHS=" << runCfg.LAST_MONTHS << std::endl;
+            const trading_definitions::RunConfiguration runCfg = JsonParser::parseRunConfigurationFromBase64(*descriptorB64);
+            const std::string strategyKey = queue_keys::strategyKey(runCfg.RUN_ID);
+            std::println("RedisRunner: picked up RUN_ID={} SYMBOLS={} LAST_MONTHS={}", runCfg.RUN_ID, runCfg.SYMBOLS, runCfg.LAST_MONTHS);
 
             // Pull this run's tick data once, then reuse across every strategy.
-            const std::vector<PriceData> ticks =
-                loadTicks(questdbHost, runCfg.SYMBOLS, runCfg.LAST_MONTHS);
+            const std::vector<PriceData> ticks = loadTicks(questdbHost, runCfg.SYMBOLS, runCfg.LAST_MONTHS);
 
             // Backtests run on the pool but every task reads this run's `ticks`
             // by reference (no copies). This guard joins all in-flight backtests
@@ -178,15 +172,15 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
             // never re-peek the same run and reload its ticks in a tight loop.
             co_await removeRun(conn, *descriptorB64);
 
-            std::cout << "RedisRunner: completed RUN_ID=" << runCfg.RUN_ID << " ("
-                      << strategiesRun << " strateg"
-                      << (strategiesRun == 1 ? "y" : "ies") << ")" << std::endl;
+            std::println("RedisRunner: completed RUN_ID={} ({} strateg{})",
+                         runCfg.RUN_ID, strategiesRun,
+                         strategiesRun == 1 ? "y" : "ies");
         }
     } catch (const std::exception& ex) {
-        std::cerr << "RedisRunner aborted: " << ex.what() << std::endl;
+        std::println(stderr, "RedisRunner aborted: {}", ex.what());
         exitCode = 3;
     } catch (...) {
-        std::cerr << "RedisRunner aborted: unknown error" << std::endl;
+        std::println(stderr, "RedisRunner aborted: unknown error");
         exitCode = 3;
     }
 
@@ -236,7 +230,7 @@ int RedisRunner::run(const std::string& questdbHost,
         try {
             std::rethrow_exception(error);
         } catch (const std::exception& ex) {
-            std::cerr << "RedisRunner failed: " << ex.what() << std::endl;
+            std::println(stderr, "RedisRunner failed: {}", ex.what());
         }
         return 3; // Exit with error status
     }

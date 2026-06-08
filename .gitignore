@@ -41,5 +41,6 @@ xcuserstate/
 TestResult.xcresult/
 sonarqube-generic-coverage.xml
 .cache/clangd/
+.clangd
 dump.rdb
 .infisical.json

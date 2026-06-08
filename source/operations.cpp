@@ -13,7 +13,7 @@
 #include <exception>
 #include "backtestLog.hpp"
 #include "tradeManager.hpp"
-#include "reviewStopAndLimit.hpp"
+#include "runLoop.hpp"
 #include "reporting.hpp"
 #include "tradingResults.hpp"
 #include "reporting/elasticClient.hpp"
@@ -49,31 +49,11 @@ void Operations::run(const std::vector<PriceData>& ticks,
     auto tradeManager = std::make_unique<TradeManager>();
     auto strategy = selectStrategy(config);
 
-    const auto& tradingVars = config.STRATEGY.TRADING_VARIABLES;
-
-    for (const auto& tick : ticks) {
-
-        // Close any trade whose stop-loss or take-profit fired on this tick
-        // before we consider opening a new one otherwise an exit and an
-        // entry could race within the same tick.
-        trading::reviewStopAndLimit(*tradeManager, tick);
-
-        if (!tradeManager->hasActiveTradeForSymbol(tick.symbol)) {
-            if (auto signal = strategy->decide(tick)) {
-                tradeManager->openTrade(tick,
-                                        tradingVars.TRADING_SIZE,
-                                        *signal,
-                                        tradingVars.STOP_DISTANCE_IN_PIPS,
-                                        tradingVars.LIMIT_DISTANCE_IN_PIPS);
-            }
-        }
-
-        // Strategy-driven management hook for non-SL/TP exit logic
-        // (e.g. trailing stops, partial closes). The default
-        // RandomStrategy implementation is a no-op now that exits are
-        // handled by reviewStopAndLimit above.
-        strategy->during(tick, *tradeManager);
-    }
+    // The per-tick loop (exit review -> re-entry gate -> entry -> manage) lives
+    // in trading::runTicks so it can be driven with a deterministic strategy and
+    // an inspectable TradeManager under test. Behaviour here is unchanged.
+    trading::runTicks(*tradeManager, *strategy, ticks,
+                      config.STRATEGY.TRADING_VARIABLES);
 
     Reporting::summarise(*tradeManager);
 
