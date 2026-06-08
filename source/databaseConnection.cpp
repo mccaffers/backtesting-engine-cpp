@@ -5,11 +5,10 @@
 // ---------------------------------------
 
 #include "databaseConnection.hpp"
-#include "base64.hpp"
 #include <pqxx/pqxx>
 #include <cstdio>
-#include <charconv>
 #include <format>
+#include <iostream>
 #include <stdexcept>
 #include <boost/decimal.hpp>
 
@@ -59,7 +58,7 @@ DatabaseConnection::DatabaseConnection(const std::string& endpoint, int port,
 
 }
 
-std::vector<PriceData> DatabaseConnection::streamQuery(const std::string& query) const {
+std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query) const {
     pqxx::connection conn(this->connection_string);
     pqxx::nontransaction txn(conn);
     pqxx::result result = txn.exec(query);

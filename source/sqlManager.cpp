@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db, const std::vector<std::string>& symbols, int LAST_MONTHS) {
+std::vector<PriceData> SqlManager::loadPriceData(const DatabaseConnection& db, const std::vector<std::string>& symbols, int LAST_MONTHS) {
     if (symbols.empty()) {
         return {};
     }
@@ -25,5 +25,5 @@ std::vector<PriceData> SqlManager::streamPriceData(const DatabaseConnection& db,
     query << " ORDER BY timestamp";
 
     std::cout << "Executing query: " << query.str() << std::endl;
-    return db.streamQuery(query.str());
+    return db.executeQuery(query.str());
 }
