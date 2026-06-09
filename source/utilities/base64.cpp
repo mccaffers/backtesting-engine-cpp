@@ -4,9 +4,6 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include <iomanip>  // Add this header for std::get_time
-#include <sstream>
-#include <chrono>
 #include "base64.hpp"
 
 static const char* const B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -22,15 +19,6 @@ static const int B64index[256] =
     0,  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
 };
-
-std::string Base64::checkInput(const std::string& base64_input) {
-    std::string result = base64_input;
-    result.erase(
-        std::remove_if(result.begin(), result.end(), ::isspace),
-        result.end()
-    );
-    return result;
-}
 
 // Code adapted from Stack Overflow https://stackoverflow.com/a/37109258/20806857
 const std::string Base64::b64encode(const unsigned char* data, const size_t &len)
@@ -99,36 +87,4 @@ std::string Base64::b64encode(const std::string& str)
 std::string Base64::b64decode(const std::string& str64)
 {
     return b64decode(reinterpret_cast<const unsigned char*>(str64.c_str()), str64.size());
-}
-
-bool Base64::isValidBase64(const std::string& input) {
-    // Check if string length is valid (multiple of 4)
-    if (input.length() % 4 != 0) {
-        return false;
-    }
-    
-    // Check if all characters are valid base64 characters
-    return std::all_of(input.begin(), input.end(),
-        [](char c) {
-            const char* valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-            return strchr(valid, c) != nullptr;
-        });
-}
-
-std::chrono::system_clock::time_point Utilities::parseTimestamp(const std::string& ts) {
-    std::tm tm = {};
-    std::istringstream ss(ts);
-    ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-    
-    auto timePoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-    
-    // Parse milliseconds if present
-    if (ss.peek() == '.') {
-        ss.ignore(); // Skip the dot
-        int milliseconds;
-        ss >> milliseconds;
-        timePoint += std::chrono::milliseconds(milliseconds / 1000); // Convert microseconds to milliseconds
-    }
-    
-    return timePoint;
 }

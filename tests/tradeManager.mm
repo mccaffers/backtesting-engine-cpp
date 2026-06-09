@@ -717,4 +717,177 @@ struct AlwaysLongStrategy : IStrategy {
     XCTAssertEqual(aus->entryPrice, "7000.5"_dd, "AUSIDXAUD LONG enters at its ask");
 }
 
+#pragma mark - Account loss limit (fail fast)
+
+// FLOATING drawdown alone must trigger the cutoff: no stop-loss, so the open
+// LONG's mark-to-market loss is the only thing the limit can see. The crash
+// tick marks the trade at -101 (floor: 10000 * 1% = 100), the run stops, and
+// the trade is liquidated at that mark — so the reported PnL is the true
+// account PnL, not 0 realized.
+- (void)testRunTicks_FloatingDrawdownBreach_LiquidatesAtMark {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});
+    const auto vars = makeVars("0"_dd, "0"_dd, "1.0"_dd);    // no SL/TP at all
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // open LONG @ ask 1.1001
+        PriceData("1.0901"_dd, "1.0900"_dd, now, "EURUSD"),   // mark at bid: floating -101
+        PriceData("1.0901"_dd, "1.0900"_dd, now, "EURUSD"),   // must never be processed
+    };
+    const trading::RiskLimits limits{.startingBalance = "10000"_dd,
+                                     .maxLossPercent = "1"_dd};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    XCTAssertTrue(status == trading::RunStatus::LossLimitBreached,
+                  "Floating drawdown must count toward the loss limit");
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "The open trade must be liquidated");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "Exactly one (liquidated) closed trade");
+    const Trade& closed = tm.getClosedTrades().front();
+    XCTAssertEqual(closed.closePrice, "1.0900"_dd, "Liquidation closes at the marked bid");
+    XCTAssertEqual(closed.pnl, -"101"_dd, "Liquidated PnL is the marked floating loss");
+    XCTAssertTrue(closed.liquidated, "Forced close must carry the liquidated flag");
+    XCTAssertEqual(closed.floatingPnl, "0"_dd, "floatingPnl is zeroed once realized");
+    XCTAssertEqual(tm.calculatePnl(), -"101"_dd, "True account PnL is fully realized");
+    XCTAssertEqual(tm.unrealizedPnl(), "0"_dd, "Nothing floating remains after liquidation");
+}
+
+// On breach, EVERY open trade is liquidated — each at its own symbol's last
+// marked price, not the breaching tick's. The EURUSD crash (-101) breaches the
+// -100 floor; the AUSIDXAUD position, marked only at its entry tick, closes at
+// its own mark 7000.0 for the -0.5 spread cost. True PnL = -101.5.
+- (void)testRunTicks_Liquidation_ClosesEverySymbolAtItsOwnMark {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG});
+    const auto vars = makeVars("0"_dd, "0"_dd, "1.0"_dd);    // no SL/TP at all
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),     // open EURUSD LONG
+        PriceData("7000.5"_dd, "7000.0"_dd, now, "AUSIDXAUD"),  // open AUSIDXAUD LONG
+        PriceData("1.0901"_dd, "1.0900"_dd, now, "EURUSD"),     // EURUSD -101: breach
+    };
+    const trading::RiskLimits limits{.startingBalance = "10000"_dd,
+                                     .maxLossPercent = "1"_dd};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    XCTAssertTrue(status == trading::RunStatus::LossLimitBreached,
+                  "Combined floating drawdown must breach the limit");
+    XCTAssertEqual(tm.getActiveTrades().size(), 0, "Both positions must be liquidated");
+    XCTAssertEqual(tm.getClosedTrades().size(), 2, "Both symbols produce a closed trade");
+    XCTAssertEqual(tm.calculatePnl(), -"101.5"_dd,
+                   "True PnL combines both liquidations (-101 EURUSD, -0.5 AUSIDXAUD spread)");
+    for (const Trade& closed : tm.getClosedTrades()) {
+        XCTAssertTrue(closed.liquidated, "Every forced close must carry the liquidated flag");
+        if (closed.symbol == "EURUSD") {
+            XCTAssertEqual(closed.closePrice, "1.0900"_dd, "EURUSD closes at the crash bid");
+            XCTAssertEqual(closed.pnl, -"101"_dd, "EURUSD realizes the crash drawdown");
+        } else {
+            XCTAssertEqual(closed.closePrice, "7000.0"_dd,
+                           "AUSIDXAUD closes at its own last mark, not a EURUSD price");
+            XCTAssertEqual(closed.pnl, -"0.5"_dd, "AUSIDXAUD realizes only its spread cost");
+        }
+    }
+}
+
+// MAX_OPEN_TRADES caps simultaneous positions across the whole run: with a
+// cap of 1, the second symbol's signal is skipped while the first position is
+// open. The uncapped variant of this setup is testRunTicks_MultiSymbol.
+- (void)testRunTicks_MaxOpenTradesCap_BlocksSecondEntry {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG});
+    const auto vars = makeVars("0"_dd, "0"_dd, "1.0"_dd);    // no exits — first stays open
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("7000.5"_dd, "7000.0"_dd, now, "AUSIDXAUD"),
+    };
+    const trading::RiskLimits limits{.maxOpenTrades = 1};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    XCTAssertTrue(status == trading::RunStatus::Completed, "Cap is not a failure condition");
+    XCTAssertEqual(tm.getActiveTrades().size(), 1, "Cap of 1 must block the second entry");
+    XCTAssertEqual(tm.getActiveTrades().begin()->second.symbol, std::string("EURUSD"),
+                   "The first signal wins the only slot");
+}
+
+// A stop-out that breaches the loss limit must end the run on that tick,
+// BEFORE the entry phase — so unlike testRunTicks_ExitThenSameTickReentry the
+// always-LONG strategy gets no same-tick re-entry, and later ticks never run.
+// Floor here: 10000 * 0.1% = 10; the single stop-out loses 11 (incl. spread).
+- (void)testRunTicks_LossLimitBreach_StopsRunBeforeReentry {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars("10"_dd, "0"_dd, "1.0"_dd);   // SL only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),   // LONG#1 @ ask 1.1001
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // stops LONG#1: pnl -11, breach
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // must never be processed
+    };
+    const trading::RiskLimits limits{.startingBalance = "10000"_dd,
+                                     .maxLossPercent = "0.1"_dd};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    XCTAssertTrue(status == trading::RunStatus::LossLimitBreached,
+                  "Run must report the loss-limit breach");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "Only the stopped-out trade should exist");
+    XCTAssertFalse(tm.getClosedTrades().front().liquidated,
+                   "A stop-out is an organic close, not a liquidation");
+    XCTAssertEqual(tm.getActiveTrades().size(), 0,
+                   "Breach is checked before entries — no re-entry may open");
+    XCTAssertEqual(tm.calculatePnl(), -"11"_dd, "Realized PnL at cutoff is the single stop-out");
+}
+
+// A realized loss inside the limit must not stop the run: same stop-out, but a
+// 5% limit (floor -500) comfortably absorbs -11, so the run completes and the
+// same-tick re-entry happens as normal.
+- (void)testRunTicks_LossWithinLimit_RunsToCompletion {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars("10"_dd, "0"_dd, "1.0"_dd);   // SL only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // stop-out -11, within -500
+    };
+    const trading::RiskLimits limits{.startingBalance = "10000"_dd,
+                                     .maxLossPercent = "5"_dd};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    XCTAssertTrue(status == trading::RunStatus::Completed, "Run should not be cut off");
+    XCTAssertEqual(tm.getClosedTrades().size(), 1, "The stop-out still closes");
+    XCTAssertEqual(tm.getActiveTrades().size(), 1, "Same-tick re-entry proceeds as normal");
+}
+
+// maxLossPercent <= 0 disables the check entirely — losses far past any
+// percentage are ignored and the run completes (the experimentation escape
+// hatch, no extra flag needed). Cover both 0 and -1 spellings.
+- (void)testRunTicks_LossLimitDisabled_ZeroAndNegative {
+    const auto vars = makeVars("10"_dd, "0"_dd, "1.0"_dd);   // SL only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData("1.1001"_dd, "1.1000"_dd, now, "EURUSD"),
+        PriceData("1.0991"_dd, "1.0990"_dd, now, "EURUSD"),   // stop-out -11
+    };
+
+    for (const auto percent : {"0"_dd, -"1"_dd}) {
+        TradeManager tm;
+        AlwaysLongStrategy strategy;
+        // Tiny balance: -11 realized is over 100% of the account, yet with the
+        // limit disabled the run must still complete.
+        const trading::RiskLimits limits{.startingBalance = "10"_dd,
+                                         .maxLossPercent = percent};
+
+        const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+        XCTAssertTrue(status == trading::RunStatus::Completed,
+                      "maxLossPercent <= 0 must disable the cutoff");
+        XCTAssertEqual(tm.getActiveTrades().size(), 1, "Re-entry proceeds unchecked");
+    }
+}
+
 @end

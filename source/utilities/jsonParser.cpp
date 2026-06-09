@@ -6,55 +6,21 @@
 
 #include "jsonParser.hpp"
 #include "base64.hpp"
-#include <iostream>
 
 using json = nlohmann::json;
 
-trading_definitions::Configuration JsonParser::parseConfigurationFromBase64(const std::string& input) {
-    // Ingest parameters
-    std::string output = Base64::b64decode(input);
-    
-    // Debug, console print out
-    std::cout << output;
-    
-    json j;
-    try {
-        j = json::parse(output);
-    }
-    catch (json::parse_error& ex) {
-        std::cerr << "parse error at byte " << ex.byte << std::endl;
-    }
-    
-    auto config = j.get<trading_definitions::Configuration>();
-    std::cout << config.RUN_ID << std::endl;
+// Parse errors propagate to the caller — json::parse_error carries the byte
+// offset, which is more useful than the downstream type_error a discarded
+// json value would produce.
 
-    return config;
+trading_definitions::Configuration JsonParser::parseConfigurationFromBase64(const std::string& input) {
+    return json::parse(Base64::b64decode(input)).get<trading_definitions::Configuration>();
 }
 
 trading_definitions::RunConfiguration JsonParser::parseRunConfigurationFromBase64(const std::string& input) {
-    const std::string output = Base64::b64decode(input);
-
-    json j;
-    try {
-        j = json::parse(output);
-    }
-    catch (json::parse_error& ex) {
-        std::cerr << "parse error at byte " << ex.byte << std::endl;
-    }
-
-    return j.get<trading_definitions::RunConfiguration>();
+    return json::parse(Base64::b64decode(input)).get<trading_definitions::RunConfiguration>();
 }
 
 trading_definitions::Strategy JsonParser::parseStrategyFromBase64(const std::string& input) {
-    const std::string output = Base64::b64decode(input);
-
-    json j;
-    try {
-        j = json::parse(output);
-    }
-    catch (json::parse_error& ex) {
-        std::cerr << "parse error at byte " << ex.byte << std::endl;
-    }
-
-    return j.get<trading_definitions::Strategy>();
+    return json::parse(Base64::b64decode(input)).get<trading_definitions::Strategy>();
 }

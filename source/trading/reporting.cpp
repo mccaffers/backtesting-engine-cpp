@@ -32,6 +32,7 @@ TradingResultsStats Reporting::collect(const TradeManager& tradeManager) {
     std::size_t winners = 0;
     std::size_t losers = 0;
     std::size_t breakeven = 0;
+    std::size_t liquidated = 0;
     boost::decimal::decimal64_t pnlSum{0};
     const boost::decimal::decimal64_t zero{0};
     for (const auto& trade : closedTrades) {
@@ -40,13 +41,14 @@ TradingResultsStats Reporting::collect(const TradeManager& tradeManager) {
         if (trade.pnl > zero) ++winners;
         else if (trade.pnl < zero) ++losers;
         else ++breakeven;
+        if (trade.liquidated) ++liquidated;
         pnlSum += trade.pnl;
     }
     openedLong  += closedLong;
     openedShort += closedShort;
 
     TradingResultsStats stats;
-    stats.finalPnl     = tradeManager.calculatePnl();
+    stats.finalPnl     = pnlSum;
     stats.tradesOpened = openedCount;
     stats.tradesClosed = closedCount;
     stats.openedLong   = openedLong;
@@ -56,6 +58,7 @@ TradingResultsStats Reporting::collect(const TradeManager& tradeManager) {
     stats.winners      = winners;
     stats.losers       = losers;
     stats.breakeven    = breakeven;
+    stats.liquidated   = liquidated;
     if (closedCount == 0) {
         stats.avgPnl = std::nullopt;
     } else {

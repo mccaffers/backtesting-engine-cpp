@@ -38,9 +38,9 @@ size_t discardResponse(char* /*ptr*/, size_t size, size_t nmemb, void* /*userdat
     return size * nmemb;
 }
 
-}  // namespace
-
-int ElasticClient::putTradingResults(const TradingResults& results) {
+// Shared PUT of one JSON document into the given index. Both public entry
+// points only differ in target index and body shape.
+int putDocument(const std::string& index, const std::string& body) {
     // Allow runs to opt out of result reporting entirely (e.g. local backtests
     // with no Elastic instance). On by default to preserve existing behaviour.
     if (env::getOr("ELASTIC_ENABLED", "1") == "0") {
@@ -52,8 +52,7 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
     const std::string host = env::getOr("ELASTIC_HOST", "http://localhost:9200");
     const std::string user = env::getOr("ELASTIC_USER", "");
     const std::string password = env::getOr("ELASTIC_USER_PASSWORD", "");
-    const std::string url = host + "/trading_results/_doc/" + generateUuid();
-    const std::string body = nlohmann::json(results).dump();
+    const std::string url = host + "/" + index + "/_doc/" + generateUuid();
 
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -110,4 +109,14 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
                   << std::endl;
     }
     return 0;
+}
+
+}  // namespace
+
+int ElasticClient::putTradingResults(const TradingResults& results) {
+    return putDocument("trading_results", nlohmann::json(results).dump());
+}
+
+int ElasticClient::putTradingFailure(const TradingFailure& failure) {
+    return putDocument("trading_failures", nlohmann::json(failure).dump());
 }

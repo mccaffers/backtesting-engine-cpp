@@ -149,10 +149,14 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
                 // Reassemble the Configuration the rest of the pipeline expects.
                 // Parsing stays on this thread; the worker only runs the backtest.
                 trading_definitions::Configuration config{
-                    runCfg.RUN_ID,
-                    runCfg.SYMBOLS,
-                    runCfg.LAST_MONTHS,
-                    JsonParser::parseStrategyFromBase64(*strategyB64),
+                    .RUN_ID = runCfg.RUN_ID,
+                    .SYMBOLS = runCfg.SYMBOLS,
+                    .LAST_MONTHS = runCfg.LAST_MONTHS,
+                    .STARTING_BALANCE = runCfg.STARTING_BALANCE,
+                    .MAX_LOSS_PERCENT = runCfg.MAX_LOSS_PERCENT,
+                    .MAX_OPEN_TRADES = runCfg.MAX_OPEN_TRADES,
+                    .REPORT_FAILURES = runCfg.REPORT_FAILURES,
+                    .STRATEGY = JsonParser::parseStrategyFromBase64(*strategyB64),
                 };
                 pool.submit([&ticks, cfg = std::move(config)]() {
                     runBacktestOnTicks(ticks, cfg);

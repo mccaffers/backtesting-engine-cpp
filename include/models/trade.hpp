@@ -40,11 +40,25 @@ struct Trade {
     // Pip-PnL = price difference * scalingFactor * size (sign flipped for SHORT).
     boost::decimal::decimal64_t pnl;
 
+    // Mark-to-market state while the trade is open, maintained by
+    // TradeManager: the most recent close-side price seen for this symbol and
+    // the floating PnL at that price. Feeds the account loss limit, and
+    // lastMarkPrice is the liquidation price if the run is cut off.
+    // floatingPnl is zeroed on close — its value has been realized into pnl.
+    boost::decimal::decimal64_t lastMarkPrice;
+    boost::decimal::decimal64_t floatingPnl;
+
+    // True when the close was forced by the account loss limit (liquidation
+    // at the last marked price) rather than earned via SL/TP or strategy
+    // logic — lets reporting separate forced closes from organic ones.
+    bool liquidated = false;
+
     // Default constructor
     Trade() : entryPrice(0), entryBid(0), entryAsk(0), size(0), direction(Direction::LONG),
               scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
               exitReferencePrice(0),
               closePrice(0), pnl(0),
+              lastMarkPrice(0), floatingPnl(0),
               openTime(std::chrono::system_clock::now()) {}
 
     // Copy constructor
@@ -65,7 +79,9 @@ struct Trade {
           stopDistancePips(0),
           limitDistancePips(0),
           exitReferencePrice(0),
-          pnl(0) {
+          pnl(0),
+          lastMarkPrice(0),
+          floatingPnl(0) {
     }
 
 };
