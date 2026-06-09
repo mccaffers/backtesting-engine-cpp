@@ -8,11 +8,13 @@
 
 #include "tradingResults.hpp"
 
-// Minimal Elasticsearch HTTP client — PUT-only, for indexing TradingResults.
+// Minimal Elasticsearch HTTP client — PUT-only, for indexing run outcomes.
 // Host is read from $ELASTIC_HOST (default http://localhost:9200) with optional
-// HTTP basic auth from $ELASTIC_USER / $ELASTIC_USER_PASSWORD; docs land in
-// index "trading_results" with a freshly generated UUID per put.
+// HTTP basic auth from $ELASTIC_USER / $ELASTIC_USER_PASSWORD. Completed runs
+// land in index "trading_results"; runs cut off early (loss limit) land in
+// "trading_failures". Each doc gets a freshly generated UUID.
 class ElasticClient {
 public:
     static int putTradingResults(const TradingResults& results);
+    static int putTradingFailure(const TradingFailure& failure);
 };

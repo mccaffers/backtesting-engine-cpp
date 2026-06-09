@@ -4,11 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 #pragma once
-#include <iostream>
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <cstring>
+#include <cstddef>
 #include <string>
 
 class Base64 {
@@ -17,12 +13,5 @@ public:
   static const std::string b64decode(const unsigned char* data, const size_t &len);
   static std::string b64encode(const std::string& str);
   static std::string b64decode(const std::string& str64);
-  static bool isValidBase64(const std::string& input);
-  static std::string checkInput(const std::string& base64_input);
-};
-
-class Utilities {
-public:
-  static std::chrono::system_clock::time_point parseTimestamp(const std::string& ts);
 };
 

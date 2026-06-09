@@ -28,6 +28,9 @@ struct TradingResultsStats {
     std::size_t winners;
     std::size_t losers;
     std::size_t breakeven;
+    // Closes forced by the account loss limit, so winners/losers/avgPnl can
+    // be read net of liquidation noise.
+    std::size_t liquidated;
     std::optional<boost::decimal::decimal64_t> avgPnl;
 };
 
@@ -43,5 +46,18 @@ struct TradingResults {
     static std::string nowIsoUtc();
 };
 
+// Wire shape for a run that was cut off early (e.g. it breached the account
+// loss limit). Carries the stats as they stood at the cutoff so a failed run
+// is still fully inspectable in Kibana; `reason` says why it was stopped.
+struct TradingFailure {
+    std::string RUN_ID;
+    std::string timestamp;
+    double durationSeconds;          // wall-clock seconds until the cutoff
+    std::string reason;
+    trading_definitions::Configuration config;
+    TradingResultsStats results;
+};
+
 void to_json(nlohmann::json& j, const TradingResultsStats& s);
 void to_json(nlohmann::json& j, const TradingResults& r);
+void to_json(nlohmann::json& j, const TradingFailure& f);

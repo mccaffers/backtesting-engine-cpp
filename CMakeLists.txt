@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.30)
 
 # CMAKE_OSX_SYSROOT is a macOS-specific setting that specifies the SDK path.
-# This is ignored on non-Apple platforms, so it's safe to include in cross-platform builds.
-execute_process(
-    COMMAND xcrun --show-sdk-path
-    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(APPLE)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
 
 project(BacktestingEngine)
 
@@ -34,8 +35,19 @@ set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 # Build libpqxx from source
 add_subdirectory(external/libpqxx EXCLUDE_FROM_ALL)
 
-# Include directories
-include_directories(
+# Collect all .cpp files in the src directory
+file(GLOB_RECURSE SOURCES "source/*.cpp")
+
+# main.cpp belongs to the executable only — keeping it in the library too
+# means it gets compiled twice and the lib carries a competing main().
+list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/source/main.cpp)
+
+# Create a library of your project's code
+add_library(BacktestingEngineLib STATIC ${SOURCES})
+
+# Include directories — PUBLIC so they propagate to the executable (and any
+# other consumer) through target_link_libraries.
+target_include_directories(BacktestingEngineLib PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/commands
     ${CMAKE_SOURCE_DIR}/include/utilities
@@ -47,22 +59,23 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/external
 )
 
-# Collect all .cpp files in the src directory
-file(GLOB_RECURSE SOURCES "source/*.cpp")
-
-# Create a library of your project's code
-add_library(BacktestingEngineLib STATIC ${SOURCES})
-
 # Configure OpenMP. On Apple, provide Homebrew libomp hints before discovery.
+# brew --prefix resolves the right location on both Apple Silicon
+# (/opt/homebrew) and Intel (/usr/local).
 if(APPLE)
+    execute_process(
+        COMMAND brew --prefix libomp
+        OUTPUT_VARIABLE LIBOMP_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
     set(OpenMP_C_FLAGS "-Xclang -fopenmp")
     set(OpenMP_CXX_FLAGS "-Xclang -fopenmp")
     set(OpenMP_C_LIB_NAMES "omp")
     set(OpenMP_CXX_LIB_NAMES "omp")
-    set(OpenMP_omp_LIBRARY /opt/homebrew/opt/libomp/lib/libomp.dylib)
-    find_package(OpenMP REQUIRED)
-    target_include_directories(BacktestingEngineLib PRIVATE /opt/homebrew/opt/libomp/include)
+    set(OpenMP_omp_LIBRARY ${LIBOMP_PREFIX}/lib/libomp.dylib)
+    target_include_directories(BacktestingEngineLib PRIVATE ${LIBOMP_PREFIX}/include)
 endif()
+find_package(OpenMP REQUIRED)
 
 # Boost (Homebrew) — Boost.Redis is header-only but its implementation is
 # compiled into one dedicated TU via <boost/redis/src.hpp> (source/
@@ -82,7 +95,6 @@ target_link_libraries(BacktestingEngineLib PUBLIC
 add_subdirectory(external/boost-decimal)
 target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)
 
-find_package(OpenMP REQUIRED)
 target_link_libraries(BacktestingEngineLib PUBLIC pqxx OpenMP::OpenMP_CXX)
 
 # Main executable

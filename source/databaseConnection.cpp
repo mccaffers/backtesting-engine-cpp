@@ -8,7 +8,6 @@
 #include <pqxx/pqxx>
 #include <cstdio>
 #include <format>
-#include <iostream>
 #include <stdexcept>
 #include <boost/decimal.hpp>
 
@@ -17,7 +16,15 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) {
+// Caches timegm per date — tick data is time-ordered so the date changes
+// rarely. The caller owns the cache, so each thread/query gets its own and
+// the parse stays safe if loading ever moves onto the ThreadPool.
+struct DateCache {
+    std::string date;
+    time_t epoch = 0;
+};
+
+static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts, DateCache& cache) {
     int year = 0;
     int month = 0;
     int day = 0;
@@ -31,21 +38,18 @@ static std::chrono::system_clock::time_point fastParseTimestamp(const char* ts) 
         throw InvalidTimestampFormatError("Invalid timestamp format: " + std::string(ts));
     }
 
-    // Cache timegm per date — tick data is time-ordered so date changes rarely
-    static std::string cachedDate;
-    static time_t cachedEpoch = 0;
     const std::string_view date(ts, 10);
-    if (cachedDate != date) {
-        cachedDate.assign(date);
+    if (cache.date != date) {
+        cache.date.assign(date);
         std::tm tm = {};
         tm.tm_year = year - 1900;
         tm.tm_mon  = month - 1;
         tm.tm_mday = day;
         tm.tm_isdst = 0;
-        cachedEpoch = timegm(&tm);
+        cache.epoch = timegm(&tm);
     }
 
-    time_t t = cachedEpoch + hour * 3600 + min * 60 + sec;
+    time_t t = cache.epoch + hour * 3600 + min * 60 + sec;
     return std::chrono::system_clock::from_time_t(t) + std::chrono::microseconds(usec);
 }
 
@@ -64,6 +68,7 @@ std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query
     pqxx::result result = txn.exec(query);
 
     std::vector<PriceData> results(result.size());
+    DateCache dateCache;
 
     for (std::size_t i = 0; i < result.size(); ++i) {
         const auto& row = result[static_cast<pqxx::result::size_type>(i)];
@@ -74,30 +79,14 @@ std::vector<PriceData> DatabaseConnection::executeQuery(const std::string& query
         auto sv2 = row[2].view();
         // boost::decimal ships its own from_chars overload — std::from_chars
         // doesn't know about decimal64_t.
-        boost::decimal::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
-        boost::decimal::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
-        results[i] = PriceData(ask, bid, fastParseTimestamp(row[3].c_str()), std::string(symbol));
+        const auto askResult = boost::decimal::from_chars(sv1.data(), sv1.data() + sv1.size(), ask);
+        const auto bidResult = boost::decimal::from_chars(sv2.data(), sv2.data() + sv2.size(), bid);
+        if (askResult.ec != std::errc{} || bidResult.ec != std::errc{}) {
+            throw std::runtime_error(std::format(
+                "Failed to parse price for {}: ask='{}' bid='{}'", symbol, sv1, sv2));
+        }
+        results[i] = PriceData(ask, bid, fastParseTimestamp(row[3].c_str(), dateCache), std::string(symbol));
     }
 
     return results;
-}
-
-// Example usage function to demonstrate how to work with the results
-void DatabaseConnection::printResults(const std::vector<PriceData>& results) const {
-    for (const auto& data : results) {
-        // Convert timestamp back to string for display
-        auto time_t = std::chrono::system_clock::to_time_t(data.timestamp);
-        struct tm tm = {};
-        if (localtime_r(&time_t, &tm) == nullptr) {
-            std::cerr << "Error: failed to convert timestamp" << std::endl;
-            continue;
-        }
-        std::stringstream ss;
-        ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-        
-        std::cout << std::fixed << std::setprecision(4)
-                 << data.ask << "\t"
-                 << data.bid << "\t"
-                 << ss.str() << std::endl;
-    }
 }

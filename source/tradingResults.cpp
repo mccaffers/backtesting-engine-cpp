@@ -31,6 +31,7 @@ void to_json(nlohmann::json& j, const TradingResultsStats& s) {
         {"winners", s.winners},
         {"losers", s.losers},
         {"breakeven", s.breakeven},
+        {"liquidated", s.liquidated},
     };
     if (s.avgPnl) {
         j["avgPnl"] = *s.avgPnl;
@@ -46,5 +47,16 @@ void to_json(nlohmann::json& j, const TradingResults& r) {
         {"durationSeconds", r.durationSeconds},
         {"config", r.config},
         {"results", r.results},
+    };
+}
+
+void to_json(nlohmann::json& j, const TradingFailure& f) {
+    j = nlohmann::json{
+        {"RUN_ID", f.RUN_ID},
+        {"@timestamp", f.timestamp},
+        {"durationSeconds", f.durationSeconds},
+        {"reason", f.reason},
+        {"config", f.config},
+        {"results", f.results},
     };
 }
