@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		940F6E532FD9479800B0364A /* randomStrategySweep.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E502FD9479800B0364A /* randomStrategySweep.cpp */; };
+		940F6E542FD9479800B0364A /* runConfigurationBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E512FD9479800B0364A /* runConfigurationBuilder.cpp */; };
+		940F6E552FD9479800B0364A /* randomStrategySweep.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E502FD9479800B0364A /* randomStrategySweep.cpp */; };
+		940F6E562FD9479800B0364A /* runConfigurationBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E512FD9479800B0364A /* runConfigurationBuilder.cpp */; };
+		940F6E582FD947A900B0364A /* decimalConvert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E572FD947A900B0364A /* decimalConvert.cpp */; };
+		940F6E592FD947A900B0364A /* decimalConvert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E572FD947A900B0364A /* decimalConvert.cpp */; };
+		940F6E5B2FD947C000B0364A /* sweep.mm in Sources */ = {isa = PBXBuildFile; fileRef = 940F6E5A2FD947B800B0364A /* sweep.mm */; };
 		941408AE2D59F93F000ED1F9 /* sqlManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941408AD2D59F93F000ED1F9 /* sqlManager.cpp */; };
 		941408AF2D59F93F000ED1F9 /* sqlManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941408AD2D59F93F000ED1F9 /* sqlManager.cpp */; };
 		941B549A2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941B54992D3BBADD00E3BF64 /* trading_definitions_json.cpp */; };
@@ -69,6 +76,13 @@
 
 /* Begin PBXFileReference section */
 		9409A61B2FAA6411002C30FF /* strategy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = strategy.hpp; sourceTree = "<group>"; };
+		940F6E4C2FD9477E00B0364A /* randomStrategySweep.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = randomStrategySweep.hpp; sourceTree = "<group>"; };
+		940F6E4D2FD9477E00B0364A /* runConfigurationBuilder.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = runConfigurationBuilder.hpp; sourceTree = "<group>"; };
+		940F6E4F2FD9478800B0364A /* decimalConvert.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = decimalConvert.hpp; sourceTree = "<group>"; };
+		940F6E502FD9479800B0364A /* randomStrategySweep.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = randomStrategySweep.cpp; sourceTree = "<group>"; };
+		940F6E512FD9479800B0364A /* runConfigurationBuilder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = runConfigurationBuilder.cpp; sourceTree = "<group>"; };
+		940F6E572FD947A900B0364A /* decimalConvert.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = decimalConvert.cpp; sourceTree = "<group>"; };
+		940F6E5A2FD947B800B0364A /* sweep.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = sweep.mm; sourceTree = "<group>"; };
 		941408AD2D59F93F000ED1F9 /* sqlManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sqlManager.cpp; sourceTree = "<group>"; };
 		941408B02D59F954000ED1F9 /* sqlManager.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sqlManager.hpp; sourceTree = "<group>"; };
 		941B54902D3BBA4900E3BF64 /* ohlc_variables.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ohlc_variables.hpp; sourceTree = "<group>"; };
@@ -1323,6 +1337,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		940F6E4E2FD9477E00B0364A /* sweep */ = {
+			isa = PBXGroup;
+			children = (
+				940F6E4C2FD9477E00B0364A /* randomStrategySweep.hpp */,
+				940F6E4D2FD9477E00B0364A /* runConfigurationBuilder.hpp */,
+			);
+			path = sweep;
+			sourceTree = "<group>";
+		};
+		940F6E522FD9479800B0364A /* sweep */ = {
+			isa = PBXGroup;
+			children = (
+				940F6E502FD9479800B0364A /* randomStrategySweep.cpp */,
+				940F6E512FD9479800B0364A /* runConfigurationBuilder.cpp */,
+			);
+			path = sweep;
+			sourceTree = "<group>";
+		};
 		941B548F2D3BBA3B00E3BF64 /* trading_definitions */ = {
 			isa = PBXGroup;
 			children = (
@@ -1348,6 +1380,7 @@
 		94280BA72D2FC29F00F1CF56 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				940F6E572FD947A900B0364A /* decimalConvert.cpp */,
 				94829FC42FCC1D1A00710E6E /* env.cpp */,
 				942EC5612FBEF94700CCBB5D /* redisConnection.cpp */,
 				94280BA22D2FC00200F1CF56 /* base64.cpp */,
@@ -1459,7 +1492,7 @@
 		9470B5A22C8C5AD0007D9CC6 /* source */ = {
 			isa = PBXGroup;
 			children = (
-				943770442FD4396F00317424 /* boostRedisImpl.cpp */,
+				940F6E522FD9479800B0364A /* sweep */,
 				9437703E2FD42FC000317424 /* reporting */,
 				941B54982D3BBAD800E3BF64 /* trading_definitions */,
 				94674B862D533B4000973137 /* trading */,
@@ -1468,6 +1501,7 @@
 				94D3A7252FC1B3AD00EBEA32 /* commands */,
 				94280BA72D2FC29F00F1CF56 /* utilities */,
 				942EC5642FBEF95000CCBB5D /* backtestRunner.cpp */,
+				943770442FD4396F00317424 /* boostRedisImpl.cpp */,
 				942EC5652FBEF95000CCBB5D /* redisLoader.cpp */,
 				942FDDDF2FC5C8B20096F318 /* tradingResults.cpp */,
 				942EC5662FBEF95000CCBB5D /* redisRunner.cpp */,
@@ -1482,6 +1516,7 @@
 		9470B5AD2C8C5B99007D9CC6 /* tests */ = {
 			isa = PBXGroup;
 			children = (
+				940F6E5A2FD947B800B0364A /* sweep.mm */,
 				9464E5F02FA7467200D82BAD /* symbolScale.mm */,
 				943398262D57E54000287A2D /* jsonParser.mm */,
 				94674B892D533BDA00973137 /* tradeManager.mm */,
@@ -1493,6 +1528,7 @@
 		94B8C7932D3D770800E17EB6 /* utilities */ = {
 			isa = PBXGroup;
 			children = (
+				940F6E4F2FD9478800B0364A /* decimalConvert.hpp */,
 				94B4F02A2FD618B300B08FB4 /* backtestLog.hpp */,
 				94B4F02B2FD618B300B08FB4 /* threadPool.hpp */,
 				945F475C2FD5607E00D19164 /* queueKeys.hpp */,
@@ -3616,6 +3652,7 @@
 		94DE4F772C8C3E7C00FE48FF /* include */ = {
 			isa = PBXGroup;
 			children = (
+				940F6E4E2FD9477E00B0364A /* sweep */,
 				943770422FD42FDD00317424 /* reporting */,
 				94D3A7232FC1B3A600EBEA32 /* commands */,
 				942966D72D48E84100532862 /* models */,
@@ -3740,9 +3777,12 @@
 				942EC56B2FBEF95000CCBB5D /* redisLoader.cpp in Sources */,
 				94829FC52FCC1D1A00710E6E /* env.cpp in Sources */,
 				942EC56C2FBEF95000CCBB5D /* redisRunner.cpp in Sources */,
+				940F6E592FD947A900B0364A /* decimalConvert.cpp in Sources */,
 				94280BA32D2FC00200F1CF56 /* base64.cpp in Sources */,
 				943770402FD42FC000317424 /* elasticClient.cpp in Sources */,
 				941B549B2D3BBADE00E3BF64 /* trading_definitions_json.cpp in Sources */,
+				940F6E532FD9479800B0364A /* randomStrategySweep.cpp in Sources */,
+				940F6E542FD9479800B0364A /* runConfigurationBuilder.cpp in Sources */,
 				946EFF7E2FB9F44E008D9647 /* reporting.cpp in Sources */,
 				94674B872D533B4000973137 /* tradeManager.cpp in Sources */,
 				94CD8BA02D2E8CE500041BBA /* databaseConnection.cpp in Sources */,
@@ -3779,6 +3819,10 @@
 				942FDDE22FC5C8B20096F318 /* tradingResults.cpp in Sources */,
 				9437703F2FD42FC000317424 /* elasticClient.cpp in Sources */,
 				9470B5B62C8C5BFD007D9CC6 /* main.cpp in Sources */,
+				940F6E552FD9479800B0364A /* randomStrategySweep.cpp in Sources */,
+				940F6E5B2FD947C000B0364A /* sweep.mm in Sources */,
+				940F6E562FD9479800B0364A /* runConfigurationBuilder.cpp in Sources */,
+				940F6E582FD947A900B0364A /* decimalConvert.cpp in Sources */,
 				94364CB62D416D8D00F35B55 /* db.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
