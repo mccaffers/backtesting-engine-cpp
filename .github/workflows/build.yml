@@ -47,6 +47,13 @@ jobs:
       if: runner.os == 'Linux'
       run: bash ./.github/workflows/scripts/ubuntu_deps.sh
 
+    # Pin CMake (and a matching Ninja) to 4.3.3 so CI matches local dev and
+    # lands in the [4.3, 4.4) CMAKE_EXPERIMENTAL_CXX_IMPORT_STD UUID branch in
+    # CMakeLists.txt. The runner's default CMake (3.31.x) has no pinned UUID and
+    # fails configuration. Runs before build_dep.sh since that also calls cmake.
+    - name: Setup CMake & Ninja
+      uses: lukka/get-cmake@v4.3.3
+
     - name: Build C++ Libraries
       run: bash ./scripts/build_dep.sh
 
@@ -91,6 +98,11 @@ jobs:
       # build-wrapper captures a build identical to the one that is tested.
       - name: Install dependencies
         run: bash ./.github/workflows/scripts/ubuntu_deps.sh
+
+      # Match local dev / the [4.3, 4.4) import-std UUID branch in CMakeLists.txt;
+      # the runner's default CMake (3.31.x) has no pinned UUID. See the build job.
+      - name: Setup CMake & Ninja
+        uses: lukka/get-cmake@v4.3.3
 
       - name: Build C++ Libraries
         run: bash ./scripts/build_dep.sh
