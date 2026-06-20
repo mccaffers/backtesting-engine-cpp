@@ -168,7 +168,7 @@ bool TradeManager::closeTrade(const std::string& tradeId,
 
         // Per-trade chatter is skipped under concurrent backtests (quiet),
         // which also avoids the formatting work below.
-        if (!backtest_log::quiet) {
+        if (!backtest_log::is_quiet()) {
             auto t = std::chrono::system_clock::to_time_t(tick.timestamp);
             std::tm utc{};
             gmtime_r(&t, &utc);

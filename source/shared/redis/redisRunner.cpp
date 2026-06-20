@@ -205,7 +205,7 @@ int RedisRunner::run(const std::string& questdbHost,
                      int redisPort) {
     
     // Mute logs to prevent interleaved thread spam
-    backtest_log::quiet = true;
+    backtest_log::set_quiet(true);
 
     // Set up the async event loop
     asio::io_context ioc;

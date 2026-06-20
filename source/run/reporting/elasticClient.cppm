@@ -118,7 +118,7 @@ int putDocument(const std::string& index, const std::string& body) {
         return 3;
     }
     // Per-strategy success line is skipped under concurrent backtests (quiet).
-    if (!backtest_log::quiet) {
+    if (!backtest_log::is_quiet()) {
         std::cout << "ElasticClient: PUT " << url << " (HTTP " << httpStatus << ")"
                   << std::endl;
     }

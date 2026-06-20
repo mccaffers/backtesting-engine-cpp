@@ -82,7 +82,7 @@ TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager) {
 
 void ResultsSummary::summarise(const TradeManager& tradeManager) {
     // Per-strategy summary is skipped under concurrent backtests (quiet).
-    if (backtest_log::quiet) {
+    if (backtest_log::is_quiet()) {
         return;
     }
 

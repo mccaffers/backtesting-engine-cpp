@@ -87,7 +87,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
 
     // Per-run completion line, suppressed under concurrent (quiet) sweeps to
     // match the other per-run logs.
-    if (!backtest_log::quiet) {
+    if (!backtest_log::is_quiet()) {
         if (status == trading::RunStatus::LossLimitBreached) {
             std::println("Operations: run RUN_ID={} stopped after {:.3f}s — account loss limit reached",
                          config.RUN_ID, durationSeconds);
