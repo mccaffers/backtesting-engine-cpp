@@ -25,6 +25,16 @@ sudo apt-get install -y \
 sudo update-alternatives --install /usr/bin/clang   clang   "/usr/bin/clang-${LLVM_VERSION}"   100
 sudo update-alternatives --install /usr/bin/clang++ clang++ "/usr/bin/clang++-${LLVM_VERSION}" 100
 
+# update-alternatives doesn't reliably repoint /usr/bin/clang on the runner (the
+# image ships its own system Clang 18 at that path), so scripts/build.sh fell
+# back to it — and libomp-18-dev is never installed, breaking
+# find_package(OpenMP REQUIRED). Pin $CC/$CXX to the versioned binaries for every
+# later workflow step; build.sh honours them over the unversioned fallback.
+if [ -n "${GITHUB_ENV:-}" ]; then
+    echo "CC=clang-${LLVM_VERSION}"   >> "$GITHUB_ENV"
+    echo "CXX=clang++-${LLVM_VERSION}" >> "$GITHUB_ENV"
+fi
+
 # Ubuntu's apt Boost predates Boost.Redis (added in 1.84). Boost.Redis/Asio are
 # header-only, so only the headers + CMake config are needed — building just
 # Boost.System generates both quickly. (-d0 silences per-action output.)
