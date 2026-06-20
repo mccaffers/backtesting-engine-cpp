@@ -122,20 +122,18 @@ jobs:
           name: sonarqube-coverage
           path: artifact
 
-      # Configure with the Clang/libc++ toolchain and Ninja (required for the
-      # C++23 modules / import std). CMakeLists adds -stdlib=libc++ and locates
-      # the libc++ `std` module manifest for the Linux clang.
-      - name: Configure CMake
+      # Build through scripts/build.sh under the build-wrapper so the analyzed
+      # build uses the exact same toolchain as the tested build (apt.llvm.org
+      # Clang + libc++ + OpenMP). A bare `cmake -DCMAKE_CXX_COMPILER=clang++`
+      # picked up the runner's system Clang 18 — which has no libc++ `std` module
+      # and no matching libomp, so find_package(OpenMP REQUIRED) failed. The
+      # build-wrapper intercepts the Ninja compile commands for the scan; deps
+      # were already built above so build.sh skips them and only our TUs are
+      # captured.
+      - name: Build under build-wrapper
         run: >
-          cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -Wno-dev
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-      # Runs the build wrapper to capture build commands for analysis, then
-      # builds the project using CMake.
-      - name: Run build-wrapper
-        run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --clean-first
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }}
+          bash ./scripts/build.sh
 
       # Performs the SonarQube scan using the captured build commands and the
       # downloaded coverage report. Requires GitHub and SonarQube tokens.
