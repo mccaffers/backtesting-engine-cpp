@@ -6,7 +6,7 @@
 set -euo pipefail
 
 LLVM_VERSION="${LLVM_VERSION:-20}"
-BOOST_VERSION="${BOOST_VERSION:-1.86.0}"
+BOOST_VERSION="${BOOST_VERSION:-1.90.0}"
 
 echo "== Installing Clang ${LLVM_VERSION} + libc++ from apt.llvm.org =="
 wget -q https://apt.llvm.org/llvm.sh
