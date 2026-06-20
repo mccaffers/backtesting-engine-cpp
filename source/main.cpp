@@ -4,16 +4,14 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-// std headers
-#include <iostream>
-#include <string_view>
+import std;  // replaces <iostream>, <string_view>
 
 // backtesting engine headers
-#include "loadCommand.hpp"
-#include "runCommand.hpp"
+import loadCommand;
+import runCommand;
 
 // Entry point
-int main(int argc, const char* argv[]) {
+int main(const int argc, const char* argv[]) {
 
   if (argc < 2) {
     std::cerr << "BacktestingEngine: missing a subcommand. See README.md for usage"

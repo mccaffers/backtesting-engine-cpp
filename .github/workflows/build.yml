@@ -12,55 +12,62 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BUILD_TYPE: Release
   BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
 
 jobs:
-  build:
-    name: Build & Test
-    runs-on: macos-26
+  # Build the engine + Catch2 unit tests with CMake/Ninja + Clang/libc++ and run
+  # them through ctest on both macOS (Homebrew LLVM) and Ubuntu (apt.llvm.org
+  # Clang + libc++) — the multi-platform proof. The macOS leg also produces the
+  # SonarCloud coverage report from Clang source-based coverage.
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, ubuntu-latest]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
+      with:
+        submodules: recursive
 
     - name: Set up Homebrew
-      id: set-up-homebrew
+      if: runner.os == 'macOS'
       uses: Homebrew/actions/setup-homebrew@main
 
-    - name: Install dependencies
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
       run: bash ./.github/workflows/scripts/brew.sh
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: bash ./.github/workflows/scripts/ubuntu_deps.sh
 
     - name: Build C++ Libraries
       run: bash ./scripts/build_dep.sh
 
-    - name: Select Xcode version
-      run: sudo xcode-select -switch /Applications/Xcode.app
+    # scripts/build.sh selects the toolchain per platform (Homebrew LLVM on
+    # macOS, clang/clang++ on Linux), configures with Ninja, and builds the
+    # library, executable, and unit_tests. ENABLE_COVERAGE instruments the
+    # macOS build for the coverage report below.
+    - name: Configure & build
+      run: ENABLE_COVERAGE=${{ runner.os == 'macOS' && 'ON' || 'OFF' }} bash ./scripts/build.sh
 
     - name: Run tests
-      run: >
-          OTHER_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"
-          OTHER_CPLUSPLUSFLAGS="-fprofile-instr-generate -fcoverage-mapping"
-          OTHER_SWIFT_FLAGS="-profile-generate -profile-coverage-mapping"
-          LLVM_PROFILE_FILE="/tmp/coverage.profraw"
-          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-          xcodebuild
-          -scheme tests
-          -destination 'platform=macOS,arch=arm64'
-          -resultBundlePath TestResult/ 
-          -enableCodeCoverage YES 
-          -derivedDataPath "${RUNNER_TEMP}/Build/DerivedData" 
-          -parallelizeTargets
-          -jobs "$(sysctl -n hw.logicalcpu)"
-          clean build test
-          | xcpretty -r junit && exit ${PIPESTATUS[0]}
+      run: ctest --test-dir build --output-on-failure
 
-    - name: Convert coverage report to sonarqube format
+    - name: Generate coverage report
+      if: runner.os == 'macOS'
       run: >
-          bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
+          bash ./.github/workflows/scripts/llvmcov-to-sonarqube-generic.sh build
+          > sonarqube-generic-coverage.xml
 
     - name: Upload coverage report
+      if: runner.os == 'macOS'
       uses: actions/upload-artifact@v7
       with:
         name: sonarqube-coverage
@@ -69,7 +76,7 @@ jobs:
 
   sonar-scan:
     name: SonarCloud Scan
-    needs: build
+    needs: build-and-test
     runs-on: ubuntu-latest
 
     steps:
@@ -78,45 +85,22 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive
+
+      # Same Clang + libc++ + Boost toolchain as the Ubuntu test leg, so the
+      # build-wrapper captures a build identical to the one that is tested.
       - name: Install dependencies
-        run: sudo apt install -y libssl-dev libpq-dev libcurl4-openssl-dev
-      # ubuntu-latest (24.04) defaults to GCC 13, whose libstdc++ lacks the
-      # C++23 <print> header (std::print/std::println). That header was added
-      # in GCC 14, so install it and make it the default compiler for every
-      # subsequent step (dependency build, CMake configure, build-wrapper).
-      - name: Install GCC 14 (for C++23 <print>)
-        run: |
-          sudo apt install -y gcc-14 g++-14
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-      # Ubuntu's apt Boost (1.83 on 24.04) predates Boost.Redis, which was added
-      # in Boost 1.84, so <boost/redis.hpp> is absent. Install a newer Boost.
-      # Boost.Redis/Asio are header-only, so we only need the headers plus the
-      # CMake package config — building just Boost.System generates both quickly.
-      - name: Install Boost >= 1.84 (for Boost.Redis)
-        run: |
-          BOOST_VERSION=1.86.0
-          BOOST_DIR="boost_${BOOST_VERSION//./_}"
-          wget -q "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_DIR}.tar.gz"
-          tar xzf "${BOOST_DIR}.tar.gz"
-          cd "${BOOST_DIR}"
-          ./bootstrap.sh > /dev/null
-          # -d0 silences per-action output (otherwise b2 prints one line per
-          # copied header — ~15k lines just for the header install).
-          sudo ./b2 install -d0 --prefix=/usr/local --with-system -j"$(nproc)"
-      - name: Check compiler version, for debugging
-        run: |
-          g++ --version
-          cmake --version
+        run: bash ./.github/workflows/scripts/ubuntu_deps.sh
+
       - name: Build C++ Libraries
         run: bash ./scripts/build_dep.sh
-      # SonarQube Server and Cloud (formerly SonarQube and SonarCloud) is a widely used static
-      # analysis solution for continuous code quality and security inspection.
-      # This action now supports and is the official entrypoint for scanning C++ projects via GitHub actions.
+
+      # SonarQube Server and Cloud is a widely used static analysis solution for
+      # continuous code quality and security inspection, and the official
+      # entrypoint for scanning C++ projects via GitHub actions.
       # https://github.com/SonarSource/sonarqube-scan-action
       - name: Install Build Wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4.2.1
-        # This step installs the SonarQube build wrapper, which is necessary for analyzing C/C++ projects.
 
       # Lands at ./artifact/sonarqube-generic-coverage.xml so the existing
       # sonar.coverageReportPaths argument keeps working unchanged.
@@ -126,16 +110,23 @@ jobs:
           name: sonarqube-coverage
           path: artifact
 
-      # Configures the CMake build system, specifying the source directory and build directory, and setting the build type
+      # Configure with the Clang/libc++ toolchain and Ninja (required for the
+      # C++23 modules / import std). CMakeLists adds -stdlib=libc++ and locates
+      # the libc++ `std` module manifest for the Linux clang.
       - name: Configure CMake
-        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        run: >
+          cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -Wno-dev
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      # Runs the build wrapper to capture build commands and outputs them to the specified directory. Then builds the project using CMake
+      # Runs the build wrapper to capture build commands for analysis, then
+      # builds the project using CMake.
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --clean-first
 
-      # Performs the SonarQube scan using the scan action. Uses captured build commands for analysis and requires GitHub and SonarQube tokens for authentication
+      # Performs the SonarQube scan using the captured build commands and the
+      # downloaded coverage report. Requires GitHub and SonarQube tokens.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4.2.1
         env:

@@ -1,19 +1,20 @@
 #!/bin/bash
-rm -rf ./TestResult;
-rm -rf ./TestResult.xcresult;
-rm -rf ./sonarqube-generic-coverage.xml
+# Build the Catch2 unit tests with Clang source-based coverage and emit the
+# SonarCloud generic coverage report locally (the same report CI uploads).
+# Replaces the old xcodebuild + xccov flow.
+set -euo pipefail
 
-OTHER_CFLAGS="-fprofile-instr-generate -fcoverage-mapping" \
-OTHER_CPLUSPLUSFLAGS="-fprofile-instr-generate -fcoverage-mapping" \
-OTHER_SWIFT_FLAGS="-profile-generate -profile-coverage-mapping" \
-LLVM_PROFILE_FILE="/tmp/coverage.profraw" \
-CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
-xcodebuild \
--scheme tests \
--destination 'platform=macOS' \
--resultBundlePath TestResult/ \
--enableCodeCoverage YES \
--derivedDataPath "/tmp" \
-clean build test
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
 
-bash ./.github/workflows/scripts/xccov-to-sonarqube-generic.sh *.xcresult/ > sonarqube-generic-coverage.xml
+rm -f sonarqube-generic-coverage.xml
+
+# Instrument the build (-DENABLE_COVERAGE=ON via the env passthrough in build.sh).
+ENABLE_COVERAGE=ON bash ./scripts/build.sh
+
+# Runs the tests, merges the profile, and converts llvm-cov output to Sonar
+# generic XML.
+bash ./.github/workflows/scripts/llvmcov-to-sonarqube-generic.sh build \
+    > sonarqube-generic-coverage.xml
+
+echo "Wrote sonarqube-generic-coverage.xml"

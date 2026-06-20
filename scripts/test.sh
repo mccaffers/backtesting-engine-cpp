@@ -1,21 +1,19 @@
 #!/bin/bash
+# Build and run the Catch2 unit tests via CMake/Ninja + ctest. The test suite
+# moved off Xcode/XCTest onto Catch2 (see tests/*.cpp); scripts/build.sh selects
+# the Clang/libc++ toolchain and builds the unit_tests target as part of `all`.
+#
+# Pass CLEAN=1 to force a clean reconfigure: CLEAN=1 ./scripts/test.sh
+set -euo pipefail
 
-if [[ "$(uname)" != "Darwin" ]]; then
-    echo "Testing is done via Xcode build — C++ methods are wrapped in Objective-C for inline debugging and testing in Xcode."
-    exit 0
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
 
-# Pass CLEAN=1 to force a clean build: CLEAN=1 ./scripts/test.sh
-CLEAN_ACTION=""
 if [[ "${CLEAN:-0}" == "1" ]]; then
-    CLEAN_ACTION="clean"
+    rm -rf build
 fi
 
-xcodebuild \
-    -project backtesting-engine-cpp.xcodeproj \
-    -scheme tests \
-    -parallelizeTargets \
-    -jobs "$(sysctl -n hw.logicalcpu)" \
-    CODE_SIGN_IDENTITY="-" \
-    ENABLE_TESTABILITY=YES \
-    ${CLEAN_ACTION} build test 2>&1 | xcpretty
+# Configures the toolchain and builds the library, executable, and unit_tests.
+bash ./scripts/build.sh
+
+ctest --test-dir build --output-on-failure

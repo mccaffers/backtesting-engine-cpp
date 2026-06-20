@@ -44,3 +44,6 @@ sonarqube-generic-coverage.xml
 .clangd
 dump.rdb
 .infisical.json
+cmake-build-debug
+.ideag
+.clang-tidy
