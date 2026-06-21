@@ -42,7 +42,7 @@ For ArchLinux: pacman -S postgresql-libs
 
 ### Install Boost, OpenSSL, and Redis
 
-Boost.Redis is header-only but its single translation unit (compiled via `<boost/redis/src.hpp>` from `source/redisRunner.cpp`) pulls in Boost.Asio's SSL layer, so OpenSSL is a transitive requirement. A local `redis-server` on `127.0.0.1:6379` is also needed for the default `load`/`run` workflow.
+Boost.Redis is header-only but its single translation unit (compiled via `<boost/redis/src.hpp>` from `source/shared/redis/boostRedisImpl.cpp`) pulls in Boost.Asio's SSL layer, so OpenSSL is a transitive requirement. A local `redis-server` on `127.0.0.1:6379` is also needed for the default `load`/`run` workflow.
 
 ```
 For Mac Homebrew: brew install boost openssl redis
@@ -115,7 +115,7 @@ The `BacktestingEngine` binary exposes a subcommand CLI:
 ```
 BacktestingEngine load
     Base64-encode a built-in strategy JSON (defined in
-    source/commands/loadCommand.cpp) and LPUSH it onto the Redis
+    source/load/loadCommand.cppm) and LPUSH it onto the Redis
     `strategy_queue` list.
 
 BacktestingEngine run <questdb-host>
@@ -127,7 +127,7 @@ BacktestingEngine run <questdb-host> <base64-config>
     Redis.
 ```
 
-Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for the list key (see `include/redisRunner.hpp` and `include/redisLoader.hpp`).
+Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for the list key (see `source/shared/redis/redisRunner.hpp` and `source/shared/redis/redisLoader.hpp`).
 
 ### Run tests via terminal
 
