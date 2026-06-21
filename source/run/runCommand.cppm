@@ -8,22 +8,19 @@ module;
 
 #include "shared/utilities/env.hpp"
 #include "shared/utilities/jsonParser.hpp"
-#include "shared/redis/redisRunner.hpp"
+#include "shared/redis/consumer/redisRunner.hpp"
 
 export module runCommand;
 
-import std;             // replaces <print>, <string>
-import backtestRunner;  // runBacktest
+import std;
+import backtestRunner;
 
-// Backs the `run` subcommand: drains BACKTESTING_QUEUE_RUN (loading each run's
-// QuestDB ticks once, then running its strategies), or runs a single Base64
-// Configuration supplied directly on the command line.
 export class RunCommand {
 public:
     static int run(int argc, const char* argv[]);
 };
 
-int RunCommand::run(int argc, const char* argv[]) {
+int RunCommand::run(const int argc, const char* argv[]) {
 
     if (argc < 3) {
         std::println(stderr, "Usage: BacktestingEngine run <questdb-host>\n"

@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <cstdint>
 #include <cstdlib>            // setenv — disable Elastic reporting for run() smoke tests
@@ -16,9 +17,11 @@
 
 #include <boost/decimal/literals.hpp>
 
-#include "shared/tradingDefinitions/configuration.hpp"
+#include "shared/tradingDefinitions/config/configuration.hpp"
+#include "run/reporting/tradingResults.hpp"  // TradingResultsStats
 
 import tradeManager;        // TradeManager
+import resultsSummary;      // ResultsSummary::collect (performance score)
 import exitRules;           // trading::exit_rules::checkExit
 import reviewStopAndLimit;  // trading::reviewStopAndLimit
 import runLoop;             // trading::runTicks, RiskLimits, RunStatus
@@ -98,6 +101,16 @@ struct AlwaysLongStrategy : IStrategy {
     }
     void during(const PriceData& /*tick*/, TradeManager& /*tradeManager*/) override {}
 };
+
+// Seeds a closed EURUSD trade with an exact realized PnL. A zero-spread tick at
+// 110000 means a LONG enters at 110000, so closing at 110000 + pnlPoints yields
+// pnl == pnlPoints (size 1). EURUSD has 10 points per pip, so 10 points == 1 pip.
+// Trades close in call order, which is the order collect() walks for drawdown.
+void seedClosedTrade(TradeManager& manager, std::int32_t pnlPoints) {
+    PriceData tick(110000, 110000, std::chrono::system_clock::now(), "EURUSD");
+    std::string id = manager.openTrade(tick, 1, Direction::LONG);
+    manager.closeTrade(id, 110000 + pnlPoints, tick);
+}
 
 }  // namespace
 
@@ -840,4 +853,103 @@ TEST_CASE("runTicks: loss limit disabled for zero and negative", "[tradeManager]
         CHECK(status == trading::RunStatus::Completed);
         CHECK(tm.getActiveTrades().size() == 1);
     }
+}
+
+// --- Performance score (ResultsSummary::collect) ---
+
+// Guard: with no closed trades there is nothing to score, so every score field
+// stays at its 0 default rather than producing a NaN from a 0/0 division.
+TEST_CASE("score: no trades leaves score fields zero", "[score]") {
+    TradeManager tm;
+    const auto config = makeRandomStrategyConfig();   // LAST_MONTHS = 1, balance 10000
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(static_cast<double>(stats.performanceScore) == 0.0);
+    CHECK(static_cast<double>(stats.expectancyScore) == 0.0);
+    CHECK(static_cast<double>(stats.calmarScore) == 0.0);
+    CHECK(static_cast<double>(stats.maxDrawdownPercent) == 0.0);
+}
+
+// Guard: a zero-length horizon (LAST_MONTHS = 0) would divide by zero in the
+// CAGR/confidence maths, so the score is suppressed even with real trades.
+TEST_CASE("score: zero horizon suppresses the score", "[score]") {
+    TradeManager tm;
+    seedClosedTrade(tm, 100);   // a +10-pip winner
+    auto config = makeRandomStrategyConfig();
+    config.LAST_MONTHS = 0;
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.winners == 1);
+    CHECK(static_cast<double>(stats.performanceScore) == 0.0);
+}
+
+// All-winners special cases mirror the C# reference: no losers -> win rate 1 and
+// trade ratio pinned to 100, and the run still produces a positive score.
+TEST_CASE("score: all winners pin winRate=1 and tradeRatio=100", "[score]") {
+    TradeManager tm;
+    seedClosedTrade(tm, 100);   // +10 pips
+    seedClosedTrade(tm, 100);   // +10 pips
+    const auto config = makeRandomStrategyConfig();
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.winners == 2);
+    CHECK(stats.losers == 0);
+    CHECK(static_cast<double>(stats.winRate) == 1.0);
+    CHECK(static_cast<double>(stats.tradeRatio) == 100.0);
+    CHECK(static_cast<double>(stats.maxDrawdownPercent) == 0.0);  // monotonic up
+    CHECK(static_cast<double>(stats.performanceScore) > 0.0);
+}
+
+// Mixed run pins the derived stats to hand-computable values. PnL sequence in
+// pips: +10, -4, -3, +2 -> cumulative 10, 6, 3, 5, so the realized peak-to-trough
+// is 10 - 3 = 7 pips. Against a 10000 balance that is 0.07%. winRate = 2/4 = 0.5;
+// averageWin = 6, averageLoss = 3.5, tradeRatio = (6*2)/(3.5*2) = 12/7.
+TEST_CASE("score: drawdown and ratios match a hand-computed run", "[score]") {
+    TradeManager tm;
+    seedClosedTrade(tm, 100);    // +10 pips
+    seedClosedTrade(tm, -40);    //  -4 pips
+    seedClosedTrade(tm, -30);    //  -3 pips
+    seedClosedTrade(tm, 20);     //  +2 pips
+    const auto config = makeRandomStrategyConfig();
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.winners == 2);
+    CHECK(stats.losers == 2);
+    CHECK(static_cast<double>(stats.winRate) == Catch::Approx(0.5));
+    CHECK(static_cast<double>(stats.tradeRatio) == Catch::Approx(12.0 / 7.0));
+    CHECK(static_cast<double>(stats.maxDrawdownPercent) == Catch::Approx(0.07));
+}
+
+// True intra-trade drawdown: a single LONG that floats deep underwater and then
+// recovers to a winning close. Close-to-close (realized) drawdown would be 0
+// because the only closed trade is a winner — the mark-to-market tracker must
+// still see the trough the open position sat through. Open @ ask 110010, mark
+// down to bid 109000 (floating -1010 points = -101 pips), then TP-close at +90.
+TEST_CASE("score: drawdown captures an intra-trade float, not just closes", "[score]") {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars(0, 10, 1);   // TP only, no SL — let it float
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),   // open LONG @ ask 110010
+        PriceData(109010, 109000, now, "EURUSD"),   // floats to -1010 points
+        PriceData(110110, 110100, now, "EURUSD"),   // bid 110100 hits TP, closes +90
+    };
+
+    trading::runTicks(tm, strategy, ticks, vars);
+
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    CHECK(tm.getClosedTrades().front().pnl == 90);   // the only close is a winner
+
+    const auto config = makeRandomStrategyConfig();
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.winners == 1);
+    CHECK(stats.losers == 0);
+    // Trough was -1010 points = -101 pips from the 0 peak; 101 / 10000 * 100.
+    CHECK(static_cast<double>(stats.maxDrawdownPercent) == Catch::Approx(1.01));
 }

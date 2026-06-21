@@ -32,6 +32,21 @@ struct TradingResultsStats {
     // be read net of liquidation noise.
     std::size_t liquidated = 0;
     std::optional<boost::decimal::decimal64_t> avgPnl;
+
+    // Composite performance score and its components (see ResultsSummary).
+    // The score blends expectancy/SQN, Calmar, and a trades-per-year
+    // confidence multiplier so a sweep can be ranked by a single number.
+    // All default to 0 so a zero-trade (or unscoreable) run serialises cleanly.
+    // Units note: PnL is pip-denominated and STARTING_BALANCE is currency, so
+    // the percentages are pip-relative proxies — consistent for ranking, not
+    // an absolute account return.
+    boost::decimal::decimal64_t performanceScore{0};
+    boost::decimal::decimal64_t winRate{0};
+    boost::decimal::decimal64_t tradeRatio{0};
+    boost::decimal::decimal64_t expectancyScore{0};
+    boost::decimal::decimal64_t calmarScore{0};
+    boost::decimal::decimal64_t confidenceMultiplier{0};
+    boost::decimal::decimal64_t maxDrawdownPercent{0};
 };
 
 // Wire shape pushed to Elasticsearch: the input Configuration plus the run's

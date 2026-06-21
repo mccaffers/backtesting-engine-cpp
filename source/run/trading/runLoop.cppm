@@ -8,8 +8,8 @@ module;
 
 #include <boost/decimal.hpp>
 
-#include "shared/tradingDefinitions/runConfiguration.hpp"  // DEFAULT_STARTING_BALANCE
-#include "shared/tradingDefinitions/tradingVariables.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"  // DEFAULT_STARTING_BALANCE
+#include "shared/tradingDefinitions/variables/tradingVariables.hpp"
 
 export module runLoop;
 

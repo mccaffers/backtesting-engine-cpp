@@ -195,9 +195,10 @@ find_package(OpenMP REQUIRED)
 string(APPEND CMAKE_CXX_FLAGS " ${OpenMP_CXX_FLAGS}")
 
 # Boost (Homebrew) — Boost.Redis is header-only but its implementation is
-# compiled into one dedicated TU via <boost/redis/src.hpp> (source/
-# boostRedisImpl.cpp), which isolates its macro/SSL pollution from the rest of
-# the build. It pulls in Boost.Asio's SSL layer, which needs OpenSSL.
+# compiled into one dedicated TU via <boost/redis/src.hpp>
+# (source/shared/redis/connection/boostRedisImpl.cpp), which isolates its
+# macro/SSL pollution from the rest of the build. It pulls in Boost.Asio's SSL
+# layer, which needs OpenSSL.
 find_package(Boost REQUIRED CONFIG)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)

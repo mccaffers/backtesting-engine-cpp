@@ -7,7 +7,7 @@
 module;
 
 #include "shared/utilities/env.hpp"
-#include "shared/tradingDefinitions/configuration.hpp"
+#include "shared/tradingDefinitions/config/configuration.hpp"
 
 export module backtestRunner;
 

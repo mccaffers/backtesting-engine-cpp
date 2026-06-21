@@ -6,7 +6,7 @@
 #pragma once
 #include <memory>
 #include <string>
-#include "shared/tradingDefinitions/configuration.hpp"
+#include "shared/tradingDefinitions/config/configuration.hpp"
 
 // Opaque handle to a run's loaded tick data, defined in runnerBridge.cpp.
 //

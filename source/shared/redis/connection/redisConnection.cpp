@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/redis/redisConnection.hpp"
+#include "shared/redis/connection/redisConnection.hpp"
 
 #include <chrono>
 #include <memory>

@@ -16,7 +16,7 @@
 #include <nlohmann/json.hpp>
 
 #include "shared/utilities/parameterSweep.hpp"
-#include "shared/tradingDefinitions/runConfiguration.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"
 #include "shared/tradingDefinitions/strategy.hpp"
 
 import randomStrategySweep;     // sweep::buildRandomStrategySweep

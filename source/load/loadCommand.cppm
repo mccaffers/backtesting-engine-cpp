@@ -14,49 +14,21 @@ module;
 #include "shared/utilities/env.hpp"
 #include "shared/utilities/parameterSweep.hpp"
 #include "shared/utilities/queueKeys.hpp"
-#include "shared/redis/redisLoader.hpp"
-#include "shared/tradingDefinitions/runConfiguration.hpp"  // RunConfiguration (json conversion)
-#include "shared/tradingDefinitions/strategy.hpp"
+#include "shared/redis/producer/redisLoader.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"  // RunConfiguration -> json
+#include "shared/tradingDefinitions/strategy.hpp"           // Strategy -> json (makeStrategy result)
 
 export module loadCommand;
 
 import std;                    // replaces <print>, <ranges>, <string>, <vector>
 import randomStrategySweep;    // buildRandomStrategySweep
 import runConfigurationBuilder; // makeRunConfiguration
+import makeStrategy;           // sweep::makeStrategy
 
 export class LoadCommand {
 public:
     static int run();
 };
-
-using tradingDefinitions::Strategy;
-
-Strategy makeStrategy(const sweep::Combination& combo) {
-    using namespace tradingDefinitions;
-
-    return Strategy{
-        // Each parameter combination gets its own UUID so a single backtest
-        // result is uniquely identifiable and traceable back to its inputs.
-        .UUID = boost::uuids::to_string(boost::uuids::random_generator()()),
-        .TRADING_VARIABLES = TradingVariables{
-            .STRATEGY = "RandomStrategy",
-            .STOP_DISTANCE_IN_PIPS = combo.getInt("STOP_DISTANCE_IN_PIPS"),
-            .LIMIT_DISTANCE_IN_PIPS = combo.getInt("LIMIT_DISTANCE_IN_PIPS"),
-            .TRADING_SIZE = 1,
-        },
-        .OHLC_VARIABLES = {
-            OHLCVariables{
-                // Only read OHLC params when the sweep actually registers them;
-                // they default to 0 otherwise (see buildRandomStrategySweep).
-                .OHLC_COUNT = combo.has("OHLC_COUNT") ? combo.getInt("OHLC_COUNT") : 0,
-                .OHLC_MINUTES = combo.has("OHLC_MINUTES") ? combo.getInt("OHLC_MINUTES") : 0,
-            },
-        },
-        .STRATEGY_VARIABLES = StrategyVariables{
-            .OHLC_RSI_VARIABLES = OHLCRSIVariables{.RSI_LONG = 60, .RSI_SHORT = 40},
-        },
-    };
-}
 
 int LoadCommand::run() {
 
@@ -79,7 +51,7 @@ int LoadCommand::run() {
     const auto strategyPayloads = combinations 
         | std::views::transform([](const sweep::Combination& combo) {
             // Pin to JSON explicitly to trigger implicit Strategy conversion
-            const nlohmann::json j = makeStrategy(combo);
+            const nlohmann::json j = sweep::makeStrategy(combo);
             return j.dump();
         }) 
         | std::ranges::to<std::vector>();
