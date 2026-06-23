@@ -5,10 +5,10 @@
 // ---------------------------------------
 #pragma once
 
-#include "shared/tradingDefinitions/ohlcVariables.hpp"
-#include "shared/tradingDefinitions/ohlcRsiVariables.hpp"
-#include "shared/tradingDefinitions/tradingVariables.hpp"
-#include "shared/tradingDefinitions/strategyVariables.hpp"
+#include "shared/tradingDefinitions/variables/ohlcVariables.hpp"
+#include "shared/tradingDefinitions/variables/ohlcRsiVariables.hpp"
+#include "shared/tradingDefinitions/variables/tradingVariables.hpp"
+#include "shared/tradingDefinitions/variables/strategyVariables.hpp"
 #include "shared/tradingDefinitions/strategy.hpp"
-#include "shared/tradingDefinitions/configuration.hpp"
-#include "shared/tradingDefinitions/runConfiguration.hpp"
+#include "shared/tradingDefinitions/config/configuration.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"

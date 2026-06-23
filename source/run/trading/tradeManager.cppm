@@ -28,6 +28,16 @@ private:
     // across open ones.
     std::int64_t closedPnl{0};
     std::int64_t openPnl{0};
+    // Peak account equity (closedPnl + openPnl, int64 points-per-lot) and the
+    // deepest peak-to-trough drop seen below it, sampled every time equity
+    // moves (open/mark/close). This is the TRUE mark-to-market max drawdown —
+    // it sees intra-trade floating losses, not just realized close-to-close.
+    std::int64_t peakEquity{0};
+    std::int64_t maxDrawdown{0};
+    // Fold the current equity into the peak/drawdown extremes. Cheap integer
+    // work; called from every mutation that changes equity so callers (and the
+    // per-tick loop) need no extra bookkeeping.
+    void updateDrawdown();
 
 public:
     TradeManager() = default;
@@ -51,6 +61,10 @@ public:
     // Floating (mark-to-market) PnL (int64 points-per-lot) across all open
     // trades, as of each trade's last marked price. O(1).
     std::int64_t unrealizedPnl() const;
+    // Deepest peak-to-trough drop in account equity over the run, in int64
+    // points-per-lot (>= 0). Includes intra-trade floating drawdown. Divide by
+    // the symbol's points-per-pip for pips at the reporting boundary. O(1).
+    std::int64_t maxDrawdownPoints() const;
     // Revalue open trades for this tick's symbol at its close-side price
     // (bid for LONG, ask for SHORT), updating their floating PnL.
     void markToMarket(const PriceData& tick);
@@ -74,6 +88,13 @@ std::int64_t floatingPnlAt(const Trade& trade, std::int32_t mark) {
     if (trade.direction == Direction::SHORT) diff = -diff;
     return static_cast<std::int64_t>(diff) * trade.size;
 }
+}
+
+void TradeManager::updateDrawdown() {
+    const std::int64_t equity = closedPnl + openPnl;
+    if (equity > peakEquity) peakEquity = equity;
+    const std::int64_t drop = peakEquity - equity;
+    if (drop > maxDrawdown) maxDrawdown = drop;
 }
 
 std::string TradeManager::openTrade(const PriceData& tick,
@@ -109,6 +130,7 @@ std::string TradeManager::openTrade(const PriceData& tick,
     trade.floatingPnl = floatingPnlAt(trade, trade.lastMarkPrice);
     openPnl += trade.floatingPnl;
     activeTrades[trade.id] = trade;
+    updateDrawdown();  // equity dips by the spread the moment a trade opens
     return trade.id;
 }
 
@@ -121,6 +143,7 @@ void TradeManager::markToMarket(const PriceData& tick) {
         trade.floatingPnl = updated;
         trade.lastMarkPrice = mark;
     }
+    updateDrawdown();  // capture floating drawdown at this tick's marks
 }
 
 void TradeManager::closeAllTrades(const PriceData& tick) {
@@ -165,6 +188,7 @@ bool TradeManager::closeTrade(const std::string& tradeId,
         closed.floatingPnl = 0;
         closedTrades.push_back(closed);
         activeTrades.erase(it);
+        updateDrawdown();  // realized exit may differ from the last mark
 
         // Per-trade chatter is skipped under concurrent backtests (quiet),
         // which also avoids the formatting work below.
@@ -206,4 +230,8 @@ std::int64_t TradeManager::calculatePnl() const {
 
 std::int64_t TradeManager::unrealizedPnl() const {
     return openPnl;
+}
+
+std::int64_t TradeManager::maxDrawdownPoints() const {
+    return maxDrawdown;
 }

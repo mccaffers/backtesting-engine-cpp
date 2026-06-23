@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/redis/redisRunner.hpp"
+#include "shared/redis/consumer/redisRunner.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -16,7 +16,6 @@
 #include <string>
 #include <thread>
 #include <utility>
-#include <vector>
 
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
@@ -28,60 +27,15 @@
 #include "shared/utilities/backtestLog.hpp"
 #include "shared/utilities/jsonParser.hpp"
 #include "shared/utilities/queueKeys.hpp"
-#include "shared/redis/redisConnection.hpp"
-#include "shared/redis/runnerBridge.hpp"
+#include "shared/redis/connection/redisConnection.hpp"
+#include "shared/redis/consumer/runQueue.hpp"
+#include "run/execution/runnerBridge.hpp"
 #include "shared/utilities/threadPool.hpp"
 
 namespace asio = boost::asio;
 namespace redis = boost::redis;
 
 namespace {
-
-// One Redis command on the shared connection, returning a bulk string (or nil).
-// A nil reply (RPOP/LINDEX out of range) maps to nullopt. The connection is NOT
-// cancelled here, it stays open for the rest of the worker loop.
-asio::awaitable<std::optional<std::string>> execOptionalString(
-    std::shared_ptr<redis::connection> conn,
-    redis::request req) {
-    redis::response<std::optional<std::string>> resp;
-    co_await conn->async_exec(req, resp, asio::use_awaitable);
-    co_return std::move(std::get<0>(resp).value());
-}
-
-// One Redis command on the shared connection whose reply we ignore (e.g. LREM).
-asio::awaitable<void> execIgnore(std::shared_ptr<redis::connection> conn,
-                                 redis::request req) {
-    redis::generic_response resp;
-    co_await conn->async_exec(req, resp, asio::use_awaitable);
-    co_return;
-}
-
-// Non-destructively reads the run that RPOP would take (the queue tail, i.e. the
-// oldest run since LoadCommand LPUSHes onto the head). Multiple workers all
-// observe the same run and pile onto it.
-asio::awaitable<std::optional<std::string>> peekRunTail(std::shared_ptr<redis::connection> conn) {
-    redis::request req;
-    req.push("LINDEX", queue_keys::RUN, "-1");
-    co_return co_await execOptionalString(conn, std::move(req));
-}
-
-// Claims one strategy off the run's per-RUN_ID list. nullopt once drained.
-asio::awaitable<std::optional<std::string>> popStrategy(
-    std::shared_ptr<redis::connection> conn,
-    std::string strategyKey) {
-    redis::request req;
-    req.push("RPOP", strategyKey);
-    co_return co_await execOptionalString(conn, std::move(req));
-}
-
-// Retires a run by removing its descriptor. Idempotent: LREM removes 0 if a peer
-// worker already retired it.
-asio::awaitable<void> removeRun(std::shared_ptr<redis::connection> conn,
-                                std::string descriptorB64) {
-    redis::request req;
-    req.push("LREM", queue_keys::RUN, "0", descriptorB64);
-    co_await execIgnore(conn, std::move(req));
-}
 
 // Drains BACKTESTING_QUEUE_RUN on a single long-lived connection. For each run it
 // loads the QuestDB ticks once, drains that run's strategy list, then retires the
@@ -102,7 +56,7 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
         // wait and re-peek (below); only an exception blows the loop
         bool waitingLogged = false;
         for (;;) {
-            const std::optional<std::string> descriptorB64 = co_await peekRunTail(conn);
+            const std::optional<std::string> descriptorB64 = co_await run_queue::peekRunTail(conn);
             if (!descriptorB64.has_value()) {
                 // Queue empty: stay alive and poll until work reappears. The timer
                 // is co_awaited, so this suspends (not a busy wait) while keeping
@@ -144,7 +98,7 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
             int strategiesRun = 0;
             for (;;) {
                 const std::optional<std::string> strategyB64 =
-                    co_await popStrategy(conn, strategyKey);
+                    co_await run_queue::popStrategy(conn, strategyKey);
                 if (!strategyB64.has_value()) {
                     break;  // strategy list drained
                 }
@@ -177,7 +131,7 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
 
             // Retire the run. A failure here propagates and aborts the loop, we
             // never re-peek the same run and reload its ticks in a tight loop.
-            co_await removeRun(conn, *descriptorB64);
+            co_await run_queue::removeRun(conn, *descriptorB64);
 
             std::println("RedisRunner: completed RUN_ID={} ({} strateg{})",
                          runCfg.RUN_ID, strategiesRun,
@@ -202,16 +156,12 @@ asio::awaitable<int> drainRuns(std::shared_ptr<redis::connection> conn,
 
 int RedisRunner::run(const std::string& questdbHost,
                      const std::string& redisHost,
-                     int redisPort) {
+                     const int redisPort) {
     
-    // Mute logs to prevent interleaved thread spam
-    backtest_log::set_quiet(true);
+    backtest_log::set_quiet(true); // Mute logs to prevent interleaved thread spam
+    asio::io_context ioc;  // Set up the async event loop
 
-    // Set up the async event loop
-    asio::io_context ioc;
-    
-    // Establish Redis connection
-    auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
+    const auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
 
     // State trackers for the coroutine's outcome
     int result = 0;

@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/redis/redisLoader.hpp"
+#include "shared/redis/producer/redisLoader.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -15,21 +15,25 @@
 #include <vector>
 
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/consign.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
-#include <boost/redis.hpp>
 #include <boost/redis/connection.hpp>
 #include <boost/system/system_error.hpp>
 
 #include "shared/utilities/base64.hpp"
-#include "shared/redis/redisConnection.hpp"
+#include "shared/redis/connection/redisConnection.hpp"
 
 namespace asio = boost::asio;
 namespace redis = boost::redis;
 
 namespace {
+
+// A whitespace-only (or empty) payload is rejected before it reaches Redis.
+bool isBlank(const std::string& rawJson) {
+    return std::ranges::all_of(rawJson, [](unsigned char c) {
+        return std::isspace(c);
+    });
+}
 
 asio::awaitable<void> pushOnce(
     std::shared_ptr<redis::connection> conn,
@@ -69,11 +73,7 @@ int RedisLoader::loadPayload(const std::string& redisHost,
                              int redisPort,
                              const std::string& queueKey,
                              const std::string& rawJson) {
-    const bool isBlank = std::ranges::all_of(rawJson,
-                                             [](unsigned char c) {
-                                                 return std::isspace(c);
-                                             });
-    if (isBlank) {
+    if (isBlank(rawJson)) {
         std::cerr << "RedisLoader: empty payload rejected" << std::endl;
         return 1;
     }
@@ -81,13 +81,7 @@ int RedisLoader::loadPayload(const std::string& redisHost,
     const std::string encoded = Base64::b64encode(rawJson);
 
     asio::io_context ioc;
-    auto conn = std::make_shared<redis::connection>(ioc);
-
-    redis::config cfg;
-    cfg.addr.host = redisHost;
-    cfg.addr.port = std::to_string(redisPort);
-
-    conn->async_run(cfg, asio::consign(asio::detached, conn));
+    auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
 
     std::exception_ptr pushError;
 
@@ -125,11 +119,7 @@ int RedisLoader::loadPayloadBatch(const std::string& redisHost,
     std::vector<std::string> encoded;
     encoded.reserve(rawJsonPayloads.size());
     for (const std::string& rawJson : rawJsonPayloads) {
-        const bool isBlank = std::ranges::all_of(rawJson,
-                                                 [](unsigned char c) {
-                                                     return std::isspace(c);
-                                                 });
-        if (isBlank) {
+        if (isBlank(rawJson)) {
             std::cerr << "RedisLoader: empty payload rejected" << std::endl;
             return 1;
         }

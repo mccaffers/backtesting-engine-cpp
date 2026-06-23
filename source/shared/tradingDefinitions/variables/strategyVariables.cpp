@@ -3,7 +3,7 @@
 // (c) 2025 Ryan McCaffery | https://mccaffers.com
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
-#include "shared/tradingDefinitions/strategyVariables.hpp"
+#include "shared/tradingDefinitions/variables/strategyVariables.hpp"
 
 namespace tradingDefinitions {
 

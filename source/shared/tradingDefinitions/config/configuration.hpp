@@ -8,7 +8,7 @@
 #include <string>
 #include <boost/decimal.hpp>
 #include <nlohmann/json.hpp>
-#include "shared/tradingDefinitions/runConfiguration.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"
 #include "shared/tradingDefinitions/strategy.hpp"
 #include "shared/utilities/decimalJson.hpp"
 

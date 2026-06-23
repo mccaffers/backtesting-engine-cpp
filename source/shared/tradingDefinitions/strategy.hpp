@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
-#include "shared/tradingDefinitions/tradingVariables.hpp"
-#include "shared/tradingDefinitions/ohlcVariables.hpp"
-#include "shared/tradingDefinitions/strategyVariables.hpp"
+#include "shared/tradingDefinitions/variables/tradingVariables.hpp"
+#include "shared/tradingDefinitions/variables/ohlcVariables.hpp"
+#include "shared/tradingDefinitions/variables/strategyVariables.hpp"
 
 namespace tradingDefinitions {
 

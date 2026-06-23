@@ -9,7 +9,7 @@ module;
 #include <boost/decimal.hpp>
 #include <boost/decimal/literals.hpp>
 
-#include "shared/tradingDefinitions/runConfiguration.hpp"
+#include "shared/tradingDefinitions/config/runConfiguration.hpp"
 
 export module runConfigurationBuilder;
 

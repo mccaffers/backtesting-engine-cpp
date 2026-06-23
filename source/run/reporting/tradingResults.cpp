@@ -32,6 +32,13 @@ void to_json(nlohmann::json& j, const TradingResultsStats& s) {
         {"losers", s.losers},
         {"breakeven", s.breakeven},
         {"liquidated", s.liquidated},
+        {"performanceScore", s.performanceScore},
+        {"winRate", s.winRate},
+        {"tradeRatio", s.tradeRatio},
+        {"expectancyScore", s.expectancyScore},
+        {"calmarScore", s.calmarScore},
+        {"confidenceMultiplier", s.confidenceMultiplier},
+        {"maxDrawdownPercent", s.maxDrawdownPercent},
     };
     if (s.avgPnl) {
         j["avgPnl"] = *s.avgPnl;

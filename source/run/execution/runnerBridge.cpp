@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/redis/runnerBridge.hpp"
+#include "run/execution/runnerBridge.hpp"
 
 import std;
 import priceData;       // PriceData

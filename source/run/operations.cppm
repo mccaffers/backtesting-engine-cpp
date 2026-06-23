@@ -7,7 +7,7 @@
 module;
 
 #include "shared/utilities/backtestLog.hpp"
-#include "shared/tradingDefinitions/configuration.hpp"
+#include "shared/tradingDefinitions/config/configuration.hpp"
 #include "run/reporting/tradingResults.hpp"
 
 export module operations;
@@ -76,7 +76,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
         trading::runTicks(tradeManager, *strategy, ticks,
                           config.STRATEGY.TRADING_VARIABLES, riskLimits);
 
-    ResultsSummary::summarise(tradeManager);
+    ResultsSummary::summarise(tradeManager, config);
 
     // Elapsed backtest time for this run, measured from the top of run(). The
     // Elasticsearch PUT below is deliberately excluded so the duration reflects
@@ -128,7 +128,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
                 durationSeconds,
                 reason.str(),
                 config,
-                ResultsSummary::collect(tradeManager),
+                ResultsSummary::collect(tradeManager, config),
             };
             ElasticClient::putTradingFailure(failure);
         } else {
@@ -137,7 +137,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
                 TradingResults::nowIsoUtc(),
                 durationSeconds,
                 config,
-                ResultsSummary::collect(tradeManager),
+                ResultsSummary::collect(tradeManager, config),
             };
             ElasticClient::putTradingResults(results);
         }

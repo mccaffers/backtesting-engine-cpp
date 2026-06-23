@@ -7,7 +7,7 @@
 #pragma once
 #include <optional>
 #include <nlohmann/json.hpp>
-#include "shared/tradingDefinitions/ohlcRsiVariables.hpp"
+#include "shared/tradingDefinitions/variables/ohlcRsiVariables.hpp"
 
 namespace tradingDefinitions {
 
