@@ -27,18 +27,26 @@ import makeStrategy;           // sweep::makeStrategy
 
 export class LoadCommand {
 public:
-    static int run();
+    static int run(int argc, const char* argv[]);
 };
 
-int LoadCommand::run() {
+int LoadCommand::run(const int argc, const char* argv[]) {
 
     // One RUN_ID identifies the whole sweep; each combination becomes its own
     // queue entry, distinguished by its parameter values.
     const auto runId = boost::uuids::to_string(boost::uuids::random_generator()());
 
-    // Build random here
-    // TODO Configurable? maybe in the future ENV variable?
-    const auto generator = sweep::buildRandomStrategySweep();
+    // Select the sweep generator from the command line, e.g. `load random`.
+    // Defaults to "random" — the only generator today — when omitted. An
+    // unknown name is a usage error, not a crash, so report it and bail.
+    const std::string_view sweepName = argc > 2 ? argv[2] : "random";
+    sweep::ParameterGenerator generator;
+    try {
+        generator = sweep::buildSweep(sweepName);
+    } catch (const std::exception& ex) {
+        std::println(stderr, "LoadCommand: {}", ex.what());
+        return 1;
+    }
 
     const auto combinations = generator.generateAllCombinations();
 

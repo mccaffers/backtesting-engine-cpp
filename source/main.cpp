@@ -19,7 +19,7 @@ int main(const int argc, const char* argv[]) {
 
     const std::string_view subcommand = argv[1];
 
-    if (subcommand == "load") return LoadCommand::run();
+    if (subcommand == "load") return LoadCommand::run(argc, argv);
     if (subcommand == "run") return RunCommand::run(argc, argv);
 
     std::println(std::cerr, "Error: unknown subcommand '{}'.", subcommand);

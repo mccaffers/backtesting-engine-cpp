@@ -24,8 +24,8 @@ namespace {
 // A nil reply (RPOP/LINDEX out of range) maps to nullopt. The connection is NOT
 // cancelled here, it stays open for the rest of the worker loop.
 asio::awaitable<std::optional<std::string>> execOptionalString(
-    std::shared_ptr<redis::connection> conn,
-    redis::request req) {
+    const std::shared_ptr<redis::connection> conn,
+    const redis::request req) {
     redis::response<std::optional<std::string>> resp;
     co_await conn->async_exec(req, resp, asio::use_awaitable);
     co_return std::move(std::get<0>(resp).value());

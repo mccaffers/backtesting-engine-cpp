@@ -6,17 +6,10 @@
 
 #include "run/reporting/tradingResults.hpp"
 
-#include <chrono>
-#include <ctime>
+#include "shared/reporting/elasticPublisher.hpp"
 
 std::string TradingResults::nowIsoUtc() {
-    const auto now = std::chrono::system_clock::to_time_t(
-        std::chrono::system_clock::now());
-    std::tm tm_buf{};
-    gmtime_r(&now, &tm_buf);
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
-    return std::string{buf};
+    return elastic::nowIsoUtc();
 }
 
 void to_json(nlohmann::json& j, const TradingResultsStats& s) {

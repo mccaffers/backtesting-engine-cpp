@@ -16,7 +16,7 @@
 // Redis queue access for the runner's drain loop. These coroutines issue one
 // command each on the shared, long-lived connection and never cancel it — the
 // connection stays open for the rest of the worker loop. Keeping them out of
-// redisRunner.cpp leaves that TU focused on orchestration (drainRuns + run()).
+// the drain loop (see drainRuns.cpp) keeps each TU small and single-purpose.
 namespace run_queue {
 
 // Non-destructively reads the run that RPOP would take (the queue tail, i.e. the
