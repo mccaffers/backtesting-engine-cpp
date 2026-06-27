@@ -49,3 +49,12 @@ struct adl_serializer<boost::decimal::decimal64_t> {
     }
 };
 }
+
+// Reporting/visualisation helper: emit a decimal as a JSON *number* (double) so
+// downstream tools (Kibana) can aggregate and do maths on it. The deliberate
+// opposite of the adl_serializer above, which string-encodes decimals to preserve
+// exact literals on the config round-trip (the Redis sweep queue). Use ONLY on
+// output-only paths that are never parsed back into a decimal.
+inline nlohmann::json decimalToJsonNumber(const boost::decimal::decimal64_t& value) {
+    return static_cast<double>(value);
+}

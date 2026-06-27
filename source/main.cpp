@@ -9,6 +9,7 @@ import std;
 // backtesting engine headers
 import loadCommand;
 import runCommand;
+import ingestCommand;
 
 int main(const int argc, const char* argv[]) {
 
@@ -21,6 +22,7 @@ int main(const int argc, const char* argv[]) {
 
     if (subcommand == "load") return LoadCommand::run(argc, argv);
     if (subcommand == "run") return RunCommand::run(argc, argv);
+    if (subcommand == "ingest") return IngestCommand::run(argc, argv);
 
     std::println(std::cerr, "Error: unknown subcommand '{}'.", subcommand);
     return 1;

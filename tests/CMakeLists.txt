@@ -8,6 +8,7 @@ add_executable(unit_tests
     db.cpp
     sweep.cpp
     tradeManager.cpp
+    tickPacket.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE
