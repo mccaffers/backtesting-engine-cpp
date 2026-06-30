@@ -6,6 +6,10 @@
 
 module;
 
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
 #include "shared/utilities/parameterSweep.hpp"
 
 export module randomStrategySweep;
@@ -22,6 +26,18 @@ ParameterGenerator buildRandomStrategySweep() {
     generator.addRange("LIMIT_DISTANCE_IN_PIPS", 1, 1, 100);
     generator.addRange("STOP_DISTANCE_IN_PIPS", 1, 1, 100);
     return generator;
+}
+
+// Resolves a generator by name (as passed on the `load` command line). Throws
+// std::invalid_argument for an unknown name so the caller can report it. A new
+// generator is one extra branch here plus an entry in `valid`.
+ParameterGenerator buildSweep(std::string_view name) {
+    constexpr std::string_view valid = "random";
+    if (name == "random") {
+        return buildRandomStrategySweep();
+    }
+    throw std::invalid_argument("unknown sweep generator '" + std::string(name)
+                                + "' (valid: " + std::string(valid) + ")");
 }
 
 }  // namespace sweep

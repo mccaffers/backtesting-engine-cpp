@@ -42,9 +42,20 @@ export namespace symbol_scale {
 // brace-initialization below. `string_view` is safe to store here because
 // the strings it points to are static string literals with program-long
 // lifetime.
+//
+// Two independent scaling factors live on each entry:
+//  - `scale`      : points-per-pip (10 / 100 / 1000), used by the backtester to
+//                   convert between integer points and pips (see get()).
+//  - `priceScale` : the multiplier that turns a real decimal price into the
+//                   scaled INT32 stored in QuestDB (FX majors x100000, JPY pairs
+//                   & metals x1000, indices/commodities x100 — see priceData).
+//                   Used by the UDP ingest path to scale incoming prices (see
+//                   getPriceScale()). It is NOT derivable from `scale` alone: FX
+//                   majors and JPY pairs share scale 10 but differ here.
 struct Entry {
     std::string_view symbol;
     int scale;
+    int priceScale;
 };
 
 // Three keywords doing three different jobs on this one declaration:
@@ -59,38 +70,40 @@ struct Entry {
 //
 // IMPORTANT: this table MUST stay sorted ascending by symbol. The
 // `static_assert` below enforces that at compile time.
-// Values are integer price points per pip (see header comment). FX majors and
-// JPY pairs are 10, indices/commodities 100, metals 1000.
+// Columns are {symbol, scale (points-per-pip), priceScale (decimal->INT32
+// multiplier)}. scale: FX majors & JPY pairs 10, indices/commodities 100,
+// metals 1000. priceScale: FX majors 100000, JPY pairs & metals 1000,
+// indices/commodities 100.
 inline constexpr std::array<Entry, 29> kTable{{
-    {"AUDNZD",          10},
-    {"AUDUSD",          10},
-    {"AUSIDXAUD",      100},
-    {"BRENTCMDUSD",    100},
-    {"COPPERCMDUSD",   100},
-    {"DEUIDXEUR",      100},
-    {"EURAUD",          10},
-    {"EURCHF",          10},
-    {"EURGBP",          10},
-    {"EURJPY",          10},
-    {"EURNOK",          10},
-    {"EURUSD",          10},
-    {"FRAIDXEUR",      100},
-    {"GBPJPY",          10},
-    {"GBPUSD",          10},
-    {"GBRIDXGBP",      100},
-    {"HKGIDXHKD",      100},
-    {"JPNIDXJPY",      100},
-    {"LIGHTCMDUSD",    100},
-    {"NZDUSD",          10},
-    {"USA30IDXUSD",    100},
-    {"USA500IDXUSD",   100},
-    {"USATECHIDXUSD",  100},
-    {"USDCAD",          10},
-    {"USDCHF",          10},
-    {"USDJPY",          10},
-    {"USDSEK",          10},
-    {"XAGUSD",        1000},
-    {"XAUUSD",        1000},
+    {"AUDNZD",          10,  100000},
+    {"AUDUSD",          10,  100000},
+    {"AUSIDXAUD",      100,     100},
+    {"BRENTCMDUSD",    100,     100},
+    {"COPPERCMDUSD",   100,     100},
+    {"DEUIDXEUR",      100,     100},
+    {"EURAUD",          10,  100000},
+    {"EURCHF",          10,  100000},
+    {"EURGBP",          10,  100000},
+    {"EURJPY",          10,    1000},
+    {"EURNOK",          10,  100000},
+    {"EURUSD",          10,  100000},
+    {"FRAIDXEUR",      100,     100},
+    {"GBPJPY",          10,    1000},
+    {"GBPUSD",          10,  100000},
+    {"GBRIDXGBP",      100,     100},
+    {"HKGIDXHKD",      100,     100},
+    {"JPNIDXJPY",      100,     100},
+    {"LIGHTCMDUSD",    100,     100},
+    {"NZDUSD",          10,  100000},
+    {"USA30IDXUSD",    100,     100},
+    {"USA500IDXUSD",   100,     100},
+    {"USATECHIDXUSD",  100,     100},
+    {"USDCAD",          10,  100000},
+    {"USDCHF",          10,  100000},
+    {"USDJPY",          10,    1000},
+    {"USDSEK",          10,  100000},
+    {"XAGUSD",        1000,    1000},
+    {"XAUUSD",        1000,    1000},
 }};
 
 // Compile-time invariant check. The pattern is an IIFE — Immediately
@@ -114,45 +127,44 @@ static_assert([] {
 // than corrupting silently.
 inline constexpr int kUnknown = 0;
 
-// `[[nodiscard]]` : compiler warning if the caller ignores the returned
-//                   value (this function has no other purpose, so
-//                   ignoring the result is almost always a bug).
-// `constexpr`     : callable at compile time. When the symbol is a
-//                   literal known to the compiler, the entire binary
-//                   search is folded away and the result becomes a
-//                   constant in the generated assembly.
-// `noexcept`      : promises this function will not throw. Lets the
-//                   compiler skip exception-handling bookkeeping at
-//                   call sites.
-// Parameter is `std::string_view` (by value — it's just a pointer +
-// length, cheap to copy) so callers can pass `std::string`, string
-// literals, or `const char*` without converting or allocating.
-[[nodiscard]] constexpr int get(std::string_view symbol) noexcept {
-    // Standard binary search over the sorted table.
-    // `lo` and `hi` are the half-open range [lo, hi) of indices still
-    // in play. Each iteration halves the range, so for 29 entries we
-    // do at most 5 iterations.
+// Shared lookup behind get()/getPriceScale(): returns the matching entry or
+// nullptr. `constexpr` so the whole search folds to a constant at compile time
+// when the symbol is a literal; `noexcept` skips exception bookkeeping at call
+// sites. The `std::string_view` parameter (pointer + length, cheap to copy) lets
+// callers pass std::string, string literals, or const char* without allocating.
+constexpr const Entry* findEntry(std::string_view symbol) noexcept {
+    // Standard binary search over the sorted table. [lo, hi) is the half-open
+    // range still in play; each iteration halves it (<=5 steps for 29 entries).
+    // `lo + ((hi - lo) >> 1)` is the overflow-safe midpoint idiom (`>> 1` is /2).
     std::size_t lo = 0;
     std::size_t hi = kTable.size();
     while (lo < hi) {
-        // `lo + ((hi - lo) >> 1)` is the overflow-safe way to compute
-        // the midpoint. `(lo + hi) / 2` would be wrong if the indices
-        // were near std::size_t's max; not a real risk here, but it's
-        // the canonical idiom worth learning. `>> 1` is just `/ 2`.
         const std::size_t mid = lo + ((hi - lo) >> 1);
         const auto& entry = kTable[mid];
-
-        // Three-way compare on the symbol. `string_view::operator<`
-        // does a lexicographic comparison (essentially memcmp).
+        // `string_view::operator<` is a lexicographic (memcmp-like) compare.
         if (entry.symbol < symbol) {
             lo = mid + 1;       // target is in the upper half
         } else if (symbol < entry.symbol) {
             hi = mid;           // target is in the lower half
         } else {
-            return entry.scale; // exact match
+            return &entry;      // exact match
         }
     }
-    return kUnknown;
+    return nullptr;
+}
+
+// Points-per-pip for the symbol (10 / 100 / 1000), or kUnknown if not found.
+[[nodiscard]] constexpr int get(std::string_view symbol) noexcept {
+    const Entry* entry = findEntry(symbol);
+    return entry ? entry->scale : kUnknown;
+}
+
+// decimal->INT32 price multiplier (e.g. EURUSD 1.10001 -> 110001), or kUnknown.
+// Used by the UDP ingest to scale incoming prices; kUnknown means "drop the
+// tick" rather than scale by zero.
+[[nodiscard]] constexpr int getPriceScale(std::string_view symbol) noexcept {
+    const Entry* entry = findEntry(symbol);
+    return entry ? entry->priceScale : kUnknown;
 }
 
 } // namespace symbol_scale

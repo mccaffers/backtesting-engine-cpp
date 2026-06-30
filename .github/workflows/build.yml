@@ -137,6 +137,11 @@ jobs:
 
       # Performs the SonarQube scan using the captured build commands and the
       # downloaded coverage report. Requires GitHub and SonarQube tokens.
+      # sonar.cfamily.enableModules turns on the analyzer's (experimental) C++20
+      # named-modules support; this project is module-heavy (`import std;` plus
+      # .cppm interface units), so without it the analyzer can't parse those TUs.
+      # NB: keep these as --define args, not a `#` comment inside the folded
+      # `args: >` block — a `#` there would be passed to the scanner literally.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4.2.1
         env:
@@ -145,4 +150,5 @@ jobs:
         with:
           args: >
             --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.cfamily.enableModules=true
             --define sonar.coverageReportPaths=artifact/sonarqube-generic-coverage.xml

@@ -7,6 +7,7 @@
 module;
 
 #include "shared/utilities/backtestLog.hpp"
+#include "shared/reporting/elasticPublisher.hpp"
 #include "shared/tradingDefinitions/config/configuration.hpp"
 #include "run/reporting/tradingResults.hpp"
 
@@ -144,7 +145,12 @@ void Operations::run(const std::vector<PriceData>& ticks,
     } catch (const std::exception& e) {
         backtest_log::error(std::string("Operations: outcome put failed: ")
                             + e.what());
+        // Best-effort: also record the failure in Elasticsearch (noexcept).
+        elastic::putEngineException(
+            {elastic::nowIsoUtc(), "Operations", e.what(), config.RUN_ID});
     } catch (...) {
         backtest_log::error("Operations: outcome put failed: unknown error");
+        elastic::putEngineException(
+            {elastic::nowIsoUtc(), "Operations", "unknown error", config.RUN_ID});
     }
 }
