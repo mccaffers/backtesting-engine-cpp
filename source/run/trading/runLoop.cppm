@@ -65,7 +65,7 @@ inline RunStatus runTicks(TradeManager& tradeManager,
                           const std::vector<PriceData>& ticks,
                           const tradingDefinitions::TradingVariables& vars,
                           const RiskLimits& limits = {}) {
-    const boost::decimal::decimal64_t zero{0};
+    constexpr boost::decimal::decimal64_t zero{0};
     const bool lossLimitActive = limits.maxLossPercent > zero;
     // Lowest equity the run may reach, in int64 points. balance * loss% gives
     // the floor in pips; scaling by points-per-pip puts it in the same integer

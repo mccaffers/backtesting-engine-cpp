@@ -8,7 +8,7 @@ module;
 
 #include <nlohmann/json.hpp>
 
-#include "shared/reporting/elasticPublisher.hpp"
+#include "run/reporting/elasticPublisher.hpp"
 #include "run/reporting/tradingResults.hpp"
 
 export module elasticClient;
@@ -22,6 +22,8 @@ export class ElasticClient {
 public:
     static int putTradingResults(const TradingResults& results);
     static int putTradingFailure(const TradingFailure& failure);
+    // Compact per-run terminal record; lands in index "trading_final".
+    static int putTradeFinal(const TradeFinal& result);
 };
 
 int ElasticClient::putTradingResults(const TradingResults& results) {
@@ -30,4 +32,8 @@ int ElasticClient::putTradingResults(const TradingResults& results) {
 
 int ElasticClient::putTradingFailure(const TradingFailure& failure) {
     return elastic::putDocument("trading_failures", nlohmann::json(failure).dump());
+}
+
+int ElasticClient::putTradeFinal(const TradeFinal& result) {
+    return elastic::putDocument("trading_final", nlohmann::json(result).dump());
 }

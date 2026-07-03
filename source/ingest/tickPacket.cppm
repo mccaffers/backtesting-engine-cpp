@@ -61,11 +61,14 @@ template <class T>
 // rather than a hard error, since UDP is best-effort and a stray/garbled or
 // malformed datagram must not take the ingest down — for any of:
 //   - a wrong-sized packet,
-//   - a zero bid or ask (the bad-data signature found in the historical feed;
-//     the C# producer already guards this at SubListener.cs:126 — we re-check
-//     here as defense in depth against a future non-guarding producer),
-//   - a non-positive timestamp (unset / pre-1970 — the null/epoch signature of
-//     the same bad rows),
+//   - a bid or ask that isn't finite and strictly positive — zero is the
+//     bad-data signature found in the historical feed (the C# producer already
+//     guards it at SubListener.cs:126; we re-check here as defense in depth
+//     against a future non-guarding producer), and NaN/Inf/negatives are the
+//     same class of corrupt/unset data,
+//   - an out-of-range timestamp (<= 0 is unset / pre-1970; an implausibly large
+//     value is corrupt and would overflow the micros->nanos conversion on the
+//     write path),
 //   - an unknown symbol (multiplier 0),
 //   - a scaled price that overflows INT32 (latent: real prices sit ~300x below
 //     the limit, but we never silently store a truncated value).
@@ -78,15 +81,21 @@ template <class T>
     const double ask = detail::readLE<double>(bytes.subspan(kAskOffset));
     const std::int64_t tsMicros = detail::readLE<std::int64_t>(bytes.subspan(kTsOffset));
 
-    // Drop zero-price ticks: a real quote always has a non-zero bid and ask, so
-    // a 0 here is corrupt/unset data, not a tradable price.
-    if (bid == 0.0 || ask == 0.0) {
+    // Drop anything that isn't a real, tradable price. A genuine quote is always
+    // finite and strictly positive, so this one test rejects every corrupt/unset
+    // signature at once: NaN/Inf (which would otherwise sail past an == 0 check
+    // and give std::llround unspecified behaviour), zero, and negatives.
+    if (!std::isfinite(bid) || !std::isfinite(ask) || bid <= 0.0 || ask <= 0.0) {
         return std::nullopt;
     }
 
-    // Drop unset / pre-epoch timestamps: a real tick is always strictly after
-    // the Unix epoch, so <= 0 is the null-date signature.
-    if (tsMicros <= 0) {
+    // Drop out-of-range timestamps. A real tick is strictly after the Unix epoch
+    // (<= 0 is the null-date signature), and the write path converts these micros
+    // to nanoseconds (x1000) — so a corrupt, implausibly-large value would
+    // overflow int64 there (signed-overflow UB, garbage timestamp). Bound both
+    // ends; kMaxTsMicros is 2100-01-01Z, far past any real feed.
+    constexpr std::int64_t kMaxTsMicros = 4'102'444'800'000'000;
+    if (tsMicros <= 0 || tsMicros > kMaxTsMicros) {
         return std::nullopt;
     }
 

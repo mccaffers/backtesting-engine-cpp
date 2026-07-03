@@ -14,6 +14,7 @@
 #include <array>
 #include <csignal>
 #include <cstddef>
+#include <exception>
 #include <utility>
 
 #include <boost/asio.hpp>
@@ -46,19 +47,19 @@ struct UdpReceiver::Impl {
     // throwing, so a bad address or an already-bound port is a clean error
     // rather than an uncaught exception / std::terminate.
     bool open() {
-        boost::system::error_code ec;
-        const auto address = asio::ip::make_address(bindAddr, ec);
-        if (ec) {
+        boost::system::error_code errorCodes;
+        const auto address = asio::ip::make_address(bindAddr, errorCodes);
+        if (errorCodes) {
             backtest_log::error("UdpReceiver: invalid bind address '" + bindAddr
-                                + "': " + ec.message());
+                                + "': " + errorCodes.message());
             return false;
         }
         const udp::endpoint endpoint(address, port);
-        if (const auto openEc = socket.open(endpoint.protocol(), ec); openEc) {
+        if (const auto openEc = socket.open(endpoint.protocol(), errorCodes); openEc) {
             backtest_log::error("UdpReceiver: socket open failed: " + openEc.message());
             return false;
         }
-        if (const auto bindEc = socket.bind(endpoint, ec); bindEc) {
+        if (const auto bindEc = socket.bind(endpoint, errorCodes); bindEc) {
             backtest_log::error("UdpReceiver: cannot bind " + bindAddr + ":"
                                 + std::to_string(port) + ": " + bindEc.message());
             return false;
@@ -69,13 +70,24 @@ struct UdpReceiver::Impl {
     void receive() {
         socket.async_receive_from(
             asio::buffer(buffer), sender,
-            [this](const boost::system::error_code& ec, std::size_t n) {
-                if (!ec) {
-                    handler(std::span<const std::byte>(buffer.data(), n));
-                } else if (ec == asio::error::operation_aborted) {
+            [this](const boost::system::error_code& errorCodes, const std::size_t n) {
+                if (!errorCodes) {
+                    // The handler must never take the receive loop down: a single
+                    // bad_alloc (or any handler-thrown exception) would otherwise
+                    // escape io_context::run() and terminate the process, and
+                    // skip the re-arm below. Swallow it, log, keep receiving.
+                    try {
+                        handler(std::span<const std::byte>(buffer.data(), n));
+                    } catch (const std::exception& e) {
+                        backtest_log::error(std::string("UdpReceiver: handler threw: ")
+                                            + e.what());
+                    } catch (...) {
+                        backtest_log::error("UdpReceiver: handler threw non-std exception");
+                    }
+                } else if (errorCodes == asio::error::operation_aborted) {
                     return;  // socket closed during shutdown — stop re-arming
                 } else {
-                    backtest_log::error("UdpReceiver: " + ec.message());
+                    backtest_log::error("UdpReceiver: " + errorCodes.message());
                 }
                 if (socket.is_open()) {
                     receive();  // re-arm for the next datagram
@@ -84,8 +96,8 @@ struct UdpReceiver::Impl {
     }
 
     void shutdown() {
-        boost::system::error_code ec;
-        if (const auto closeEc = socket.close(ec); closeEc) {
+        boost::system::error_code errorCodes;
+        if (const auto closeEc = socket.close(errorCodes); closeEc) {
             backtest_log::error("UdpReceiver: socket close failed: " + closeEc.message());
         }
         ioc.stop();
@@ -97,7 +109,8 @@ UdpReceiver::UdpReceiver(std::string bindAddr, std::uint16_t port, Handler onDat
 
 UdpReceiver::~UdpReceiver() = default;
 
-bool UdpReceiver::run() {
+bool UdpReceiver::run()
+{
     if (!impl_->open()) {
         return false;  // bind failed; reason already logged
     }
@@ -108,7 +121,8 @@ bool UdpReceiver::run() {
     return true;
 }
 
-void UdpReceiver::stop() {
+void UdpReceiver::stop()
+{
     // Hand the teardown to the io_context thread so the socket is only touched
     // from there (Asio objects are not thread-safe for concurrent use).
     asio::post(impl_->ioc, [this] { impl_->shutdown(); });

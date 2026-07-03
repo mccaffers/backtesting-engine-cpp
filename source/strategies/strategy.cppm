@@ -47,8 +47,9 @@ public:
 
     // Called every tick. Receives the TradeManager by mutable
     // reference so strategies can both inspect open positions
-    // (`tradeManager.getActiveTrades()`) and act on them
-    // (`closeTrade`, future scale/adjust hooks). A reference signals
+    // (`tradeManager.getActiveTrades()`, keyed by symbol) and act on
+    // them (`closeTrade(symbol, ...)`, future scale/adjust hooks). A
+    // reference signals
     // "borrow, don't own", the strategy must not delete it. The C#
     // analogue is just passing the manager as a parameter; C# has no
     // distinction between reference and pointer so the by-ref nature

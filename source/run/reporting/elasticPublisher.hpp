@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include "shared/reporting/engineException.hpp"
+#include "run/reporting/engineException.hpp"
 
 // Minimal Elasticsearch HTTP client — PUT-only, for indexing run outcomes and
 // engine exceptions. Host is read from $ELASTIC_HOST (default

@@ -55,6 +55,7 @@ struct TradingResults {
     std::string RUN_ID;
     std::string timestamp;
     double durationSeconds;          // wall-clock seconds for this run's backtest
+    std::string hostname;            // machine that ran the backtest
     tradingDefinitions::Configuration config;
     TradingResultsStats results;
 
@@ -69,10 +70,31 @@ struct TradingFailure {
     std::string timestamp;
     double durationSeconds;          // wall-clock seconds until the cutoff
     std::string reason;
+    std::string hostname;            // machine that ran the backtest
     tradingDefinitions::Configuration config;
     TradingResultsStats results;
+};
+
+// Compact terminal record emitted once per run, regardless of how it ended:
+// the input Configuration plus the bare outcome flag, how long it took, and the
+// host that produced it. Unlike TradingResults/TradingFailure it carries no
+// per-trade stats — it is the at-a-glance "this run finished" signal. Lands in
+// index "trading_final".
+struct TradeFinal {
+    std::string RUN_ID;
+    std::string timestamp;
+    double durationSeconds;          // wall-clock seconds for this run
+    int success;                     // 1 = completed, 0 = loss-limit cutoff
+    std::string hostname;            // machine that ran the backtest
+    tradingDefinitions::Configuration config;
+
+    // Host this process is running on ("unknown" if it can't be resolved).
+    // Lives here (a normal TU) rather than in the import-std module that calls
+    // it, since it needs the POSIX gethostname() header.
+    static std::string localHostname();
 };
 
 void to_json(nlohmann::json& j, const TradingResultsStats& s);
 void to_json(nlohmann::json& j, const TradingResults& r);
 void to_json(nlohmann::json& j, const TradingFailure& f);
+void to_json(nlohmann::json& j, const TradeFinal& f);

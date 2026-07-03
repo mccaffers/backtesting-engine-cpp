@@ -8,8 +8,12 @@
 #define UTILITIES_BACKTEST_LOG_HPP
 
 #include <atomic>
+#include <chrono>
+#include <cstdio>   // std::snprintf
+#include <ctime>    // POSIX gmtime_r, std::strftime
 #include <iostream>
 #include <mutex>
+#include <string>
 #include <string_view>
 
 // Cross-cutting logging switches for backtest execution.
@@ -43,9 +47,29 @@ inline std::mutex& errorMutex() {
     return m;
 }
 
+// UTC wall-clock prefix, e.g. "[2026-06-28 15:04:20.785]", to millisecond
+// precision. gmtime_r + strftime (rather than C++23 std::format) mirrors the
+// classic style in elasticPublisher.cpp and keeps this header light enough to
+// stay #includable from module global module fragments.
+inline std::string timestamp() {
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t t = std::chrono::system_clock::to_time_t(now);
+    const long millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now.time_since_epoch())
+                            .count() %
+                        1000;
+    std::tm utc{};
+    gmtime_r(&t, &utc);
+    char secs[20];  // "YYYY-MM-DD HH:MM:SS" + NUL
+    std::strftime(secs, sizeof(secs), "%Y-%m-%d %H:%M:%S", &utc);
+    char out[28];
+    std::snprintf(out, sizeof(out), "[%s.%03ld]", secs, millis);
+    return out;
+}
+
 inline void error(std::string_view message) {
     std::scoped_lock lock(errorMutex());
-    std::cerr << message << std::endl;
+    std::cerr << timestamp() << ' ' << message << std::endl;
 }
 
 }  // namespace backtest_log

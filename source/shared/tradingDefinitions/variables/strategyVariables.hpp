@@ -8,12 +8,14 @@
 #include <optional>
 #include <nlohmann/json.hpp>
 #include "shared/tradingDefinitions/variables/ohlcRsiVariables.hpp"
+#include "shared/tradingDefinitions/variables/ohlcBreakoutVariables.hpp"
 
 namespace tradingDefinitions {
 
 // Add in custom parameters
 struct StrategyVariables {
     std::optional<OHLCRSIVariables> OHLC_RSI_VARIABLES;
+    std::optional<OHLCBreakoutVariables> OHLC_BREAKOUT_VARIABLES;
 };
 
 void to_json(nlohmann::json& j, const StrategyVariables& s);

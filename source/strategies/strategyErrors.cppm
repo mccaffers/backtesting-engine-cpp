@@ -19,7 +19,7 @@ public:
         : std::runtime_error("Unknown strategy: '" + name + "'"),
           name_(std::move(name)) {}
 
-    const std::string& name() const noexcept { return name_; }
+    [[nodiscard]] const std::string& name() const noexcept { return name_; }
 
 private:
     std::string name_;

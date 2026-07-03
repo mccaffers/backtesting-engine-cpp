@@ -12,7 +12,9 @@
 #include "ingest/questdbIngestClient.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
+#include <csignal>
 #include <deque>
 #include <mutex>
 #include <stop_token>
@@ -33,18 +35,37 @@ constexpr long kTransferTimeoutSeconds = 10;
 
 void ensureCurlInit() {
     static const struct CurlGlobal {
-        CurlGlobal() { curl_global_init(CURL_GLOBAL_ALL); }
+        CurlGlobal() {
+            // Ignore SIGPIPE process-wide. The worker POSTs with CURLOPT_NOSIGNAL
+            // (so libcurl no longer guards SIGPIPE itself); without this, a write
+            // to a QuestDB connection that was reset mid-transfer would raise
+            // SIGPIPE, whose default action kills the process. Asio's signal_set
+            // only handles SIGINT/SIGTERM, so nothing else catches it.
+            std::signal(SIGPIPE, SIG_IGN);
+            curl_global_init(CURL_GLOBAL_ALL);
+        }
         ~CurlGlobal() { curl_global_cleanup(); }
     } guard;
     (void)guard;
 }
 
-// Swallow the response body so curl does not dump it to stdout (its default when
-// no write callback is set). QuestDB replies 204 on success, 400 + a JSON body
-// describing the offending line on a parse/type error.
-std::size_t discardResponse(char* /*ptr*/, std::size_t size, std::size_t nmemb,
-                            void* /*userdata*/) {
-    return size * nmemb;
+// Capture the response body (bounded) into the std::string at `userdata`, so a
+// non-2xx reply can be logged. QuestDB replies 204 with an empty body on
+// success, or 400 + a JSON body naming the offending line on a parse/type error
+// — that body is the only place the reason appears. We keep at most
+// kMaxResponseLog bytes so a large/hostile reply can't bloat the log line, but
+// still tell curl we consumed everything (without a write callback curl would
+// dump the body to stdout).
+constexpr std::size_t kMaxResponseLog = 1024;
+
+std::size_t captureResponse(char* ptr, std::size_t size, std::size_t nmemb,
+                            void* userdata) {
+    const std::size_t n = size * nmemb;
+    auto* body = static_cast<std::string*>(userdata);
+    if (body->size() < kMaxResponseLog) {
+        body->append(ptr, std::min(n, kMaxResponseLog - body->size()));
+    }
+    return n;
 }
 
 }  // namespace
@@ -63,6 +84,8 @@ struct QuestdbIngestClient::Impl {
                                            // link bug, and this is a classic TU
     std::deque<std::string> queue;
     std::size_t droppedTotal = 0;          // guarded by mtx
+    std::atomic<std::size_t> failedTotal{0};  // POST/HTTP failures; worker writes,
+                                              // reporter reads — atomic, no mtx
 
     CURL* curl = nullptr;                  // owned by the worker thread only
     std::jthread worker;
@@ -109,6 +132,7 @@ struct QuestdbIngestClient::Impl {
     // the queue was empty (nothing sent).
     bool drainAndPost() {
         std::string batch;
+        std::size_t lineCount = 0;
         {
             std::unique_lock lock(mtx);
             const std::size_t n = std::min(queue.size(), batchSize);
@@ -116,24 +140,37 @@ struct QuestdbIngestClient::Impl {
                 batch += std::move(queue.front());
                 queue.pop_front();
             }
+            lineCount = n;
         }
         if (batch.empty()) {
             return false;
         }
-        post(batch);
+        post(batch, lineCount);
         return true;
     }
 
-    void post(const std::string& body) {
+    // POST one batch body holding `lineCount` lines. On any failure (init,
+    // transport error, or non-2xx) those lines did not persist, so they are
+    // added to failedTotal.
+    void post(const std::string& body, std::size_t lineCount) {
         if (!curl) {
+            failedTotal.fetch_add(lineCount, std::memory_order_relaxed);
             return;  // init failed earlier; error already logged
         }
+        std::string responseBody;
         curl_easy_reset(curl);
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.data());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, discardResponse);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, captureResponse);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
+        // Run signal-free: this POST happens on the worker thread, and libcurl's
+        // default signal-based (SIGALRM/siglongjmp) timeout path is not
+        // thread-safe and races the main thread's Asio signal_set. NOSIGNAL also
+        // suppresses libcurl's SIGPIPE handling — we ignore SIGPIPE globally in
+        // ensureCurlInit() to compensate.
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
         // Bound blocking time so a dead/slow QuestDB can't wedge the worker.
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, kConnectTimeoutSeconds);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, kTransferTimeoutSeconds);
@@ -142,13 +179,15 @@ struct QuestdbIngestClient::Impl {
         if (rc != CURLE_OK) {
             backtest_log::error(std::string("QuestdbIngestClient: POST failed: ")
                                 + curl_easy_strerror(rc));
+            failedTotal.fetch_add(lineCount, std::memory_order_relaxed);
             return;
         }
         long status = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
         if (status < 200 || status >= 300) {
             backtest_log::error("QuestdbIngestClient: HTTP " + std::to_string(status)
-                                + " from " + url);
+                                + " from " + url + ": " + responseBody);
+            failedTotal.fetch_add(lineCount, std::memory_order_relaxed);
         }
     }
 };
@@ -192,6 +231,10 @@ void QuestdbIngestClient::enqueueLine(std::string ilpLine) {
 std::size_t QuestdbIngestClient::droppedLines() const {
     std::scoped_lock lock(impl_->mtx);
     return impl_->droppedTotal;
+}
+
+std::size_t QuestdbIngestClient::failedLines() const {
+    return impl_->failedTotal.load(std::memory_order_relaxed);
 }
 
 }  // namespace ingest

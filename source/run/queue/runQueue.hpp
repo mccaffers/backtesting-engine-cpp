@@ -25,10 +25,19 @@ namespace run_queue {
 boost::asio::awaitable<std::optional<std::string>> peekRunTail(
     std::shared_ptr<boost::redis::connection> conn);
 
-// Claims one strategy off the run's per-RUN_ID list. nullopt once drained.
-boost::asio::awaitable<std::optional<std::string>> popStrategy(
+// Claims one strategy payload KEY NAME off the run's per-RUN_ID list (the list
+// carries names, not payloads — see queueKeys.hpp). RPOP hands each name to
+// exactly one consumer. nullopt once drained.
+boost::asio::awaitable<std::optional<std::string>> popStrategyKey(
     std::shared_ptr<boost::redis::connection> conn,
     std::string strategyKey);
+
+// Atomically takes (GETDEL) the payload stored under a popped key name, so the
+// payload is consumed exactly once and nothing is left behind. nullopt when the
+// key is gone — already consumed by a peer or reaped by its safety-net TTL.
+boost::asio::awaitable<std::optional<std::string>> takeStrategyPayload(
+    std::shared_ptr<boost::redis::connection> conn,
+    std::string payloadKey);
 
 // Retires a run by removing its descriptor. Idempotent: LREM removes 0 if a peer
 // worker already retired it.

@@ -31,8 +31,8 @@ else
     exit 1
 fi
 
-if ! redis-cli -h localhost ping >/dev/null 2>&1; then
-    echo "redis-server not reachable on localhost:6379 — skipping"
+if ! redis-cli -h "$REDIS_HOST" ping >/dev/null 2>&1; then
+    echo "redis-server not reachable on $REDIS_HOST:6379 — skipping"
     exit 0
 fi
 

@@ -20,8 +20,24 @@ import priceData;  // PriceData
 
 export class TradeManager {
 private:
-    std::unordered_map<std::string, Trade> activeTrades;
+    // Transparent hasher so the per-tick lookups can probe with the tick's
+    // symbol as a string_view — no temporary std::string per tick.
+    struct SymbolHash {
+        using is_transparent = void;
+        std::size_t operator()(std::string_view symbol) const noexcept {
+            return std::hash<std::string_view>{}(symbol);
+        }
+    };
+    // Open trades keyed by SYMBOL. The engine allows at most one open trade
+    // per symbol (runTicks gates entries on hasActiveTradeForSymbol), so every
+    // per-tick operation — mark-to-market, SL/TP review, the re-entry gate —
+    // is a single O(1) find instead of a walk of the whole map.
+    std::unordered_map<std::string, Trade, SymbolHash, std::equal_to<>> activeTrades;
     std::vector<Trade> closedTrades;
+    // Trade ids only need to be unique within a run (reporting scopes them by
+    // RUN_ID), so a plain per-manager counter replaces the old process-global
+    // atomic that every worker thread contended on.
+    std::uint64_t tradeCounter{0};
     // Running sums (int64 points-per-lot) maintained by openTrade/markToMarket/
     // closeTrade so the per-tick loss-limit check in runTicks stays O(1):
     // realized PnL across closed trades, and floating (mark-to-market) PnL
@@ -48,13 +64,18 @@ public:
                           std::int32_t limitDistancePips = 0);
     std::size_t reviewAccount() const;
     bool hasActiveTradeForSymbol(std::string_view symbol) const;
-    // `liquidated` marks the close as forced by the account loss limit
-    // rather than earned via SL/TP or strategy logic.
-    bool closeTrade(const std::string& tradeId,
+    // The symbol's open trade, or nullptr when it has none. O(1); the pointer
+    // is invalidated by the next open/close.
+    const Trade* findActiveTrade(std::string_view symbol) const;
+    // Close the symbol's open trade. `liquidated` marks the close as forced by
+    // the account loss limit rather than earned via SL/TP or strategy logic.
+    bool closeTrade(std::string_view symbol,
                     std::int32_t closePrice,
                     const PriceData& tick,
                     bool liquidated = false);
-    const std::unordered_map<std::string, Trade>& getActiveTrades() const;
+    // Keyed by symbol (see activeTrades above).
+    const std::unordered_map<std::string, Trade, SymbolHash, std::equal_to<>>&
+    getActiveTrades() const;
     const std::vector<Trade>& getClosedTrades() const;
     // Realized PnL (int64 points-per-lot) across all closed trades. O(1).
     std::int64_t calculatePnl() const;
@@ -74,11 +95,6 @@ public:
 };
 
 namespace {
-std::string nextTradeId() {
-    static std::atomic<std::uint64_t> counter{0};
-    return std::format("T{}", counter.fetch_add(1));
-}
-
 // Floating PnL (int64 points-per-lot) of an open trade valued at `mark` — the
 // same formula closeTrade uses for realized PnL, so liquidating at the last
 // mark realizes exactly the floating amount. Pure integer: no decimal on the
@@ -104,9 +120,10 @@ std::string TradeManager::openTrade(const PriceData& tick,
                                     std::int32_t limitDistancePips) {
     auto price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction, tick.symbol);
+    trade.openTime = tick.timestamp;  // simulation time, not wall clock
     trade.entryBid = tick.bid;
     trade.entryAsk = tick.ask;
-    trade.id = nextTradeId();
+    trade.id = std::format("T{}", tradeCounter++);
     trade.stopDistancePips = stopDistancePips;
     trade.limitDistancePips = limitDistancePips;
     trade.exitReferencePrice = (direction == Direction::LONG) ? tick.bid : tick.ask;
@@ -128,33 +145,43 @@ std::string TradeManager::openTrade(const PriceData& tick,
     // equity dips by the spread the moment a trade opens.
     trade.lastMarkPrice = trade.exitReferencePrice;
     trade.floatingPnl = floatingPnlAt(trade, trade.lastMarkPrice);
-    openPnl += trade.floatingPnl;
-    activeTrades[trade.id] = trade;
+    // try_emplace copy-constructs the key (pair::first) before it moves the
+    // Trade into pair::second, so keying on trade.symbol here is safe. If the
+    // symbol already has an open trade the insert is refused — accounting is
+    // untouched and the existing trade's id comes back. Production never hits
+    // that: runTicks gates entries on hasActiveTradeForSymbol.
+    auto [it, inserted] = activeTrades.try_emplace(trade.symbol, std::move(trade));
+    if (!inserted) {
+        return it->second.id;
+    }
+    openPnl += it->second.floatingPnl;
     updateDrawdown();  // equity dips by the spread the moment a trade opens
-    return trade.id;
+    return it->second.id;
 }
 
 void TradeManager::markToMarket(const PriceData& tick) {
-    for (auto& [id, trade] : activeTrades) {
-        if (trade.symbol != tick.symbol) continue;
-        const auto mark = (trade.direction == Direction::LONG) ? tick.bid : tick.ask;
-        const auto updated = floatingPnlAt(trade, mark);
-        openPnl += updated - trade.floatingPnl;
-        trade.floatingPnl = updated;
-        trade.lastMarkPrice = mark;
-    }
-    updateDrawdown();  // capture floating drawdown at this tick's marks
+    const auto it = activeTrades.find(std::string_view{tick.symbol});
+    if (it == activeTrades.end()) return;  // no position: equity unchanged
+    Trade& trade = it->second;
+    const auto mark = (trade.direction == Direction::LONG) ? tick.bid : tick.ask;
+    const auto updated = floatingPnlAt(trade, mark);
+    openPnl += updated - trade.floatingPnl;
+    trade.floatingPnl = updated;
+    trade.lastMarkPrice = mark;
+    updateDrawdown();  // capture floating drawdown at this tick's mark
 }
 
 void TradeManager::closeAllTrades(const PriceData& tick) {
-    // Snapshot ids/prices first: closeTrade mutates activeTrades.
+    // Snapshot symbols/prices first: closeTrade mutates activeTrades. Runs at
+    // most once per run (loss-limit breach), so the allocation is off the
+    // per-tick path.
     std::vector<std::pair<std::string, std::int32_t>> toClose;
     toClose.reserve(activeTrades.size());
-    for (const auto& [id, trade] : activeTrades) {
-        toClose.emplace_back(id, trade.lastMarkPrice);
+    for (const auto& [symbol, trade] : activeTrades) {
+        toClose.emplace_back(symbol, trade.lastMarkPrice);
     }
-    for (const auto& [id, price] : toClose) {
-        closeTrade(id, price, tick, /*liquidated=*/true);
+    for (const auto& [symbol, price] : toClose) {
+        closeTrade(symbol, price, tick, /*liquidated=*/true);
     }
 }
 
@@ -163,19 +190,24 @@ std::size_t TradeManager::reviewAccount() const {
 }
 
 bool TradeManager::hasActiveTradeForSymbol(std::string_view symbol) const {
-    return std::any_of(activeTrades.begin(), activeTrades.end(),
-                       [symbol](const auto& pair) {
-                           return pair.second.symbol == symbol;
-                       });
+    return activeTrades.contains(symbol);
 }
 
-bool TradeManager::closeTrade(const std::string& tradeId,
+const Trade* TradeManager::findActiveTrade(std::string_view symbol) const {
+    const auto it = activeTrades.find(symbol);
+    return it != activeTrades.end() ? &it->second : nullptr;
+}
+
+bool TradeManager::closeTrade(std::string_view symbol,
                               std::int32_t closePrice,
                               const PriceData& tick,
                               bool liquidated) {
-    auto it = activeTrades.find(tradeId);
+    auto it = activeTrades.find(symbol);
     if (it != activeTrades.end()) {
-        Trade closed = it->second;
+        // Move the trade out (ints survive the move; only the strings transfer)
+        // so closing never copies the 5-string Trade struct.
+        Trade closed = std::move(it->second);
+        activeTrades.erase(it);
         closed.closePrice = closePrice;
         closed.closeTime = tick.timestamp;
         closed.liquidated = liquidated;
@@ -184,10 +216,8 @@ bool TradeManager::closeTrade(const std::string& tradeId,
         // Realized PnL in int64 points-per-lot (converted to pips at reporting).
         closed.pnl = static_cast<std::int64_t>(diff) * closed.size;
         closedPnl += closed.pnl;
-        openPnl -= it->second.floatingPnl;  // realized now, no longer floating
+        openPnl -= closed.floatingPnl;  // realized now, no longer floating
         closed.floatingPnl = 0;
-        closedTrades.push_back(closed);
-        activeTrades.erase(it);
         updateDrawdown();  // realized exit may differ from the last mark
 
         // Per-trade chatter is skipped under concurrent backtests (quiet),
@@ -211,12 +241,14 @@ bool TradeManager::closeTrade(const std::string& tradeId,
                       << std::noshowpos
                       << std::endl;
         }
+        closedTrades.push_back(std::move(closed));
         return true;
     }
     return false;
 }
 
-const std::unordered_map<std::string, Trade>& TradeManager::getActiveTrades() const {
+const std::unordered_map<std::string, Trade, TradeManager::SymbolHash, std::equal_to<>>&
+TradeManager::getActiveTrades() const {
     return activeTrades;
 }
 

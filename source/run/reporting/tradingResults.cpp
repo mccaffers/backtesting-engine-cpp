@@ -6,10 +6,22 @@
 
 #include "run/reporting/tradingResults.hpp"
 
-#include "shared/reporting/elasticPublisher.hpp"
+#include <unistd.h>  // gethostname
+
+#include "run/reporting/elasticPublisher.hpp"
 
 std::string TradingResults::nowIsoUtc() {
     return elastic::nowIsoUtc();
+}
+
+std::string TradeFinal::localHostname() {
+    char buf[256];
+    if (::gethostname(buf, sizeof(buf)) != 0) {
+        return "unknown";
+    }
+    // POSIX leaves truncation behaviour unspecified, so guarantee termination.
+    buf[sizeof(buf) - 1] = '\0';
+    return buf;
 }
 
 // decimalToJsonNumber emits decimal64_t fields as JSON numbers (not the
@@ -68,6 +80,7 @@ void to_json(nlohmann::json& j, const TradingResults& r) {
         {"RUN_ID", r.RUN_ID},
         {"@timestamp", r.timestamp},
         {"durationSeconds", r.durationSeconds},
+        {"hostname", r.hostname},
         {"config", reportConfigJson(r.config)},
         {"results", r.results},
     };
@@ -79,7 +92,19 @@ void to_json(nlohmann::json& j, const TradingFailure& f) {
         {"@timestamp", f.timestamp},
         {"durationSeconds", f.durationSeconds},
         {"reason", f.reason},
+        {"hostname", f.hostname},
         {"config", reportConfigJson(f.config)},
         {"results", f.results},
+    };
+}
+
+void to_json(nlohmann::json& j, const TradeFinal& f) {
+    j = nlohmann::json{
+        {"RUN_ID", f.RUN_ID},
+        {"@timestamp", f.timestamp},
+        {"durationSeconds", f.durationSeconds},
+        {"success", f.success},
+        {"hostname", f.hostname},
+        {"config", reportConfigJson(f.config)},
     };
 }

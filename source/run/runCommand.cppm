@@ -8,7 +8,7 @@ module;
 
 #include "shared/utilities/env.hpp"
 #include "shared/utilities/jsonParser.hpp"
-#include "shared/redis/consumer/redisRunner.hpp"
+#include "run/queue/redisRunner.hpp"
 
 export module runCommand;
 
@@ -21,6 +21,8 @@ public:
 };
 
 int RunCommand::run(const int argc, const char* argv[]) {
+
+    env::printDiagnostics(argc, argv);
 
     if (argc < 3) {
         std::println(stderr, "Usage: BacktestingEngine run <questdb-host>\n"
