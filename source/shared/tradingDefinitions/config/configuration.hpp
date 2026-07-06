@@ -9,7 +9,7 @@
 #include <boost/decimal.hpp>
 #include <nlohmann/json.hpp>
 #include "shared/tradingDefinitions/config/runConfiguration.hpp"
-#include "shared/tradingDefinitions/strategy.hpp"
+#include "shared/tradingDefinitions/strategyConfig.hpp"
 #include "shared/utilities/decimalJson.hpp"
 
 // Intentionally a plain header, NOT a .cppm module. Every JSON-serializable
@@ -28,7 +28,7 @@ struct Configuration {
   boost::decimal::decimal64_t MAX_LOSS_PERCENT{0};
   int MAX_OPEN_TRADES{0};
   bool REPORT_FAILURES{true};
-  Strategy STRATEGY;
+  StrategyConfig STRATEGY;
 };
 
 // Hand-written so the original fields stay strictly required while the risk

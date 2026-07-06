@@ -93,6 +93,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # module flags for loadCommand.cppm — are always present for the editor.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Clang 22 made "reduced BMI" the default for C++20 modules, and reduced BMIs
+# drop the predeclared global operator new/delete from the global module
+# (llvm/llvm-project#166068). A TU that imports std alongside enough of this
+# project's modules then segfaults clang's codegen (EmitBuiltinNewDeleteCall,
+# release build's llvm_unreachable) while emitting __builtin_operator_new from
+# libc++'s __libcpp_allocate — main.cpp was the victim. Force full BMIs (the
+# pre-22 behaviour) until the upstream fix reaches a release. Global
+# CMAKE_CXX_FLAGS on purpose: it must also reach CMake's internal `import std`
+# target (see the OpenMP note above the flags append near the bottom).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 22)
+    string(APPEND CMAKE_CXX_FLAGS " -fno-modules-reduced-bmi")
+endif()
+
 # Configure libpqxx build
 set(PQXX_LIBRARIES_INSTALL ON)
 set(SKIP_BUILD_TEST ON)
@@ -198,7 +212,9 @@ string(APPEND CMAKE_CXX_FLAGS " ${OpenMP_CXX_FLAGS}")
 # compiled into one dedicated TU via <boost/redis/src.hpp>
 # (source/shared/redis/connection/boostRedisImpl.cpp), which isolates its
 # macro/SSL pollution from the rest of the build. It pulls in Boost.Asio's SSL
-# layer, which needs OpenSSL.
+# layer, which needs OpenSSL. Boost.Interprocess (the shared-memory control
+# channel, source/shared/ipc/engineControl.cpp) is also header-only; on Linux it
+# needs librt for shm_open (glibc < 2.34), which is a no-op elsewhere.
 find_package(Boost REQUIRED CONFIG)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
@@ -208,7 +224,8 @@ target_link_libraries(BacktestingEngineLib PUBLIC
     OpenSSL::SSL
     OpenSSL::Crypto
     Threads::Threads
-    CURL::libcurl)
+    CURL::libcurl
+    $<$<PLATFORM_ID:Linux>:rt>)
 
 add_subdirectory(external/boost-decimal)
 target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)

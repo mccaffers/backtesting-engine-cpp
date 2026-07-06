@@ -5,6 +5,9 @@
 add_executable(unit_tests
     symbolScale.cpp
     jsonParser.cpp
+    ohlc.cpp
+    ema.cpp
+    ohlcBreakout.cpp
     db.cpp
     sweep.cpp
     tradeManager.cpp

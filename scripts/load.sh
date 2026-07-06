@@ -15,9 +15,9 @@ if [ ! -f "$BUILD_DIR/$EXECUTABLE_NAME" ]; then
     exit 1
 fi
 
-if ! redis-cli -h localhost ping >/dev/null 2>&1; then
-    echo "redis-server not reachable on localhost:6379 — aborting"
-    exit 1
+if ! redis-cli -h "$REDIS_HOST" ping >/dev/null 2>&1; then
+    echo "redis-server not reachable on $REDIS_HOST:6379 — skipping"
+    exit 0
 fi
 
 exec ./"$BUILD_DIR/$EXECUTABLE_NAME" load

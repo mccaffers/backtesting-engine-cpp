@@ -108,8 +108,8 @@ struct AlwaysLongStrategy : IStrategy {
 // Trades close in call order, which is the order collect() walks for drawdown.
 void seedClosedTrade(TradeManager& manager, std::int32_t pnlPoints) {
     PriceData tick(110000, 110000, std::chrono::system_clock::now(), "EURUSD");
-    std::string id = manager.openTrade(tick, 1, Direction::LONG);
-    manager.closeTrade(id, 110000 + pnlPoints, tick);
+    manager.openTrade(tick, 1, Direction::LONG);
+    manager.closeTrade(tick.symbol, 110000 + pnlPoints, tick);
 }
 
 }  // namespace
@@ -125,17 +125,19 @@ TEST_CASE("TradeManager opens a trade", "[tradeManager]") {
 TEST_CASE("TradeManager closes a trade", "[tradeManager]") {
     TradeManager manager;
     PriceData tick(10000000, 9900000, std::chrono::system_clock::now(), "EURUSD");
-    std::string tradeId = manager.openTrade(tick, 1, Direction::LONG);
-    bool closed = manager.closeTrade(tradeId, 11000000, tick);
+    manager.openTrade(tick, 1, Direction::LONG);
+    bool closed = manager.closeTrade(tick.symbol, 11000000, tick);
     CHECK(closed);
     CHECK(manager.reviewAccount() == 0);
 }
 
-TEST_CASE("TradeManager tracks multiple trades", "[tradeManager]") {
+// One open trade per symbol is a TradeManager invariant now (activeTrades is
+// keyed by symbol), so multiple concurrent trades means multiple symbols.
+TEST_CASE("TradeManager tracks multiple trades across symbols", "[tradeManager]") {
     TradeManager manager;
     PriceData tick1(10000000, 9900000, std::chrono::system_clock::now(), "EURUSD");
-    PriceData tick2(20000000, 19900000, std::chrono::system_clock::now(), "EURUSD");
-    PriceData tick3(30000000, 29900000, std::chrono::system_clock::now(), "EURUSD");
+    PriceData tick2(20000000, 19900000, std::chrono::system_clock::now(), "GBPUSD");
+    PriceData tick3(30000000, 29900000, std::chrono::system_clock::now(), "USDJPY");
     manager.openTrade(tick1, 1, Direction::LONG);
     manager.openTrade(tick2, 2, Direction::SHORT);
     manager.openTrade(tick3, 3, Direction::LONG);
@@ -148,9 +150,10 @@ TEST_CASE("TradeManager records trade details", "[tradeManager]") {
     PriceData tick(10000000, 9900000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(tick, 1, Direction::LONG);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(tick.symbol);
 
     REQUIRE(trade != trades.end());
+    CHECK(trade->second.id == tradeId);
     CHECK(trade->second.entryPrice == 10000000);
     CHECK(trade->second.size == 1);
     CHECK(trade->second.direction == Direction::LONG);
@@ -165,7 +168,7 @@ TEST_CASE("LONG does not exit on entry tick with a one-pip spread", "[tradeManag
     PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::LONG, 1, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
     CHECK(trade->second.entryPrice == 110010);
     CHECK(trade->second.exitReferencePrice == 110000);
@@ -180,7 +183,7 @@ TEST_CASE("SHORT does not exit on entry tick with a one-pip spread", "[tradeMana
     PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::SHORT, 1, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
     CHECK(trade->second.entryPrice == 110000);
     CHECK(trade->second.exitReferencePrice == 110010);
@@ -196,7 +199,7 @@ TEST_CASE("LONG stops out when bid drops one pip below entry bid", "[tradeManage
     PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::LONG, 1, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
 
     PriceData laterTick(110000, 109990, std::chrono::system_clock::now(), "EURUSD");
     auto exit = trading::exit_rules::checkExit(trade->second, laterTick);
@@ -213,7 +216,7 @@ TEST_CASE("checkExit: LONG flat tick does not fire", "[tradeManager]") {
     PriceData entryTick(110011, 110001, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::LONG, 1, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
 
     auto exit = trading::exit_rules::checkExit(trade->second, entryTick);
@@ -225,7 +228,7 @@ TEST_CASE("checkExit: LONG SL fires at bid", "[tradeManager]") {
     PriceData entryTick(110011, 110001, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::LONG, 1, 0);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
 
     // The SL distance is 1 pip (10 points), so entry-bid 110001 minus 10 is
@@ -242,7 +245,7 @@ TEST_CASE("checkExit: SHORT SL fires at ask", "[tradeManager]") {
     PriceData entryTick(110011, 110001, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::SHORT, 1, 0);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
 
     PriceData nextTick(110021, 110011, std::chrono::system_clock::now(), "EURUSD");
@@ -257,7 +260,7 @@ TEST_CASE("checkExit: LONG TP fires at bid", "[tradeManager]") {
     PriceData entryTick(110011, 110001, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::LONG, 0, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
 
     PriceData nextTick(110021, 110011, std::chrono::system_clock::now(), "EURUSD");
@@ -272,7 +275,7 @@ TEST_CASE("checkExit: SHORT TP fires at ask", "[tradeManager]") {
     PriceData entryTick(110011, 110001, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(entryTick, 1, Direction::SHORT, 0, 1);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(entryTick.symbol);
     REQUIRE(trade != trades.end());
 
     PriceData nextTick(110001, 109991, std::chrono::system_clock::now(), "EURUSD");
@@ -296,7 +299,7 @@ TEST_CASE("reviewStopAndLimit skips trades for other symbols", "[tradeManager]")
 
     CHECK(manager.reviewAccount() == 1);
     auto trades = manager.getActiveTrades();
-    CHECK(trades.find(tradeId) != trades.end());
+    CHECK(trades.find(entryTick.symbol) != trades.end());
 }
 
 // Matching-symbol tick still closes — the filter must not over-block exits
@@ -310,7 +313,7 @@ TEST_CASE("reviewStopAndLimit closes a trade on a matching-symbol tick", "[trade
     trading::reviewStopAndLimit(manager, stopTick);
 
     auto active = manager.getActiveTrades();
-    CHECK(active.find(tradeId) == active.end());
+    CHECK(active.find(entryTick.symbol) == active.end());
 
     const auto& closed = manager.getClosedTrades();
     REQUIRE(closed.size() == 1);
@@ -331,7 +334,7 @@ TEST_CASE("reviewStopAndLimit: AUSIDXAUD trade not closed by EURUSD tick", "[tra
 
     CHECK(manager.reviewAccount() == 1);
     auto trades = manager.getActiveTrades();
-    CHECK(trades.find(tradeId) != trades.end());
+    CHECK(trades.find(entryTick.symbol) != trades.end());
 }
 
 TEST_CASE("hasActiveTradeForSymbol: empty manager returns false", "[tradeManager]") {
@@ -351,10 +354,10 @@ TEST_CASE("hasActiveTradeForSymbol: true for opened symbol, false for other", "[
 TEST_CASE("hasActiveTradeForSymbol: false after closeTrade", "[tradeManager]") {
     TradeManager manager;
     PriceData tick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
-    std::string tradeId = manager.openTrade(tick, 1, Direction::LONG);
+    manager.openTrade(tick, 1, Direction::LONG);
     REQUIRE(manager.hasActiveTradeForSymbol("EURUSD"));
 
-    bool closed = manager.closeTrade(tradeId, 110000, tick);
+    bool closed = manager.closeTrade(tick.symbol, 110000, tick);
     CHECK(closed);
     CHECK_FALSE(manager.hasActiveTradeForSymbol("EURUSD"));
 }
@@ -374,14 +377,21 @@ TEST_CASE("Can open trades on different symbols simultaneously", "[tradeManager]
     CHECK(manager.hasActiveTradeForSymbol("AUSIDXAUD"));
 }
 
-// openTrade does not enforce same-symbol uniqueness, so callers rely on
-// hasActiveTradeForSymbol to gate same-symbol re-entry. This pins the invariant
-// that a single open is enough to flip the helper to true.
-TEST_CASE("Helper reports symbol active after first open", "[tradeManager]") {
+// activeTrades is keyed by symbol, so openTrade refuses a same-symbol
+// double-open: the second call returns the existing trade's id and leaves the
+// account untouched. Callers still gate re-entry on hasActiveTradeForSymbol;
+// this pins the fallback behaviour if that gate is ever bypassed.
+TEST_CASE("openTrade refuses a second open on an active symbol", "[tradeManager]") {
     TradeManager manager;
     PriceData tick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
-    manager.openTrade(tick, 1, Direction::LONG);
+    std::string firstId = manager.openTrade(tick, 1, Direction::LONG);
     CHECK(manager.hasActiveTradeForSymbol("EURUSD"));
+
+    std::string secondId = manager.openTrade(tick, 1, Direction::SHORT);
+    CHECK(secondId == firstId);
+    CHECK(manager.reviewAccount() == 1);
+    // The original LONG survives; the refused SHORT never entered the book.
+    CHECK(manager.getActiveTrades().begin()->second.direction == Direction::LONG);
 }
 
 // --- Entry-side bid/ask handling ---
@@ -394,7 +404,7 @@ TEST_CASE("openTrade: LONG enters at ask and records the spread", "[tradeManager
     PriceData tick(10000000, 9900000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(tick, 1, Direction::LONG);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(tick.symbol);
     REQUIRE(trade != trades.end());
 
     CHECK(trade->second.entryPrice == 10000000);
@@ -409,7 +419,7 @@ TEST_CASE("openTrade: SHORT enters at bid and records the spread", "[tradeManage
     PriceData tick(10000000, 9900000, std::chrono::system_clock::now(), "EURUSD");
     std::string tradeId = manager.openTrade(tick, 1, Direction::SHORT);
     auto trades = manager.getActiveTrades();
-    auto trade = trades.find(tradeId);
+    auto trade = trades.find(tick.symbol);
     REQUIRE(trade != trades.end());
 
     CHECK(trade->second.entryPrice == 9900000);

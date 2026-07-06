@@ -1,11 +1,11 @@
 #!/bin/bash
 # Builds the engine and runs the `ingest` subcommand: it binds a UDP socket and
-# streams decoded ticks (tickPacket) into the converted QuestDB via ILP-over-HTTP
+# streams decoded ticks (tickPacket) into QuestDB via ILP-over-HTTP
 # (source/ingest/ingestCommand.cppm). Blocks until SIGINT/SIGTERM.
 #
 # Config is read from the environment by IngestCommand (defaults in parens):
 #   QUESTDB_HOST      QuestDB host                (127.0.0.1)
-#   QUESTDB_ILP_PORT  converted-DB ILP/HTTP port  (9001)
+#   QUESTDB_ILP_PORT  QuestDB ILP/HTTP port       (9000)
 #   INGEST_BIND_ADDR  UDP bind address            (127.0.0.1)
 #   INGEST_UDP_PORT   UDP bind port               (11111, == UDPPorts.PortSave)
 #
@@ -30,7 +30,7 @@ fi
 # QuestDB is down (the writer sheds once its buffer fills), so warn rather than
 # abort.
 quest_host="${QUESTDB_HOST:-127.0.0.1}"
-quest_port="${QUESTDB_ILP_PORT:-9001}"
+quest_port="${QUESTDB_ILP_PORT:-9000}"
 # Probe a real endpoint (/exec), not "/": QuestDB's web console root can stall
 # indefinitely, which made a 1s timeout report a healthy DB as unreachable.
 if ! curl --fail --silent --max-time 2 "http://$quest_host:$quest_port/exec?query=SELECT%201" >/dev/null 2>&1; then

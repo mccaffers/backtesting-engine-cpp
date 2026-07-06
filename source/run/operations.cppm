@@ -7,7 +7,7 @@
 module;
 
 #include "shared/utilities/backtestLog.hpp"
-#include "shared/reporting/elasticPublisher.hpp"
+#include "run/reporting/elasticPublisher.hpp"
 #include "shared/tradingDefinitions/config/configuration.hpp"
 #include "run/reporting/tradingResults.hpp"
 
@@ -22,6 +22,7 @@ import resultsSummary;  // ResultsSummary
 import symbolScale;    // symbol_scale::get
 import strategy;       // IStrategy
 import randomStrategy; // RandomStrategy
+import ohlcBreakoutStrategy; // OhlcBreakoutStrategy
 import strategyErrors; // UnknownStrategyError
 import elasticClient;  // ElasticClient
 
@@ -40,6 +41,9 @@ std::unique_ptr<IStrategy> selectStrategy(const tradingDefinitions::Configuratio
     if (name == "RandomStrategy") {
         return std::make_unique<RandomStrategy>(config.STRATEGY);
     }
+    if (name == "OhlcBreakoutStrategy") {
+        return std::make_unique<OhlcBreakoutStrategy>(config.STRATEGY);
+    }
     throw UnknownStrategyError(name);
 }
 
@@ -51,10 +55,6 @@ void Operations::run(const std::vector<PriceData>& ticks,
     // Function-local (stack) start time: each worker thread times only its own
     // run. steady_clock is monotonic, the correct clock for elapsed durations.
     const auto runStart = std::chrono::steady_clock::now();
-
-    std::println("Operations: new run starting RUN_ID={} strategy={}",
-                 config.RUN_ID,
-                 config.STRATEGY.TRADING_VARIABLES.STRATEGY);
 
     TradeManager tradeManager;
     auto strategy = selectStrategy(config);
@@ -106,10 +106,30 @@ void Operations::run(const std::vector<PriceData>& ticks,
     // but a throw from JSON serialisation or the network layer bypasses their
     // logging, so the catch handlers emit the single warning for that path.
     try {
+        // Every outcome doc carries the host that produced it, so a bad node in
+        // a distributed sweep can be traced from any of the three indices.
+        const std::string hostname = TradeFinal::localHostname();
+
+        // Compact terminal record for this run, emitted for every run regardless
+        // of outcome or the REPORT_FAILURES silencer below: the outcome flag (a
+        // completed run is success=1; a loss-limit cutoff is success=0), how long
+        // it took, and the host that produced it, alongside the run config. Sent
+        // first so the silenced-failure early return below cannot skip it.
+        const TradeFinal tradeFinal{
+            config.RUN_ID,
+            TradingResults::nowIsoUtc(),
+            durationSeconds,
+            status == trading::RunStatus::LossLimitBreached ? 0 : 1,
+            hostname,
+            config,
+        };
+        ElasticClient::putTradeFinal(tradeFinal);
+
         if (status == trading::RunStatus::LossLimitBreached) {
-            // Silencer for large sweeps: liquidated runs are expected noise
-            // once the system is trusted, so the run config can opt out of
-            // reporting them. Completed runs always report.
+            // Silencer for large sweeps: liquidated runs are expected noise once
+            // the system is trusted, so the run config can opt out of the
+            // detailed failure doc here. The terminal record above and completed
+            // runs always report.
             if (!config.REPORT_FAILURES) {
                 return;
             }
@@ -128,6 +148,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
                 TradingResults::nowIsoUtc(),
                 durationSeconds,
                 reason.str(),
+                hostname,
                 config,
                 ResultsSummary::collect(tradeManager, config),
             };
@@ -137,6 +158,7 @@ void Operations::run(const std::vector<PriceData>& ticks,
                 config.RUN_ID,
                 TradingResults::nowIsoUtc(),
                 durationSeconds,
+                hostname,
                 config,
                 ResultsSummary::collect(tradeManager, config),
             };

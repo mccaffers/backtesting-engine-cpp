@@ -7,8 +7,10 @@
 #ifndef UTILITIES_THREAD_POOL_HPP
 #define UTILITIES_THREAD_POOL_HPP
 
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <functional>
 #include <mutex>
@@ -36,7 +38,12 @@
 // exception thrown by any task is captured and surfaced via takeError().
 class ThreadPool {
 public:
-    explicit ThreadPool(std::size_t threads) : capacity_(threads * 2) {
+    // `inFlightGauge`, if non-null, is updated (under the lock) every time the
+    // in-flight count changes, so an observer — e.g. a shared-memory monitor —
+    // sees the live queued+executing total without coupling the pool to it.
+    explicit ThreadPool(std::size_t threads,
+                        std::atomic<std::int32_t>* inFlightGauge = nullptr)
+        : capacity_(threads * 2), inFlightGauge_(inFlightGauge) {
         workers_.reserve(threads);
         for (std::size_t i = 0; i < threads; ++i) {
             workers_.emplace_back([this](std::stop_token st) { workerLoop(st); });
@@ -52,6 +59,7 @@ public:
         slotFree_.wait(lock, [this] { return inFlight_ < capacity_; });
         tasks_.push(std::move(task));
         ++inFlight_;
+        publishInFlight();
         workAvailable_.notify_one();
     }
 
@@ -68,6 +76,15 @@ public:
     }
 
 private:
+    // Mirror the current in-flight count to the observer gauge, if one was given.
+    // Always called with mutex_ held.
+    void publishInFlight() {
+        if (inFlightGauge_) {
+            inFlightGauge_->store(static_cast<std::int32_t>(inFlight_),
+                                  std::memory_order_release);
+        }
+    }
+
     void workerLoop(std::stop_token st) {
         for (;;) {
             std::function<void()> task;
@@ -94,6 +111,7 @@ private:
                     firstError_ = err;
                 }
                 --inFlight_;
+                publishInFlight();
                 if (inFlight_ == 0) {
                     idle_.notify_all();
                 }
@@ -109,6 +127,7 @@ private:
     std::queue<std::function<void()>> tasks_;
     std::size_t inFlight_ = 0;
     std::size_t capacity_;
+    std::atomic<std::int32_t>* inFlightGauge_ = nullptr;
     std::exception_ptr firstError_;
 
     // Declared last so the jthreads stop and join before the synchronisation

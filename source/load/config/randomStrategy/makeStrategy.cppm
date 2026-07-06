@@ -9,22 +9,22 @@ module;
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include "shared/utilities/parameterSweep.hpp"      // sweep::Combination
-#include "shared/tradingDefinitions/strategy.hpp"
+#include "shared/tradingDefinitions/strategyConfig.hpp"
 
 export module makeStrategy;
 
 import std;
+import sweepCombination;  // sweep::Combination
 
 export namespace sweep {
 
-// Map one swept parameter combination onto a concrete Strategy. Each
+// Map one swept parameter combination onto a concrete StrategyConfig. Each
 // combination gets its own UUID so a single backtest result is uniquely
 // identifiable and traceable back to its inputs.
-tradingDefinitions::Strategy makeStrategy(const sweep::Combination& combo) {
+tradingDefinitions::StrategyConfig makeStrategy(const sweep::Combination& combo) {
     using namespace tradingDefinitions;
 
-    return Strategy{
+    return StrategyConfig{
         .UUID = boost::uuids::to_string(boost::uuids::random_generator()()),
         .TRADING_VARIABLES = TradingVariables{
             .STRATEGY = "RandomStrategy",

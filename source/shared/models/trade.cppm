@@ -24,6 +24,8 @@ export struct Trade {
     std::int32_t entryBid;
     std::int32_t entryAsk;
     std::int32_t size;
+    // Simulation time of the entry tick, set by TradeManager::openTrade —
+    // never wall-clock, so open/close durations are meaningful in backtests.
     std::chrono::system_clock::time_point openTime;
     Direction direction;
 
@@ -63,13 +65,14 @@ export struct Trade {
     // logic — lets reporting separate forced closes from organic ones.
     bool liquidated = false;
 
-    // Default constructor
+    // Default constructor. openTime stays at the epoch — TradeManager::openTrade
+    // stamps it from the entry tick.
     Trade() : entryPrice(0), entryBid(0), entryAsk(0), size(0), direction(Direction::LONG),
               scalingFactor(0), stopDistancePips(0), limitDistancePips(0),
               exitReferencePrice(0), stopPrice(0), limitPrice(0),
               closePrice(0), pnl(0),
               lastMarkPrice(0), floatingPnl(0),
-              openTime(std::chrono::system_clock::now()) {}
+              openTime{} {}
 
     // Copy constructor
     Trade(const Trade& other) = default;
@@ -82,7 +85,7 @@ export struct Trade {
           entryBid(0),
           entryAsk(0),
           size(quantity),
-          openTime(std::chrono::system_clock::now()),
+          openTime{},
           direction(dir),
           symbol(tradeSymbol),
           scalingFactor(symbol_scale::get(tradeSymbol)),

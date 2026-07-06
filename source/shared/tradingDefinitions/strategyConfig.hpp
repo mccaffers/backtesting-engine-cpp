@@ -14,13 +14,13 @@
 
 namespace tradingDefinitions {
 
-struct Strategy {
+struct StrategyConfig {
     std::string UUID;
     TradingVariables TRADING_VARIABLES;
     std::vector<OHLCVariables> OHLC_VARIABLES;
     StrategyVariables STRATEGY_VARIABLES;
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Strategy,
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(StrategyConfig,
     UUID,
     TRADING_VARIABLES,
     OHLC_VARIABLES,

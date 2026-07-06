@@ -37,8 +37,7 @@ export std::vector<PriceData> loadTicks(const std::string& questdbHost,
   }
 
   // Get all the tick data out of QuestDB for these symbols
-  std::vector<PriceData> ticks =
-      SqlManager::loadPriceData(db, symbols, lastMonths);
+  std::vector<PriceData> ticks = SqlManager::loadPriceData(db, symbols, lastMonths);
 
   std::printf("Total ticks streamed: %zu\n", ticks.size());
 

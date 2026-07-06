@@ -31,7 +31,7 @@ public:
     // when QuestDB is slow/down — past it the oldest lines are dropped so memory
     // stays bounded rather than growing without limit.
     explicit QuestdbIngestClient(std::string host,
-                                 std::uint16_t port = 9001,
+                                 std::uint16_t port = 9000,
                                  std::size_t batchSize = 1000,
                                  std::chrono::milliseconds flushInterval =
                                      std::chrono::milliseconds(100),
@@ -49,6 +49,11 @@ public:
     // Total lines dropped so far because the queue was full (QuestDB couldn't
     // keep up). Thread-safe.
     [[nodiscard]] std::size_t droppedLines() const;
+
+    // Total lines that failed to persist because a POST errored (transport
+    // failure / timeout) or QuestDB returned a non-2xx status. Distinct from
+    // droppedLines (those never left the queue). Thread-safe.
+    [[nodiscard]] std::size_t failedLines() const;
 
 private:
     struct Impl;

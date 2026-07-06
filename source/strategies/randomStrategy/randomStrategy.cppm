@@ -6,7 +6,7 @@
 
 module;
 
-#include "shared/tradingDefinitions/strategy.hpp"
+#include "shared/tradingDefinitions/strategyConfig.hpp"
 
 export module randomStrategy;
 
@@ -39,7 +39,7 @@ import tradeManager;  // TradeManager
 //     inheritance, so the `public` keyword has no analogue there.
 export class RandomStrategy : public IStrategy {
 public:
-    explicit RandomStrategy(const tradingDefinitions::Strategy& strategyConfig);
+    explicit RandomStrategy(const tradingDefinitions::StrategyConfig& strategyConfig);
 
     // Returns `std::nullopt` to mean "no signal — don't trade". The
     // random strategy always returns a direction, but the interface
@@ -62,7 +62,7 @@ public:
                 TradeManager& tradeManager) override;
 
 private:
-    tradingDefinitions::Strategy config;
+    tradingDefinitions::StrategyConfig config;
     std::mt19937 rng;
     std::bernoulli_distribution coin;       // fair coin flip for entry direction
     std::bernoulli_distribution closeProb;  // per-tick probability of closing all trades
@@ -73,7 +73,7 @@ private:
 // trade.hpp. The C# equivalent would be field initialisers plus a
 // constructor body, but C++ prefers the initialiser list because it
 // constructs members directly rather than default-then-assign.
-RandomStrategy::RandomStrategy(const tradingDefinitions::Strategy& strategyConfig)
+RandomStrategy::RandomStrategy(const tradingDefinitions::StrategyConfig& strategyConfig)
     : config(strategyConfig),
       rng(std::random_device{}()),       // seed once from the OS entropy source
       coin(0.5),

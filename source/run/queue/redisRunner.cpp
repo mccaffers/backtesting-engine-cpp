@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/redis/consumer/redisRunner.hpp"
+#include "run/queue/redisRunner.hpp"
 
 #include <exception>
 #include <memory>
@@ -16,9 +16,9 @@
 #include <boost/redis/connection.hpp>
 
 #include "shared/utilities/backtestLog.hpp"
-#include "shared/reporting/elasticPublisher.hpp"
+#include "run/reporting/elasticPublisher.hpp"
 #include "shared/redis/connection/redisConnection.hpp"
-#include "shared/redis/consumer/drainRuns.hpp"
+#include "run/queue/drainRuns.hpp"
 
 namespace asio = boost::asio;
 

@@ -4,7 +4,7 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 // ---------------------------------------
 
-#include "shared/reporting/elasticPublisher.hpp"
+#include "run/reporting/elasticPublisher.hpp"
 
 #include <chrono>
 #include <ctime>
