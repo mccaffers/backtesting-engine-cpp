@@ -12,6 +12,7 @@ add_executable(unit_tests
     sweep.cpp
     tradeManager.cpp
     tickPacket.cpp
+    fxMacroDataClient.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE
