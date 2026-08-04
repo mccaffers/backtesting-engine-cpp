@@ -20,9 +20,13 @@
 // imports nothing itself.
 namespace redis_runner {
 
-// Drains BACKTESTING_QUEUE_RUN on a single long-lived connection. For each run it
-// loads the QuestDB ticks once, drains that run's strategy list, then retires the
-// run. When the queue is empty it waits and re-peeks rather than exiting, so the
+// Drains the run queues (queue_keys::RUN_QUEUES, in strict priority order) on a
+// single long-lived connection. Each run's tick window comes from the bridge's
+// per-symbols superset cache (one QuestDB load serves every rolling-ladder
+// window that fits); a run's strategy list is drained onto the pool with the
+// tick buffer held by value per task, so backtests from consecutive runs
+// pipeline — the pool only quiesces right before a real (cache-miss) load.
+// When every queue is empty it waits and re-peeks rather than exiting, so the
 // worker stays up as a daemon; only a Redis/DB/decode error leaves the loop
 // (return 3).
 boost::asio::awaitable<int> drainRuns(

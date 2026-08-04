@@ -232,6 +232,21 @@ target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)
 
 target_link_libraries(BacktestingEngineLib PUBLIC pqxx OpenMP::OpenMP_CXX)
 
+# AWS SDK for C++, DynamoDB client only — IG session credentials live in the
+# MarketDataLive table (shared/aws/dynamoAuth). Deliberately NOT an
+# add_subdirectory: the SDK is enormous and must not inherit this project's
+# global module/OpenMP flags, so scripts/build_dep.sh builds and installs it
+# once (static libs) into external/aws-install and it is consumed here as a
+# prebuilt package. AWSSDK_LINK_LIBRARIES resolves to the dynamodb target,
+# which chains core + CRT dependencies through its exported config.
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/external/aws-install")
+# The static aws-cpp-sdk-core's exported link interface names ZLIB::ZLIB
+# (and curl/OpenSSL targets, already found above) but its config does not
+# find_dependency them — resolve ZLIB here first.
+find_package(ZLIB REQUIRED)
+find_package(AWSSDK REQUIRED CONFIG COMPONENTS dynamodb)
+target_link_libraries(BacktestingEngineLib PUBLIC ${AWSSDK_LINK_LIBRARIES})
+
 # Main executable
 add_executable(BacktestingEngine source/main.cpp)
 target_link_libraries(BacktestingEngine BacktestingEngineLib)

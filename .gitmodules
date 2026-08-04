@@ -1,9 +1,12 @@
+[submodule "external/boost-decimal"]
+	path = external/boost-decimal
+	url = https://github.com/boostorg/decimal.git
 [submodule "external/libpqxx"]
 	path = external/libpqxx
 	url = https://github.com/jtv/libpqxx.git
-[submodule "external/boost-decimal"]
-	path = external/boost-decimal
-	url = https://github.com/boostorg/decimal
 [submodule "external/Catch2"]
 	path = external/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "external/aws"]
+	path = external/aws
+	url = https://github.com/aws/aws-sdk-cpp

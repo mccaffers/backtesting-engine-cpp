@@ -31,6 +31,13 @@ std::shared_ptr<boost::redis::connection> makeRedisConnection(
     // io_context thread; a firing health check would otherwise cancel the next
     // command ("Operation canceled"). A dead connection still surfaces as an
     // async_exec error, which the caller handles.
+    //
+    // KNOWN TRADE-OFF: with no health check there is also no liveness probe,
+    // so a HALF-OPEN connection (peer vanished without RST — network partition,
+    // NAT timeout) leaves async_exec suspended forever rather than erroring;
+    // the worker then hangs silently between runs. Re-enabling the check is
+    // only safe once the tick loads move off this io_context thread (they
+    // currently block it for longer than any sane PING timeout).
     cfg.health_check_interval = std::chrono::seconds::zero();
 
     conn->async_run(cfg, {},

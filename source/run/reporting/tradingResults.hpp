@@ -64,12 +64,17 @@ struct TradingResults {
 
 // Wire shape for a run that was cut off early (e.g. it breached the account
 // loss limit). Carries the stats as they stood at the cutoff so a failed run
-// is still fully inspectable in Kibana; `reason` says why it was stopped.
+// is still fully inspectable in Kibana. `reason` is a STATIC, low-cardinality
+// string (it becomes reason.keyword — one distinct value per failure class, so
+// terms aggregations work); the run-specific numbers travel in the dedicated
+// numeric fields below, never interpolated into the string.
 struct TradingFailure {
     std::string RUN_ID;
     std::string timestamp;
     double durationSeconds;          // wall-clock seconds until the cutoff
-    std::string reason;
+    std::string reason;              // static failure class, aggregatable
+    double breachPnlPips;            // account PnL at cutoff, pips of price movement
+    double lossFloorPips;            // the configured pip budget that was breached
     std::string hostname;            // machine that ran the backtest
     tradingDefinitions::Configuration config;
     TradingResultsStats results;
@@ -79,12 +84,20 @@ struct TradingFailure {
 // the input Configuration plus the bare outcome flag, how long it took, and the
 // host that produced it. Unlike TradingResults/TradingFailure it carries no
 // per-trade stats — it is the at-a-glance "this run finished" signal. Lands in
-// index "trading_final".
+// the weekly outcome_index::kFinalBase index.
 struct TradeFinal {
     std::string RUN_ID;
     std::string timestamp;
     double durationSeconds;          // wall-clock seconds for this run
-    int success;                     // 1 = completed, 0 = loss-limit cutoff
+    // 1 = performance gate cleared — the same population the results/winners
+    // indices receive; 0 = underperformed or loss-limit cutoff (see `status`).
+    int success;
+    // Terminal state as a keyword: "completed" (performance gate cleared —
+    // the run also reports to the results/winners index and may chain),
+    // "underperformed"
+    // (finished its ticks but failed the gate; this record is its only
+    // report), or "loss_limit_breached". Splits the success=0 class.
+    std::string status;
     std::string hostname;            // machine that ran the backtest
     tradingDefinitions::Configuration config;
 

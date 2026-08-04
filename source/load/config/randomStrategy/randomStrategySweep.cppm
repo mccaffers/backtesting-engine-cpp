@@ -21,7 +21,13 @@ export namespace sweep {
 // compile time, so a typo here fails the build instead of queueing a run the
 // worker rejects at runtime.
 inline constexpr std::array kSymbolGroupsOverride =
-    std::to_array<std::string_view>({"EURUSD"});
+    std::to_array<std::string_view>({
+    "AUDUSD",       "EURUSD",        "GBRIDXGBP",   "GBPUSD",    "NZDUSD",
+    "USDJPY",      "GBPJPY",        "EURJPY",      "USDCAD",    "FRAIDXEUR",
+    "EURGBP",      "USA500IDXUSD",  "AUSIDXAUD",   "USDCHF",    "XAUUSD",
+    "XAGUSD",      "USATECHIDXUSD", "EURCHF",      "DEUIDXEUR", "USA30IDXUSD",
+    "LIGHTCMDUSD", "JPNIDXJPY",     "BRENTCMDUSD", "AUDNZD",    "EURAUD",
+    "HKGIDXHKD",   "COPPERCMDUSD",  "USDSEK",      "EURNOK"});
 
 // Declares which parameters to sweep for the RandomStrategy. Keeping the ranges
 // in one place means a new strategy (or extra swept parameter) is a localised
@@ -31,8 +37,10 @@ ParameterGenerator buildRandomStrategySweep() {
     generator.setSymbolGroups<kSymbolGroupsOverride>();
     // generator.addRange("OHLC_COUNT", 80, 20, 140);  // 80, 100, 120, 140
     // generator.addList("OHLC_MINUTES", {1, 3, 5, 8});
-    generator.addRange("LIMIT_DISTANCE_IN_PIPS", 1, 1, 100);
-    generator.addRange("STOP_DISTANCE_IN_PIPS", 1, 1, 100);
+    // ATR multipliers, not pips: conditions::check turns them into pip
+    // distances per entry (distance = ATR(10) x multiplier, clamped).
+    generator.addList("STOP_DISTANCE_IN_ATR", {1, 2});
+    generator.addRange("LIMIT_DISTANCE_IN_ATR", 3, 2, 9);  // 3, 5, 7, 9
     return generator;
 }
 

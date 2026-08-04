@@ -24,7 +24,8 @@
 // decodeTick turns those bytes into the engine's existing PriceData: it scales
 // the real bid/ask into the stored INT32 "points" via the symbol's price
 // multiplier (symbol_scale::getPriceScale) so the ingest writes exactly what the
-// backtester's read path already expects.
+// backtester's read path already expects. Shared by the ingest and live
+// subcommands — both consume the same wire format, on different ports.
 
 export module tickPacket;
 
@@ -33,7 +34,7 @@ import std;        // <array>, <bit>, <chrono>, <cstddef>, <cstdint>, <limits>,
 import priceData;  // PriceData
 import symbolScale; // symbol_scale::getPriceScale, kUnknown
 
-export namespace ingest {
+export namespace tick_packet {
 
 // Fixed packet geometry (see the header comment for the byte map).
 inline constexpr std::size_t kBidOffset    = 0;
@@ -140,4 +141,4 @@ template <class T>
     return PriceData(*askScaled, *bidScaled, timestamp, symbol);
 }
 
-}  // namespace ingest
+}  // namespace tick_packet

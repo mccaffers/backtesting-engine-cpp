@@ -27,7 +27,13 @@ export namespace trading {
 inline void reviewStopAndLimit(TradeManager& tradeManager, const PriceData& tick) {
     const Trade* trade = tradeManager.findActiveTrade(tick.symbol);
     if (trade == nullptr) return;
-    if (auto exitPrice = trading::exit_rules::checkExit(*trade, tick)) {
+
+    // if-with-initializer over an optional: checkExit returns
+    // std::optional<int32> — nullopt (falsy) means no exit on this tick, a
+    // value is the close-side price the SL/TP fired at, and `*exitPrice`
+    // unwraps it for closeTrade to record as the trade's closePrice. const is
+    // free (it documents read-only intent, it doesn't change codegen).
+    if (const auto exitPrice = trading::exit_rules::checkExit(*trade, tick)) {
         tradeManager.closeTrade(tick.symbol, *exitPrice, tick);
     }
 }

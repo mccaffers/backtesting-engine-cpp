@@ -7,6 +7,7 @@
 export module strategy;
 
 import std;           // replaces <optional>, <cstddef>
+import barStore;      // bars::BarStore — the shared per-symbol bar histories
 import priceData;     // PriceData
 import trade;         // Direction
 import tradeManager;  // TradeManager
@@ -43,7 +44,15 @@ public:
     // Entry signal. Returns `std::nullopt` to mean "no trade".
     // Non-const because some implementations (e.g. RandomStrategy)
     // mutate internal RNG state on each call.
-    virtual std::optional<Direction> decide(const PriceData& tick) = 0;
+    //
+    // `barStore` is the loop owner's shared bar pipeline (runLoop / a live
+    // worker), updated once per tick BEFORE this call — so decide() sees
+    // bar state that already includes the tick it is judging (the
+    // in-progress bar's close IS this tick). Strategies own no bar state of
+    // their own — the store is the single pipeline shared with the
+    // pre-decide ATR entry conditions.
+    virtual std::optional<Direction> decide(const PriceData& tick,
+                                            const bars::BarStore& barStore) = 0;
 
     // Called every tick. Receives the TradeManager by mutable
     // reference so strategies can both inspect open positions
@@ -54,6 +63,12 @@ public:
     // analogue is just passing the manager as a parameter; C# has no
     // distinction between reference and pointer so the by-ref nature
     // is implicit there.
+    // `barStore` is the same shared pipeline decide() sees — passed here
+    // because bar-based exit logic cannot live in decide(): the run loop
+    // gates decide() behind "no open trade for this symbol", so a strategy
+    // managing an open position only ever observes bars from this hook (and
+    // a live position can be a broker-seeded trade decide() never saw).
     virtual void during(const PriceData& price,
+                        const bars::BarStore& barStore,
                         TradeManager& tradeManager) = 0;
 };

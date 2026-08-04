@@ -9,7 +9,7 @@
 // never reach the module boundary — mirroring how boostRedisImpl.cpp /
 // redisConnection.cpp isolate Boost.Asio from the rest of the build.
 
-#include "ingest/udpReceiver.hpp"
+#include "shared/net/udpReceiver.hpp"
 
 #include <array>
 #include <csignal>
@@ -21,7 +21,7 @@
 
 #include "shared/utilities/backtestLog.hpp"
 
-namespace ingest {
+namespace net {
 
 namespace asio = boost::asio;
 using asio::ip::udp;
@@ -79,9 +79,16 @@ struct UdpReceiver::Impl {
                     try {
                         handler(std::span<const std::byte>(buffer.data(), n));
                     } catch (const std::exception& e) {
+                        // Suppress the live-logs ship: a handler throwing per
+                        // datagram (bad_alloc under pressure) would ship one
+                        // document per packet from the receive thread —
+                        // stderr keeps the line; the minutely stats trace
+                        // surfaces the outage off-box.
+                        const backtest_log::SinkSuppression suppression;
                         backtest_log::error(std::string("UdpReceiver: handler threw: ")
                                             + e.what());
                     } catch (...) {
+                        const backtest_log::SinkSuppression suppression;
                         backtest_log::error("UdpReceiver: handler threw non-std exception");
                     }
                 } else if (errorCodes == asio::error::operation_aborted) {
@@ -128,4 +135,4 @@ void UdpReceiver::stop()
     asio::post(impl_->ioc, [this] { impl_->shutdown(); });
 }
 
-}  // namespace ingest
+}  // namespace net

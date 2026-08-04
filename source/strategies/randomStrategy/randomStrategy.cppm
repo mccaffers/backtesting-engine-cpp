@@ -12,6 +12,7 @@ export module randomStrategy;
 
 import std;           // replaces <cstddef>, <optional>, <random>
 import strategy;      // IStrategy base class
+import barStore;      // bars::BarStore (unused here; interface contract)
 import priceData;     // PriceData
 import trade;         // Direction
 import tradeManager;  // TradeManager
@@ -48,9 +49,11 @@ public:
     // value type that may or may not hold a T, with no heap allocation.
     //
     // Not const because the RNG engine mutates its internal state on
-    // each call. The `tick` parameter is unused today but keeps the
-    // interface stable for strategies that will look at price.
-    std::optional<Direction> decide(const PriceData& tick) override;
+    // each call. The `tick` and `barStore` parameters are unused today
+    // but keep the interface stable for strategies that look at price
+    // or bar history.
+    std::optional<Direction> decide(const PriceData& tick,
+                                    const bars::BarStore& barStore) override;
 
     // Per-tick management hook. The default RandomStrategy
     // implementation is a no-op — Operations closes trades when
@@ -58,7 +61,7 @@ public:
     // is passed by mutable reference so future strategies (trailing
     // stops, partial closes, scale-ins) can act on open positions
     // here without changing the interface.
-    void during(const PriceData& price,
+    void during(const PriceData& price, const bars::BarStore& barStore,
                 TradeManager& tradeManager) override;
 
 private:
@@ -79,11 +82,13 @@ RandomStrategy::RandomStrategy(const tradingDefinitions::StrategyConfig& strateg
       coin(0.5),
       closeProb(0.0) {}                  // unused — exits are driven by SL/TP in Operations
 
-std::optional<Direction> RandomStrategy::decide(const PriceData& /*tick*/) {
+std::optional<Direction> RandomStrategy::decide(const PriceData& /*tick*/,
+                                                const bars::BarStore& /*barStore*/) {
     return coin(rng) ? Direction::LONG : Direction::SHORT;
 }
 
 void RandomStrategy::during(const PriceData& /*price*/,
+                            const bars::BarStore& /*barStore*/,
                             TradeManager& /*tradeManager*/) {
     // Exits are handled centrally by Operations using each trade's
     // stop-loss / take-profit pip distances. Strategies that want

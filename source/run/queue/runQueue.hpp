@@ -19,10 +19,28 @@
 // the drain loop (see drainRuns.cpp) keeps each TU small and single-purpose.
 namespace run_queue {
 
-// Non-destructively reads the run that RPOP would take (the queue tail, i.e. the
-// oldest run since LoadCommand LPUSHes onto the head). Multiple workers all
-// observe the same run and pile onto it. nullopt when the run queue is empty.
-boost::asio::awaitable<std::optional<std::string>> peekRunTail(
+// A peeked run descriptor plus the queue it was found on, so retiring the run
+// LREMs the same list it was claimed from.
+struct PeekedRun {
+    std::string queueKey;
+    std::string descriptorB64;
+};
+
+// Non-destructively reads the run that RPOP would take from ONE queue (the
+// tail, i.e. the oldest run since producers LPUSH onto the head). Multiple
+// workers all observe the same run and pile onto it. nullopt when empty.
+// Shared by peekRunTail's priority scan and the single-queue experiment
+// drain (drainExperiments).
+boost::asio::awaitable<std::optional<PeekedRun>> peekQueueTail(
+    std::shared_ptr<boost::redis::connection> conn,
+    std::string queueKey);
+
+// Non-destructively reads the run that RPOP would take (the queue tail, i.e.
+// the oldest run since producers LPUSH onto the head), scanning the run queues
+// in strict priority order (queue_keys::RUN_QUEUES): a chained run is only
+// visible once every queue before its own is empty. Multiple workers all
+// observe the same run and pile onto it. nullopt when every queue is empty.
+boost::asio::awaitable<std::optional<PeekedRun>> peekRunTail(
     std::shared_ptr<boost::redis::connection> conn);
 
 // Claims one strategy payload KEY NAME off the run's per-RUN_ID list (the list
@@ -39,10 +57,11 @@ boost::asio::awaitable<std::optional<std::string>> takeStrategyPayload(
     std::shared_ptr<boost::redis::connection> conn,
     std::string payloadKey);
 
-// Retires a run by removing its descriptor. Idempotent: LREM removes 0 if a peer
-// worker already retired it.
+// Retires a run by removing its descriptor from the queue it was peeked on.
+// Idempotent: LREM removes 0 if a peer worker already retired it.
 boost::asio::awaitable<void> removeRun(
     std::shared_ptr<boost::redis::connection> conn,
+    std::string queueKey,
     std::string descriptorB64);
 
 }  // namespace run_queue

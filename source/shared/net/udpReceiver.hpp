@@ -13,12 +13,12 @@
 #include <span>
 #include <string>
 
-// A minimal UDP datagram receiver. The Boost.Asio implementation is hidden
-// behind a pimpl so this header stays free of Asio's heavy templates — that
-// keeps it safe to #include from a C++23 module's global module fragment
-// (ingestCommand.cppm), the same isolation the repo uses for Boost.Redis
-// (boostRedisImpl.cpp) and the Redis connection (redisConnection.hpp).
-namespace ingest {
+// A minimal UDP datagram receiver, shared by the ingest and live subcommands.
+// The Boost.Asio implementation is hidden behind a pimpl so this header stays
+// free of Asio's heavy templates — that keeps it safe to #include from a C++23
+// module's global module fragment, the same isolation the repo uses for
+// Boost.Redis (boostRedisImpl.cpp) and the Redis connection (redisConnection.hpp).
+namespace net {
 
 class UdpReceiver {
 public:
@@ -48,4 +48,4 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace ingest
+}  // namespace net

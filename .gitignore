@@ -47,3 +47,6 @@ dump.rdb
 cmake-build-debug
 .idea/
 .clang-tidy
+# AWS SDK for C++ install prefix (built per-node by scripts/build_dep.sh
+# from the external/aws submodule)
+external/aws-install/

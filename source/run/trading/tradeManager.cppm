@@ -57,6 +57,13 @@ private:
 
 public:
     TradeManager() = default;
+    // Entry-slippage stress toggle (config ENTRY_SLIPPAGE_TENTH_PIPS): an
+    // adverse haircut, in TENTHS of a pip, applied to what an entry PAYS
+    // (LONG fills above the ask, SHORT below the bid). 0 = off. The SL/TP
+    // anchors stay on the untouched tick — slippage moves the fill cost,
+    // not the market levels. Set by the backtest runner from the run
+    // config; the live runner's book-seeding managers keep the 0 default.
+    std::int32_t entrySlippageTenthPips{0};
     std::string openTrade(const PriceData& tick,
                           std::int32_t size,
                           Direction direction,
@@ -89,9 +96,12 @@ public:
     // Revalue open trades for this tick's symbol at its close-side price
     // (bid for LONG, ask for SHORT), updating their floating PnL.
     void markToMarket(const PriceData& tick);
-    // Liquidate every open trade at its last marked price (timestamped with
-    // `tick`), realizing the floating PnL — used when a run is cut off.
-    void closeAllTrades(const PriceData& tick);
+    // Close every open trade at its last marked price (timestamped with
+    // `tick`), realizing the floating PnL. `liquidated` distinguishes a
+    // loss-limit cutoff (the default, matching the historical call site) from
+    // an ordinary end-of-data close, so reporting's `liquidated` counter only
+    // counts forced closes.
+    void closeAllTrades(const PriceData& tick, bool liquidated = true);
 };
 
 namespace {
@@ -109,6 +119,7 @@ std::int64_t floatingPnlAt(const Trade& trade, std::int32_t mark) {
 void TradeManager::updateDrawdown() {
     const std::int64_t equity = closedPnl + openPnl;
     if (equity > peakEquity) peakEquity = equity;
+
     const std::int64_t drop = peakEquity - equity;
     if (drop > maxDrawdown) maxDrawdown = drop;
 }
@@ -120,6 +131,18 @@ std::string TradeManager::openTrade(const PriceData& tick,
                                     std::int32_t limitDistancePips) {
     auto price = (direction == Direction::LONG) ? tick.ask : tick.bid;
     Trade trade(price, size, direction, tick.symbol);
+    // Entry-slippage stress: worsen the PAID price only. scalingFactor is
+    // the symbol's points-per-pip (every table entry is a multiple of 10),
+    // so tenth-pips convert exactly — 3 tenths = 3 points FX, 300 metals.
+    // exitReferencePrice and the SL/TP anchors below stay on the raw tick,
+    // and the haircut flows into PnL through entryPrice alone. An unknown
+    // symbol's sentinel scale yields 0 slip — same fail-safe as elsewhere.
+    if (entrySlippageTenthPips > 0 && trade.scalingFactor > 0) {
+        const std::int32_t slipPoints =
+            entrySlippageTenthPips * trade.scalingFactor / 10;
+        trade.entryPrice +=
+            (direction == Direction::LONG) ? slipPoints : -slipPoints;
+    }
     trade.openTime = tick.timestamp;  // simulation time, not wall clock
     trade.entryBid = tick.bid;
     trade.entryAsk = tick.ask;
@@ -159,10 +182,23 @@ std::string TradeManager::openTrade(const PriceData& tick,
     return it->second.id;
 }
 
+// Revalue this tick's symbol's open trade at the new price so account equity
+// (closedPnl + openPnl) reflects the current floating PnL rather than a stale
+// mark. Called once per tick, before runTicks' loss-limit check.
 void TradeManager::markToMarket(const PriceData& tick) {
+
     const auto it = activeTrades.find(std::string_view{tick.symbol});
     if (it == activeTrades.end()) return;  // no position: equity unchanged
+
+    // A map iterator points at a pair<const std::string, Trade>: ->first is
+    // the key (symbol), ->second the mapped Trade. Binding a Trade& (not a
+    // copy) means the writes below land in the map's own stored entry.
     Trade& trade = it->second;
+
+    // Value the position at the price that would CLOSE it: a LONG exits by
+    // selling at the bid, a SHORT by buying back at the ask. Fold the change
+    // since the last mark into openPnl — a member running sum across all open
+    // trades (one TradeManager per run) — as a delta, so no rescan of the map.
     const auto mark = (trade.direction == Direction::LONG) ? tick.bid : tick.ask;
     const auto updated = floatingPnlAt(trade, mark);
     openPnl += updated - trade.floatingPnl;
@@ -171,17 +207,17 @@ void TradeManager::markToMarket(const PriceData& tick) {
     updateDrawdown();  // capture floating drawdown at this tick's mark
 }
 
-void TradeManager::closeAllTrades(const PriceData& tick) {
+void TradeManager::closeAllTrades(const PriceData& tick, bool liquidated) {
     // Snapshot symbols/prices first: closeTrade mutates activeTrades. Runs at
-    // most once per run (loss-limit breach), so the allocation is off the
-    // per-tick path.
+    // most once per run (loss-limit breach or end of data), so the allocation
+    // is off the per-tick path.
     std::vector<std::pair<std::string, std::int32_t>> toClose;
     toClose.reserve(activeTrades.size());
     for (const auto& [symbol, trade] : activeTrades) {
         toClose.emplace_back(symbol, trade.lastMarkPrice);
     }
     for (const auto& [symbol, price] : toClose) {
-        closeTrade(symbol, price, tick, /*liquidated=*/true);
+        closeTrade(symbol, price, tick, liquidated);
     }
 }
 
@@ -230,9 +266,12 @@ bool TradeManager::closeTrade(std::string_view symbol,
             ts << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
 
             const char* side = (closed.direction == Direction::LONG) ? "BUY" : "SELL";
-            // PnL is stored in points-per-lot; show it in pips for readability.
-            const double pnlPips = closed.scalingFactor != 0
-                ? static_cast<double>(closed.pnl) / closed.scalingFactor
+            // PnL is stored in points × size; normalise by both the symbol's
+            // points-per-pip and the trade size so the log shows pips of price
+            // movement (dividing by scalingFactor alone would print pips×size).
+            const double pnlPips = (closed.scalingFactor != 0 && closed.size != 0)
+                ? static_cast<double>(closed.pnl)
+                      / (static_cast<double>(closed.scalingFactor) * closed.size)
                 : 0.0;
             std::cout << ts.str()
                       << ", Trade Closed, " << closed.symbol

@@ -15,7 +15,8 @@
 // monitor (source/backtesting-controller). The engine broadcasts how many
 // backtests are in flight; the monitor can flip a stop flag to ask for a graceful
 // drain-and-pause. Zero network, zero serialisation — both sides map the same
-// 8-byte block.
+// 12-byte block (see EngineState below: magic + active_jobs + stop_signal; the
+// Python side must map all 12 bytes and read the fields at offsets 4 and 8).
 //
 // The block is a memory-mapped FILE at a fixed path (DEFAULT_PATH below), mapped
 // via Boost.Interprocess `file_mapping`. We use a file rather than
@@ -55,7 +56,8 @@ static_assert(sizeof(EngineState) == 12, "EngineState must be a packed 12-byte b
 static_assert(alignof(EngineState) == 4, "EngineState fields must be 4-byte aligned");
 
 // The default backing file. The Python controller defaults to the same path.
-inline constexpr const char* DEFAULT_PATH = "/tmp/EngineControlShm";
+// Safe to use /tmp: Environment is a private, single-use machine
+inline constexpr auto DEFAULT_PATH = "/tmp/EngineControlShm"; // NOSONAR
 
 // RAII owner of the mapped file. Construction creates and zeroes the file
 // (replacing any stale one left by a crashed run); destruction unmaps and removes

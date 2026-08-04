@@ -24,3 +24,11 @@ tradingDefinitions::RunConfiguration JsonParser::parseRunConfigurationFromBase64
 tradingDefinitions::StrategyConfig JsonParser::parseStrategyFromBase64(const std::string& input) {
     return json::parse(Base64::b64decode(input)).get<tradingDefinitions::StrategyConfig>();
 }
+
+experiments::ExperimentRunConfiguration JsonParser::parseExperimentRunFromBase64(const std::string& input) {
+    return json::parse(Base64::b64decode(input)).get<experiments::ExperimentRunConfiguration>();
+}
+
+experiments::ExperimentConfig JsonParser::parseExperimentFromBase64(const std::string& input) {
+    return json::parse(Base64::b64decode(input)).get<experiments::ExperimentConfig>();
+}

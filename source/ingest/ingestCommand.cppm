@@ -14,18 +14,17 @@
 
 module;
 
-#include <ctime>  // POSIX gmtime_r (not exported by `import std`)
-
 #include "ingest/questdbIngestClient.hpp"
-#include "ingest/udpPorts.hpp"
-#include "ingest/udpReceiver.hpp"
+#include "shared/net/udpPorts.hpp"
+#include "shared/net/udpReceiver.hpp"
 #include "shared/utilities/env.hpp"
 
 export module ingestCommand;
 
 import std;
+import backtestLog; // backtest_log::logLine — timestamped, flushed stdout
 import priceData;   // PriceData
-import tickPacket;  // ingest::decodeTick
+import tickPacket;  // tick_packet::decodeTick
 
 export class IngestCommand {
 public:
@@ -45,36 +44,11 @@ std::uint16_t parsePort(std::string_view text, std::uint16_t fallback) {
     return static_cast<std::uint16_t>(value);
 }
 
-// UTC wall-clock prefix, e.g. "[2026-06-28 15:04:20.785]", to millisecond
-// precision. gmtime_r is POSIX (hence the <ctime> include in the global module
-// fragment) — the same approach tradeManager.cppm uses for UTC tick times.
-std::string timestamp() {
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(now);
-    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            now.time_since_epoch())
-                            .count() %
-                        1000;
-    std::tm utc{};
-    gmtime_r(&t, &utc);
-    return std::format("[{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}]",
-                       utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
-                       utc.tm_hour, utc.tm_min, utc.tm_sec, millis);
-}
-
-// Like std::println to stdout, but timestamped and flushed immediately. stdout
-// is fully buffered when redirected (pipe/file/service log), so without the
-// flush the once-a-minute reports below would sit in the buffer and only appear
-// in a burst when the process exits.
-template <class... Args>
-void logLine(std::format_string<Args...> fmt, Args&&... args) {
-    std::println("{} {}", timestamp(), std::format(fmt, std::forward<Args>(args)...));
-    std::fflush(stdout);
-}
-
 }  // namespace
 
 int IngestCommand::run(const int argc, const char* argv[]) {
+    using backtest_log::logLine;
+
     const std::string questHost = env::getOr("QUESTDB_HOST", "127.0.0.1");
     // QuestDB serves ILP-over-HTTP (POST /write) on its main HTTP port, 9000 by
     // default. Override with $QUESTDB_ILP_PORT.
@@ -92,9 +66,9 @@ int IngestCommand::run(const int argc, const char* argv[]) {
     std::atomic<std::uint64_t> received{0};
     std::atomic<std::uint64_t> dropped{0};
 
-    ingest::UdpReceiver receiver(
+    net::UdpReceiver receiver(
         bindAddr, bindPort, [&](std::span<const std::byte> bytes) {
-            const auto tick = ingest::decodeTick(bytes);
+            const auto tick = tick_packet::decodeTick(bytes);
             if (!tick) {
                 dropped.fetch_add(1, std::memory_order_relaxed);
                 return;

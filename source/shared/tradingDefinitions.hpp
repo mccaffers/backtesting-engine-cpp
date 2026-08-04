@@ -8,6 +8,7 @@
 #include "shared/tradingDefinitions/variables/ohlcVariables.hpp"
 #include "shared/tradingDefinitions/variables/ohlcRsiVariables.hpp"
 #include "shared/tradingDefinitions/variables/ohlcBreakoutVariables.hpp"
+#include "shared/tradingDefinitions/variables/fvgVariables.hpp"
 #include "shared/tradingDefinitions/variables/tradingVariables.hpp"
 #include "shared/tradingDefinitions/variables/strategyVariables.hpp"
 #include "shared/tradingDefinitions/strategyConfig.hpp"
