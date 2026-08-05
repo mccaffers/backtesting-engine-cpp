@@ -6,8 +6,8 @@ json='{
       "UUID": "",
       "TRADING_VARIABLES": {
           "STRATEGY": "RandomStrategy",
-          "STOP_DISTANCE_IN_PIPS": 1,
-          "LIMIT_DISTANCE_IN_PIPS": 1,
+          "STOP_DISTANCE_IN_ATR": 1,
+          "LIMIT_DISTANCE_IN_ATR": 3,
           "TRADING_SIZE": 1
       },
       "OHLC_VARIABLES": [

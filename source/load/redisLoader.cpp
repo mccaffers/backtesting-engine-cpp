@@ -45,13 +45,10 @@ asio::awaitable<void> pushOnce(
     std::string encoded) {
     RedisOperations ops(conn);
     co_await ops.listPushFront(std::move(queueKey), std::move(encoded));
-
-    // Ephemeral connection: cancel so io_context::run() returns after the push.
-    conn->cancel();
     co_return;
 }
 
-// Drains `source` chunk by chunk over the one borrowed connection. Per chunk:
+// Drains `source` chunk by chunk over the loader's connection. Per chunk:
 // pipelined SET (PX ttl) of every payload under its own key, THEN one
 // pipelined LPUSH of the key names — awaited in that order so a consumer can
 // never pop a name whose payload is not yet stored. Chunk production happens
@@ -64,48 +61,71 @@ asio::awaitable<std::size_t> pushKeyedStream(
     std::chrono::milliseconds ttl) {
     RedisOperations ops(conn);
     std::size_t total = 0;
-    try {
-        for (;;) {
-            std::vector<RedisLoader::KeyedPayload> chunk = source.next();
-            if (chunk.empty()) {
-                break;
-            }
-
-            std::vector<std::pair<std::string, std::string>> keyedValues;
-            std::vector<std::string> keyNames;
-            keyedValues.reserve(chunk.size());
-            keyNames.reserve(chunk.size());
-            for (RedisLoader::KeyedPayload& payload : chunk) {
-                if (payload.key.empty() || isBlank(payload.rawJson)) {
-                    throw std::invalid_argument(
-                        "RedisLoader: empty payload or key rejected");
-                }
-                keyNames.push_back(payload.key);
-                keyedValues.emplace_back(std::move(payload.key),
-                                         Base64::b64encode(payload.rawJson));
-            }
-
-            co_await ops.setMultipleWithTTL(std::move(keyedValues), ttl);
-            co_await ops.listPushFront(listKey, std::move(keyNames));
-            total += chunk.size();
+    for (;;) {
+        std::vector<RedisLoader::KeyedPayload> chunk = source.next();
+        if (chunk.empty()) {
+            break;
         }
-    } catch (...) {
-        // Cancel on the failure path too: the connection's detached async_run
-        // otherwise keeps io_context::run() from ever returning.
-        conn->cancel();
-        throw;
-    }
 
-    // Ephemeral connection: cancel so io_context::run() returns after the push.
-    conn->cancel();
+        std::vector<std::pair<std::string, std::string>> keyedValues;
+        std::vector<std::string> keyNames;
+        keyedValues.reserve(chunk.size());
+        keyNames.reserve(chunk.size());
+        for (RedisLoader::KeyedPayload& payload : chunk) {
+            if (payload.key.empty() || isBlank(payload.rawJson)) {
+                throw std::invalid_argument(
+                    "RedisLoader: empty payload or key rejected");
+            }
+            keyNames.push_back(payload.key);
+            keyedValues.emplace_back(std::move(payload.key),
+                                     Base64::b64encode(payload.rawJson));
+        }
+
+        co_await ops.setMultipleWithTTL(std::move(keyedValues), ttl);
+        co_await ops.listPushFront(listKey, std::move(keyNames));
+        total += chunk.size();
+    }
     co_return total;
 }
 
 }  // namespace
 
-int RedisLoader::loadPayload(const std::string& redisHost,
-                             int redisPort,
-                             const std::string& queueKey,
+struct RedisLoader::Impl {
+    asio::io_context ioc;
+    std::shared_ptr<redis::connection> conn;
+
+    Impl(const std::string& host, const int port)
+        : conn(redis_util::makeRedisConnection(ioc, host, port)) {}
+
+    // Pumps the io_context until `done` flips. The connection's detached
+    // async_run keeps the context supplied with work between operations, so
+    // handlers are dispatched one at a time until the spawned coroutine's
+    // completion sets the flag — the connection itself stays live for the
+    // next call. Returns false only if the context runs dry first (async_run
+    // died), which callers treat as a failed operation.
+    bool runUntil(const bool& done) {
+        ioc.restart();
+        while (!done) {
+            if (ioc.run_one() == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+RedisLoader::RedisLoader(std::string redisHost, const int redisPort)
+    : impl_(std::make_unique<Impl>(redisHost, redisPort)) {}
+
+RedisLoader::~RedisLoader() {
+    // Cancel the connection's detached async_run, then drain the context so
+    // it winds down cleanly before the io_context is destroyed.
+    impl_->conn->cancel();
+    impl_->ioc.restart();
+    impl_->ioc.run();
+}
+
+int RedisLoader::loadPayload(const std::string& queueKey,
                              const std::string& rawJson) {
     if (isBlank(rawJson)) {
         std::cerr << "RedisLoader: empty payload rejected" << std::endl;
@@ -114,21 +134,22 @@ int RedisLoader::loadPayload(const std::string& redisHost,
 
     const std::string encoded = Base64::b64encode(rawJson);
 
-    asio::io_context ioc;
-    auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
-
     std::exception_ptr pushError;
+    bool done = false;
 
     asio::co_spawn(
-        ioc,
-        pushOnce(conn, queueKey, encoded),
-        [&pushError](std::exception_ptr e) {
-            if (e) {
-                pushError = e;
-            }
+        impl_->ioc,
+        pushOnce(impl_->conn, queueKey, encoded),
+        [&pushError, &done](std::exception_ptr e) {
+            pushError = e;
+            done = true;
         });
 
-    ioc.run();
+    if (!impl_->runUntil(done)) {
+        std::cerr << "RedisLoader: connection stopped before LPUSH completed"
+                  << std::endl;
+        return 3;
+    }
 
     if (pushError) {
         try {
@@ -142,29 +163,28 @@ int RedisLoader::loadPayload(const std::string& redisHost,
     return 0;
 }
 
-int RedisLoader::loadKeyedPayloadStream(const std::string& redisHost,
-                                        const int redisPort,
-                                        const std::string& listKey,
+int RedisLoader::loadKeyedPayloadStream(const std::string& listKey,
                                         ChunkSource& source,
                                         const long ttlSeconds) {
-    asio::io_context ioc;
-    auto conn = redis_util::makeRedisConnection(ioc, redisHost, redisPort);
-
     std::exception_ptr pushError;
-    std::size_t stored = 0;
+    bool done = false;
 
     asio::co_spawn(
-        ioc,
-        pushKeyedStream(conn, listKey, source, std::chrono::seconds(ttlSeconds)),
-        [&pushError, &stored](const std::exception_ptr& e, std::size_t total) {
+        impl_->ioc,
+        pushKeyedStream(impl_->conn, listKey, source,
+                        std::chrono::seconds(ttlSeconds)),
+        [&pushError, &done](const std::exception_ptr& e, std::size_t) {
             if (e) {
                 pushError = e;
-            } else {
-                stored = total;
             }
+            done = true;
         });
 
-    ioc.run();
+    if (!impl_->runUntil(done)) {
+        std::cerr << "RedisLoader: connection stopped before payload stream completed"
+                  << std::endl;
+        return 3;
+    }
 
     if (pushError) {
         try {
@@ -177,9 +197,6 @@ int RedisLoader::loadKeyedPayloadStream(const std::string& redisHost,
             return 1;
         }
     }
-
-    std::cout << "RedisLoader: stored " << stored
-              << " keyed payload(s), key names on " << listKey << std::endl;
 
     return 0;
 }

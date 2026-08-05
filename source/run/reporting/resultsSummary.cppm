@@ -22,6 +22,15 @@ export class ResultsSummary {
 public:
     static TradingResultsStats collect(const TradeManager& tradeManager,
                                        const tradingDefinitions::Configuration& config);
+    // Core overload for callers that have no Configuration in scope (runLoop's
+    // performance gate). startingBalance and lastMonths feed the score's
+    // normalisation/annualisation; primaryPointsPerPip converts the aggregate
+    // max drawdown to pips (the Configuration overload derives it from the
+    // run's primary symbol).
+    static TradingResultsStats collect(const TradeManager& tradeManager,
+                                       boost::decimal::decimal64_t startingBalance,
+                                       int lastMonths,
+                                       int primaryPointsPerPip);
     static void summarise(const TradeManager& tradeManager,
                           const tradingDefinitions::Configuration& config);
 };
@@ -46,12 +55,13 @@ namespace {
 // equity curve, in pips (>= 0). Guards leave every score field at 0 for an
 // unscoreable run (no closed trades, non-positive balance, no horizon).
 void computePerformanceScore(TradingResultsStats& stats,
-                             const tradingDefinitions::Configuration& config,
+                             const boost::decimal::decimal64_t startingBalanceDec,
+                             const int lastMonths,
                              boost::decimal::decimal64_t winPipSum,
                              boost::decimal::decimal64_t lossPipSum,
                              boost::decimal::decimal64_t maxDropPips) {
-    const double startingBalance = static_cast<double>(config.STARTING_BALANCE);
-    if (stats.tradesClosed == 0 || startingBalance <= 0.0 || config.LAST_MONTHS <= 0) {
+    const double startingBalance = static_cast<double>(startingBalanceDec);
+    if (stats.tradesClosed == 0 || startingBalance <= 0.0 || lastMonths <= 0) {
         return;  // unscoreable — leave all score fields at their 0 defaults
     }
 
@@ -62,43 +72,51 @@ void computePerformanceScore(TradingResultsStats& stats,
         return;  // only breakeven trades — nothing to score
     }
 
-    // Win rate: a run with no losers wins by definition; otherwise the share of
-    // decisive trades that won.
-    double winRate = 0.0;
-    if (negative == 0.0) {
-        winRate = 1.0;
-    } else if (positive != 0.0) {
-        winRate = positive / totalSum;
-    }
+    // Win rate over ALL closed trades (winners + losers + breakevens), so it
+    // reads as "share of trades that won". A run of one winner and ninety-nine
+    // breakevens is 1%, not the forced 100% the old no-losers special case
+    // produced. Breakevens likewise weight the loss share below, so the
+    // expectancy is a true per-trade mean.
+    const double closedCount = static_cast<double>(stats.tradesClosed);
+    const double winRate  = positive / closedCount;
+    const double lossRate = negative / closedCount;
 
     const double averageWin  = positive > 0.0 ? static_cast<double>(winPipSum) / positive : 0.0;
     const double averageLoss = negative > 0.0
         ? std::abs(static_cast<double>(lossPipSum) / negative) : 0.0;
 
     // Profit-to-loss weighting; the C# special cases pin the degenerate ends.
+    // averageLoss == 0 with losers present means the losing pips were
+    // unmeasurable (unknown-scale trades) — pin to the cap rather than divide
+    // to Inf, which nlohmann would silently serialise as null.
     double tradeRatio = 0.0;
-    if (positive > 0.0 && negative > 0.0) {
+    if (positive == 0.0) {
+        tradeRatio = 0.0;
+    } else if (negative == 0.0 || averageLoss == 0.0) {
+        tradeRatio = 100.0;
+    } else {
         tradeRatio = (averageWin * positive) / (averageLoss * negative);
     }
-    if (positive == 0.0) tradeRatio = 0.0;
-    if (negative == 0.0) tradeRatio = 100.0;
 
     // Expectancy in pips, normalised to opening equity, then turned into a
     // Van Tharp SQN by the sqrt(trades) frequency factor and mapped so SQN 2.0
     // ~= score 50.
-    const double expectancyPips    = averageWin * winRate - averageLoss * (1.0 - winRate);
+    const double expectancyPips    = averageWin * winRate - averageLoss * lossRate;
     const double expectancyPercent = expectancyPips / startingBalance * 100.0;
     const double tradeFreqFactor   = std::sqrt(totalSum);
     const double systemQuality     = expectancyPercent * tradeFreqFactor;
     const double expectancyScore   = systemQuality * (50.0 / 2.0);
 
     // CAGR over the backtest horizon; finalPnl is already net profit in pips.
-    const double years   = static_cast<double>(config.LAST_MONTHS) / 12.0;
+    const double years   = static_cast<double>(lastMonths) / 12.0;
     const double finalPnl = static_cast<double>(stats.finalPnl);
     const double cagrPercent = (finalPnl / startingBalance) / years * 100.0;
 
-    // Realized max drawdown as a percent of opening equity, floored at 2% so a
-    // near-flat curve cannot explode the Calmar ratio. Calmar 3.0 ~= score 50.
+    // Max drawdown "percent": pip drawdown over the balance READ AS A PIP
+    // BUDGET (the same convention as the loss floor in runLoop — there is no
+    // pip-value model, so this is an internally consistent ranking proxy, not
+    // a true percent of account value). Floored at 2% so a near-flat curve
+    // cannot explode the Calmar ratio. Calmar 3.0 ~= score 50.
     const double maxDrawdownPercent = static_cast<double>(maxDropPips) / startingBalance * 100.0;
     const double adjustedDrawdown   = std::max(maxDrawdownPercent, 2.0);
     const double calmarScore        = (cagrPercent / adjustedDrawdown) * (50.0 / 3.0);
@@ -115,19 +133,39 @@ void computePerformanceScore(TradingResultsStats& stats,
     const double rawPerformance = expectancyScore * 0.5 + calmarScore * 0.5;
     const double performance    = rawPerformance * confidenceMultiplier;
 
-    stats.winRate              = boost::decimal::decimal64_t{winRate};
-    stats.tradeRatio           = boost::decimal::decimal64_t{tradeRatio};
-    stats.expectancyScore      = boost::decimal::decimal64_t{expectancyScore};
-    stats.calmarScore          = boost::decimal::decimal64_t{calmarScore};
-    stats.confidenceMultiplier = boost::decimal::decimal64_t{confidenceMultiplier};
-    stats.maxDrawdownPercent   = boost::decimal::decimal64_t{maxDrawdownPercent};
-    stats.performanceScore     = boost::decimal::decimal64_t{performance};
+    // Belt-and-braces: a non-finite score must never reach the JSON layer,
+    // where nlohmann silently serialises NaN/Inf as null and the run's metrics
+    // vanish without an error. Substitute 0 and say so.
+    const auto finiteOr0 = [](double v, const char* name) {
+        if (std::isfinite(v)) return v;
+        backtest_log::error(std::string("ResultsSummary: non-finite ") + name
+                            + " replaced with 0");
+        return 0.0;
+    };
+
+    stats.winRate              = boost::decimal::decimal64_t{finiteOr0(winRate, "winRate")};
+    stats.tradeRatio           = boost::decimal::decimal64_t{finiteOr0(tradeRatio, "tradeRatio")};
+    stats.expectancyScore      = boost::decimal::decimal64_t{finiteOr0(expectancyScore, "expectancyScore")};
+    stats.calmarScore          = boost::decimal::decimal64_t{finiteOr0(calmarScore, "calmarScore")};
+    stats.confidenceMultiplier = boost::decimal::decimal64_t{finiteOr0(confidenceMultiplier, "confidenceMultiplier")};
+    stats.maxDrawdownPercent   = boost::decimal::decimal64_t{finiteOr0(maxDrawdownPercent, "maxDrawdownPercent")};
+    stats.performanceScore     = boost::decimal::decimal64_t{finiteOr0(performance, "performanceScore")};
 }
 
 }  // namespace
 
 TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager,
                                             const tradingDefinitions::Configuration& config) {
+    const std::string primarySymbol =
+        config.SYMBOLS.substr(0, config.SYMBOLS.find(','));
+    return collect(tradeManager, config.STARTING_BALANCE, config.LAST_MONTHS,
+                   symbol_scale::get(primarySymbol));
+}
+
+TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager,
+                                            const boost::decimal::decimal64_t startingBalance,
+                                            const int lastMonths,
+                                            const int primaryPointsPerPip) {
     const auto& activeTrades = tradeManager.getActiveTrades();
     const auto& closedTrades = tradeManager.getClosedTrades();
 
@@ -147,25 +185,37 @@ TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager,
     std::size_t losers = 0;
     std::size_t breakeven = 0;
     std::size_t liquidated = 0;
+    std::size_t unmeasured = 0;
     boost::decimal::decimal64_t pnlSum{0};      // accumulated in pips
     boost::decimal::decimal64_t winPipSum{0};   // sum of winning trades, pips
     boost::decimal::decimal64_t lossPipSum{0};  // sum of losing trades, pips (<= 0)
     for (const auto& trade : closedTrades) {
         if (trade.direction == Direction::LONG) ++closedLong;
         else ++closedShort;
+        if (trade.liquidated) ++liquidated;
+        // trade.pnl is int64 points-per-lot; convert to pips using the trade's
+        // own points-per-pip so mixed-symbol runs sum correctly. A trade whose
+        // symbol has no known scale (scalingFactor == 0) cannot be expressed in
+        // pips, so it is excluded from the win/loss counters AND the pip sums —
+        // classifying it while contributing zero pips would skew the averages
+        // (and could zero averageLoss into a divide-by-Inf tradeRatio).
+        if (trade.scalingFactor == 0) {
+            ++unmeasured;
+            continue;
+        }
         if (trade.pnl > 0) ++winners;
         else if (trade.pnl < 0) ++losers;
         else ++breakeven;
-        if (trade.liquidated) ++liquidated;
-        // trade.pnl is int64 points-per-lot; convert to pips using the trade's
-        // own points-per-pip so mixed-symbol runs sum correctly.
-        if (trade.scalingFactor != 0) {
-            const boost::decimal::decimal64_t pips =
-                boost::decimal::decimal64_t{trade.pnl} / trade.scalingFactor;
-            pnlSum += pips;
-            if (trade.pnl > 0) winPipSum += pips;
-            else if (trade.pnl < 0) lossPipSum += pips;
-        }
+        const boost::decimal::decimal64_t pips =
+            boost::decimal::decimal64_t{trade.pnl} / trade.scalingFactor;
+        pnlSum += pips;
+        if (trade.pnl > 0) winPipSum += pips;
+        else if (trade.pnl < 0) lossPipSum += pips;
+    }
+    if (unmeasured != 0) {
+        backtest_log::error("ResultsSummary: " + std::to_string(unmeasured)
+                            + " closed trade(s) on unknown-scale symbols excluded"
+                              " from pip metrics");
     }
 
     // True mark-to-market max drawdown, tracked live in TradeManager (so it
@@ -173,9 +223,6 @@ TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager,
     // converted to pips with the run's primary symbol's points-per-pip — exact
     // for single-asset-class runs, matching the loss-limit floor convention in
     // Operations::run.
-    const std::string primarySymbol =
-        config.SYMBOLS.substr(0, config.SYMBOLS.find(','));
-    const int primaryPointsPerPip = symbol_scale::get(primarySymbol);
     boost::decimal::decimal64_t maxDropPips{0};
     if (primaryPointsPerPip != 0) {
         maxDropPips = boost::decimal::decimal64_t{tradeManager.maxDrawdownPoints()}
@@ -203,7 +250,8 @@ TradingResultsStats ResultsSummary::collect(const TradeManager& tradeManager,
         stats.avgPnl = pnlSum / boost::decimal::decimal64_t{static_cast<long long>(closedCount)};
     }
 
-    computePerformanceScore(stats, config, winPipSum, lossPipSum, maxDropPips);
+    computePerformanceScore(stats, startingBalance, lastMonths,
+                            winPipSum, lossPipSum, maxDropPips);
     return stats;
 }
 

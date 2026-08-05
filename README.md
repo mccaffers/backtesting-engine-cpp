@@ -1,14 +1,25 @@
-## C++ Backtesting Engine
+# C++ Backtesting Engine
 
 Active development!
 
-Feel free to explore, but this code base is usuable at the moment.
+Feel free to explore, but this code base is usable at the moment.
 
-### About The Project
+## About The Project
 
-I'm developing a high-performance C++ backtesting engine designed to analyze financial data and evaluate multiple trading strategies at scale.
+I'm developing a high-performance C++ backtesting engine designed to analyze financial data and evaluate multiple trading strategies at scale — and to take the winners live.
 
 [![Build](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/mccaffers/backtesting-engine-cpp/actions/workflows/build.yml) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mccaffers_backtesting-engine-cpp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mccaffers_backtesting-engine-cpp)
+
+The engine is C++23 (modules, `import std;`) and one binary with eight subcommands:
+
+- **`ingest`** — receives a UDP tick stream and writes it to QuestDB
+- **`load`** — expands a strategy parameter sweep and queues it in Redis
+- **`run`** — drains the queue, backtests against QuestDB ticks, reports results to Elasticsearch
+- **`experiments`** — expands a parameter sweep of occurrence-rate questions ("price drops 1% in 10m, then recovers 0.5% in 10m — how often?") and queues it in Redis, no strategy required
+- **`analysis`** — drains the experiment queue, counts pattern occurrences against QuestDB ticks, reports aggregate stats (rates, conditional completion, excursion quantiles) to Elasticsearch
+- **`live`** — takes the winning backtests from Elasticsearch and trades them live via the IG REST API
+- **`tracking`** — receives the IG account's deal/position updates over UDP, logs each one, archives closed deals in the Redis position book (`PO#` → `PH#`, pruning the `PL#` list), and ships a `live-trades` document to Elasticsearch per deal
+- **`positions`** — mirrors the IG account's open positions into Redis every minute (the position book, strategy lists, and cluster-exposure sets the live engine reads)
 
 I'm extracting results and creating various graphs for trend analyses using SciPy for calculations and Plotly for visualization.
 
@@ -16,126 +27,33 @@ I'm extracting results and creating various graphs for trend analyses using SciP
 
 *Read more results on https://mccaffers.com/quantitative_analysis/randomly_trading/*
 
-## Setup
+## Documentation
 
-This backtesting engine can pull tick data from local files or from a Postgres database (I'm using QuestDB). Strategy execution is dispatched via a Redis list called `strategy_queue`, with each entry a Base64-encoded JSON payload, the `load` subcommand enqueues strategies (LPUSH) and the `run` subcommand dequeues and executes them (RPOP). The default workflow expects a local `redis-server` listening on `127.0.0.1:6379`.
-
-### Clone with submodules
-
-The project depends on two vendored libraries (`libpqxx` and `boost-decimal`) tracked as git submodules under `external/`. If you didn't clone with `--recurse-submodules`, run:
-
-```
-git submodule update --init --recursive
-```
-
-`scripts/build_dep.sh` does this for you on first run.
-
-### Install libpq (required by libpqxx)
-
-```
-For Ubuntu/Debian systems: sudo apt-get install libpq-dev
-On Red Hat Linux (RHEL) systems: yum install postgresql-devel
-For Mac Homebrew: brew install postgresql
-For OpenSuse: zypper in postgresql-devel
-For ArchLinux: pacman -S postgresql-libs
-```
-
-### Install Boost, OpenSSL, and Redis
-
-Boost.Redis is header-only but its single translation unit (compiled via `<boost/redis/src.hpp>` from `source/shared/redis/boostRedisImpl.cpp`) pulls in Boost.Asio's SSL layer, so OpenSSL is a transitive requirement. A local `redis-server` on `127.0.0.1:6379` is also needed for the default `load`/`run` workflow.
-
-```
-For Mac Homebrew: brew install boost openssl redis
-For Ubuntu/Debian systems: sudo apt-get install libboost-all-dev libssl-dev redis-server
-```
-
-The canonical CI prerequisite list lives in `.github/workflows/scripts/brew.sh` (`postgresql`, `pkg-config`, `boost`).
-
-![alt text](documents/flow.png)
-
-### Build dependencies
-
-`libpqxx` is built once via CMake. `boost-decimal` is header-only and pulled in via `add_subdirectory` from the top-level `CMakeLists.txt`, nothing to build. The script below handles the libpqxx build:
-
-```
-bash ./scripts/build_dep.sh
-```
-
-Xcode - Link Binary with Libraries (Source & Test)
-
-```
-./build/external/libpqxx/src/libpqxx-7.10.a
-```
-
-Xcode - Headers Path (for libpqxx and nlohmann/json)
-
-``` 
-"$(SRCROOT)/external/libpqxx/include/pqxx/internal"
-"$(SRCROOT)/external/libpqxx/include/"
-"$(SRCROOT)/external/"
-```
-
-Xcode - Library Path
-
-```
-"$(SRCROOT)/external/libpqxx/src"
-"$(SRCROOT)/build/external/libpqxx/src"
-"/opt/homebrew/Cellar/postgresql@14/14.15/lib/postgresql@14"
-```
-
-### Build the project
-
-`bash ./scripts/build.sh`
-
-### Environment variables
-
-The engine reads its connection configuration from the environment. The following variables are **required** — `scripts/run.sh` validates them up front and aborts if any are missing or empty:
-
-| Variable | Used for |
+| Document | Contents |
 | --- | --- |
-| `ELASTIC_HOST` | Elasticsearch base URL that trading results are PUT to (e.g. `https://elastic.example.com:9200`) |
-| `ELASTIC_USER` | Elasticsearch HTTP basic-auth username |
-| `ELASTIC_USER_PASSWORD` | Elasticsearch HTTP basic-auth password |
-| `REDIS_HOST` | Redis host for the `strategy_queue` list |
+| [QUICKSTART.md](QUICKSTART.md) | Building the engine and using each subcommand |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How it fits together — data flow, queue design, live order path (Mermaid diagrams) |
+| [ENVIRONMENT.md](ENVIRONMENT.md) | Every environment variable, per command, with defaults |
+| [REQUIREMENTS.md](REQUIREMENTS.md) | Toolchain, system libraries, vendored dependencies, runtime services |
 
-I manage these secrets with [Infisical](https://infisical.com/), which injects them into the process environment at runtime, so I run the engine with:
+## Quick start
 
-```
-infisical run -- sh ./scripts/run.sh
-```
+```bash
+git clone --recurse-submodules https://github.com/mccaffers/backtesting-engine-cpp
+cd backtesting-engine-cpp
 
-If you're not using Infisical, export the variables yourself (e.g. via your shell profile or a sourced `.env`) before invoking the script.
+bash ./scripts/build.sh    # CMake + Ninja + Clang/libc++ (see REQUIREMENTS.md for the toolchain)
+bash ./scripts/test.sh     # Catch2 tests via ctest
 
-### Run via terminal
-
-`bash ./scripts/run.sh` builds the project, then, if `redis-cli ping` reaches a local Redis, enqueues an inline JSON strategy via `load` and executes it via `run localhost`. If Redis is unreachable the script prints a message and exits cleanly (see `scripts/run.sh:22-25`), so first-time users without Redis still get a clear signal. The script requires the [environment variables](#environment-variables) listed above; with Infisical that becomes `infisical run -- sh ./scripts/run.sh`.
-
-The `BacktestingEngine` binary exposes a subcommand CLI:
-
-```
-BacktestingEngine load
-    Base64-encode a built-in strategy JSON (defined in
-    source/load/loadCommand.cppm) and LPUSH it onto the Redis
-    `strategy_queue` list.
-
-BacktestingEngine run <questdb-host>
-    RPOP one Base64-encoded strategy from `strategy_queue` and execute it
-    against the supplied QuestDB host.
-
-BacktestingEngine run <questdb-host> <base64-config>
-    Decode the supplied Base64 strategy and execute it directly, bypassing
-    Redis.
+# with Redis, QuestDB, and Elasticsearch running (see QUICKSTART.md):
+./build/BacktestingEngine load random    # queue a sweep
+./build/BacktestingEngine run localhost  # drain and backtest
 ```
 
-Defaults are `127.0.0.1:6379` for the Redis endpoint and `strategy_queue` for the list key (see `source/shared/redis/redisRunner.hpp` and `source/shared/redis/redisLoader.hpp`).
-
-### Run tests via terminal
-
-`bash ./scripts/test.sh`
-
-### Contributing
+## Contributing
 
 This is an active solo experiment, so I'm not accepting pull requests right now, but please fork freely and use [GitHub Issues](https://github.com/mccaffers/backtesting-engine-cpp/issues) for bugs, questions, and ideas. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-### License
+## License
+
 [MIT](https://choosealicense.com/licenses/mit/)

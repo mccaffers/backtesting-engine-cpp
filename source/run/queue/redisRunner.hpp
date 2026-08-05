@@ -7,11 +7,12 @@
 #pragma once
 #include <string>
 
-// Worker entry point. Drains BACKTESTING_QUEUE_RUN: for each run it loads the
-// QuestDB tick data once, then drains that run's per-RUN_ID strategy list,
-// running every strategy against the cached ticks. Safe to launch many workers
-// concurrently — they peek the same run, load ticks once each, and compete on
-// RPOP of the shared strategy list.
+// Worker entry point. Drains the run queues (queue_keys::RUN_QUEUES, priority
+// ordered — grid sweeps before chained rolling-window runs): for each run it
+// loads the QuestDB tick data once, then drains that run's per-RUN_ID strategy
+// list, running every strategy against the cached ticks. Safe to launch many
+// workers concurrently — they peek the same run, load ticks once each, and
+// compete on RPOP of the shared strategy list.
 class RedisRunner {
 public:
     static int run(const std::string& questdbHost,

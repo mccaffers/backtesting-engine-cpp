@@ -9,6 +9,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>  // setenv/unsetenv — the slippage stress is env-driven at load
 #include <map>
 #include <set>
 #include <string>
@@ -30,11 +31,33 @@ import parameterGenerator;      // sweep::ParameterGenerator, sweep::Combination
 import randomStrategySweep;     // sweep::buildRandomStrategySweep
 import ohlcBreakoutStrategySweep; // sweep::buildOhlcBreakoutStrategySweep
 import makeOhlcBreakoutStrategy;  // sweep::makeOhlcBreakoutStrategy
+import fvgStrategySweep;        // sweep::buildFvgStrategySweep
+import makeFvgStrategy;         // sweep::makeFvgStrategy
+import keltnerFadeStrategySweep; // sweep::buildKeltnerFadeStrategySweep
+import makeKeltnerFadeStrategy;  // sweep::makeKeltnerFadeStrategy
+import sessionRangeBreakoutStrategySweep; // sweep::buildSessionRangeBreakoutStrategySweep
+import makeSessionRangeBreakoutStrategy;  // sweep::makeSessionRangeBreakoutStrategy
+import squeezeBreakoutStrategySweep; // sweep::buildSqueezeBreakoutStrategySweep
+import makeSqueezeBreakoutStrategy;  // sweep::makeSqueezeBreakoutStrategy
+import nyOpenRangeBreakoutStrategySweep; // sweep::buildNyOpenRangeBreakoutStrategySweep
+import makeNyOpenRangeBreakoutStrategy;  // sweep::makeNyOpenRangeBreakoutStrategy
+import liquiditySweepReversalStrategySweep; // sweep::buildLiquiditySweepReversalStrategySweep
+import makeLiquiditySweepReversalStrategy;  // sweep::makeLiquiditySweepReversalStrategy
+import rangeVelocityStrategySweep; // sweep::buildRangeVelocityStrategySweep
+import makeRangeVelocityStrategy;  // sweep::makeRangeVelocityStrategy
 import runConfigurationBuilder; // sweep::makeRunConfiguration, sweep::resolveSymbolGroups
 import symbolGroups;            // sweep::cleanSymbols, sweep::allSymbolsKnown
 import randomStrategy;          // RandomStrategy
 import ohlcBreakoutStrategy;    // OhlcBreakoutStrategy
+import fvgStrategy;             // FvgStrategy
+import keltnerFadeStrategy;     // KeltnerFadeStrategy
+import sessionRangeBreakoutStrategy; // SessionRangeBreakoutStrategy
+import squeezeBreakoutStrategy; // SqueezeBreakoutStrategy
+import nyOpenRangeBreakoutStrategy; // NyOpenRangeBreakoutStrategy
+import liquiditySweepReversalStrategy; // LiquiditySweepReversalStrategy
+import rangeVelocityStrategy;   // RangeVelocityStrategy
 import tradeManager;            // TradeManager
+import barStore;                // bars::BarStore — decide() interface
 import priceData;               // PriceData
 import trade;                   // Direction
 
@@ -44,7 +67,7 @@ using namespace boost::decimal::literals;
 
 TEST_CASE("buildRandomStrategySweep registers exactly STOP and LIMIT", "[sweep]") {
     const auto generator = sweep::buildRandomStrategySweep();
-    INFO("RandomStrategy sweeps exactly STOP and LIMIT pip distances");
+    INFO("RandomStrategy sweeps exactly the STOP and LIMIT ATR multipliers");
     CHECK(generator.parameterCount() == 2);
 }
 
@@ -58,14 +81,14 @@ TEST_CASE("buildRandomStrategySweep generates the full cartesian product", "[swe
 
     std::set<double> stops, limits;
     for (const auto& combo : combinations) {
-        stops.insert(combo.get("STOP_DISTANCE_IN_PIPS"));
-        limits.insert(combo.get("LIMIT_DISTANCE_IN_PIPS"));
+        stops.insert(combo.get("STOP_DISTANCE_IN_ATR"));
+        limits.insert(combo.get("LIMIT_DISTANCE_IN_ATR"));
     }
     CHECK(combinations.size() > 0);
     CHECK(combinations.size() == stops.size() * limits.size());
     for (const auto& combo : combinations) {
-        CHECK(combo.has("STOP_DISTANCE_IN_PIPS"));
-        CHECK(combo.has("LIMIT_DISTANCE_IN_PIPS"));
+        CHECK(combo.has("STOP_DISTANCE_IN_ATR"));
+        CHECK(combo.has("LIMIT_DISTANCE_IN_ATR"));
         // The OHLC ranges are commented out in the builder; loadCommand's
         // makeStrategy relies on has() returning false so the fields default
         // to 0 instead of throwing in get().
@@ -81,8 +104,8 @@ TEST_CASE("buildRandomStrategySweep covers every stop/limit pair once", "[sweep]
     std::set<double> stops, limits;
     std::set<std::pair<double, double>> pairs;
     for (const auto& combo : combinations) {
-        const double s = combo.get("STOP_DISTANCE_IN_PIPS");
-        const double l = combo.get("LIMIT_DISTANCE_IN_PIPS");
+        const double s = combo.get("STOP_DISTANCE_IN_ATR");
+        const double l = combo.get("LIMIT_DISTANCE_IN_ATR");
         stops.insert(s);
         limits.insert(l);
         pairs.emplace(s, l);
@@ -107,42 +130,134 @@ TEST_CASE("buildRandomStrategySweep expansion order is deterministic", "[sweep]"
     const auto b = sweep::buildRandomStrategySweep().generateAllCombinations();
     REQUIRE(a.size() == b.size());
     for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) {
-        CHECK(a[i].get("STOP_DISTANCE_IN_PIPS") == b[i].get("STOP_DISTANCE_IN_PIPS"));
-        CHECK(a[i].get("LIMIT_DISTANCE_IN_PIPS") == b[i].get("LIMIT_DISTANCE_IN_PIPS"));
+        CHECK(a[i].get("STOP_DISTANCE_IN_ATR") == b[i].get("STOP_DISTANCE_IN_ATR"));
+        CHECK(a[i].get("LIMIT_DISTANCE_IN_ATR") == b[i].get("LIMIT_DISTANCE_IN_ATR"));
     }
 }
 
 TEST_CASE("makeRunConfiguration carries the run id", "[sweep]") {
-    const auto config = sweep::makeRunConfiguration("test-run-id", "EURUSD");
+    const auto config =
+        sweep::makeRunConfiguration("test-run-id", "EURUSD", sweep::BatchStamp{});
     CHECK(config.RUN_ID == std::string("test-run-id"));
 }
 
+// The batch stamp is frozen at load time and must land verbatim on the
+// descriptor — config.BATCH names the weekly Elasticsearch indices and
+// EXECUTION_TS becomes the documents' executionTimestamp. An empty stamp is
+// the legacy escape hatch (unsuffixed indices, no metadata), so both shapes
+// are pinned.
+TEST_CASE("makeRunConfiguration stamps the batch identity", "[sweep]") {
+    unsetenv("ENTRY_SLIPPAGE_TENTH_PIPS");
+    const sweep::BatchStamp stamp{"2099-01", "2099-01-01T00:00:00Z"};
+    const auto config = sweep::makeRunConfiguration("id", "EURUSD", stamp);
+    CHECK(config.BATCH == stamp.label);
+    CHECK(config.EXECUTION_TS == stamp.executionTs);
+
+    const auto legacy =
+        sweep::makeRunConfiguration("id", "EURUSD", sweep::BatchStamp{});
+    CHECK(legacy.BATCH.empty());
+    CHECK(legacy.EXECUTION_TS.empty());
+}
+
+// currentBatchStamp is what the load command freezes: the label comes from
+// outcome_index::currentBatchLabel ($BACKTEST_BATCH override first), the
+// timestamp from the wall clock — machinery only, no calendar assertions.
+TEST_CASE("currentBatchStamp freezes the label and a timestamp", "[sweep]") {
+    setenv("BACKTEST_BATCH", "2099-01", 1);
+    const auto stamp = sweep::currentBatchStamp();
+    CHECK(stamp.label == "2099-01");
+    CHECK_FALSE(stamp.executionTs.empty());
+    unsetenv("BACKTEST_BATCH");
+}
+
 TEST_CASE("makeRunConfiguration sets the run descriptor values", "[sweep]") {
-    const auto config = sweep::makeRunConfiguration("test-run-id", "EURUSD");
+    unsetenv("ENTRY_SLIPPAGE_TENTH_PIPS");  // isolate from the test process env
+    const auto config =
+        sweep::makeRunConfiguration("test-run-id", "EURUSD", sweep::BatchStamp{});
     CHECK(config.SYMBOLS == std::string("EURUSD"));
-    CHECK(config.LAST_MONTHS == 6);
+    CHECK(config.LAST_MONTHS == 3);
+    CHECK(config.OFFSET_MONTHS == 0);
     CHECK(config.STARTING_BALANCE == tradingDefinitions::DEFAULT_STARTING_BALANCE);
     CHECK(config.MAX_LOSS_PERCENT == "5"_dd);
     CHECK(config.MAX_OPEN_TRADES == 1);
-    CHECK(config.REPORT_FAILURES);
+    CHECK(config.PEAK_HOURS_ONLY == true);  // new runs trade peak hours only
+    CHECK(config.ENTRY_SLIPPAGE_TENTH_PIPS == 0);  // stress off unless exported
+}
+
+// The slippage stress is frozen into the descriptor AT LOAD TIME from the
+// environment, so every queued run (and its Elasticsearch results doc)
+// records the stress it ran under. Garbage must fail the load loudly — a
+// stress sweep that silently ran unstressed is worse than no sweep.
+TEST_CASE("makeRunConfiguration freezes the slippage stress from the env",
+          "[sweep]") {
+    const sweep::BatchStamp noBatch{};
+    setenv("ENTRY_SLIPPAGE_TENTH_PIPS", "3", 1);
+    CHECK(sweep::makeRunConfiguration("id", "EURUSD", noBatch)
+              .ENTRY_SLIPPAGE_TENTH_PIPS == 3);
+
+    setenv("ENTRY_SLIPPAGE_TENTH_PIPS", "0.3", 1);  // pips, not tenths
+    CHECK_THROWS_AS(sweep::makeRunConfiguration("id", "EURUSD", noBatch),
+                    std::invalid_argument);
+
+    setenv("ENTRY_SLIPPAGE_TENTH_PIPS", "-1", 1);
+    CHECK_THROWS_AS(sweep::makeRunConfiguration("id", "EURUSD", noBatch),
+                    std::invalid_argument);
+
+    setenv("ENTRY_SLIPPAGE_TENTH_PIPS", "lots", 1);
+    CHECK_THROWS_AS(sweep::makeRunConfiguration("id", "EURUSD", noBatch),
+                    std::invalid_argument);
+
+    unsetenv("ENTRY_SLIPPAGE_TENTH_PIPS");
+    CHECK(sweep::makeRunConfiguration("id", "EURUSD", noBatch)
+              .ENTRY_SLIPPAGE_TENTH_PIPS == 0);
 }
 
 // The descriptor travels through Redis as JSON (loadCommand dumps it, the
 // runner parses it back), so the round-trip must preserve every field —
 // including the decimal ones, which move as strings via decimal_json.hpp.
 TEST_CASE("makeRunConfiguration survives a JSON round-trip", "[sweep]") {
-    const auto original = sweep::makeRunConfiguration("round-trip-id", "EURUSD");
+    auto original = sweep::makeRunConfiguration(
+        "round-trip-id", "EURUSD",
+        sweep::BatchStamp{"2099-01", "2099-01-01T00:00:00Z"});
+    original.ENTRY_SLIPPAGE_TENTH_PIPS = 3;  // non-default so a dropped
+                                             // serializer line fails below
 
     const nlohmann::json j = original;
     const auto restored = j.get<tradingDefinitions::RunConfiguration>();
 
     CHECK(restored.RUN_ID == original.RUN_ID);
     CHECK(restored.SYMBOLS == original.SYMBOLS);
+    CHECK(restored.BATCH == original.BATCH);
+    CHECK(restored.EXECUTION_TS == original.EXECUTION_TS);
     CHECK(restored.LAST_MONTHS == original.LAST_MONTHS);
+    CHECK(restored.OFFSET_MONTHS == original.OFFSET_MONTHS);
     CHECK(restored.STARTING_BALANCE == original.STARTING_BALANCE);
     CHECK(restored.MAX_LOSS_PERCENT == original.MAX_LOSS_PERCENT);
     CHECK(restored.MAX_OPEN_TRADES == original.MAX_OPEN_TRADES);
+    CHECK(restored.MAX_TRADES_PER_MINUTE == original.MAX_TRADES_PER_MINUTE);
     CHECK(restored.REPORT_FAILURES == original.REPORT_FAILURES);
+    // Meaningful because the builder sets true (non-default): a forgotten
+    // from_json line would restore false and fail here.
+    CHECK(restored.PEAK_HOURS_ONLY == original.PEAK_HOURS_ONLY);
+    CHECK(restored.ENTRY_SLIPPAGE_TENTH_PIPS
+          == original.ENTRY_SLIPPAGE_TENTH_PIPS);
+}
+
+// Optional fields fall back to the struct defaults when absent, so queue
+// payloads written before a field existed still parse — MAX_TRADES_PER_MINUTE
+// lands on its default (60, the runaway-strategy brake) and OFFSET_MONTHS on 0
+// (window ends at the present day) rather than throwing.
+TEST_CASE("RunConfiguration parses payloads predating the optional fields", "[sweep]") {
+    const nlohmann::json j{
+        {"RUN_ID", "legacy"}, {"SYMBOLS", "EURUSD"}, {"LAST_MONTHS", 1}};
+    const auto restored = j.get<tradingDefinitions::RunConfiguration>();
+    CHECK(restored.MAX_TRADES_PER_MINUTE == 60);
+    CHECK(restored.OFFSET_MONTHS == 0);
+    CHECK(restored.PEAK_HOURS_ONLY == false);
+    CHECK(restored.ENTRY_SLIPPAGE_TENTH_PIPS == 0);
+    // Pre-batch payloads route to the unsuffixed legacy indices.
+    CHECK(restored.BATCH.empty());
+    CHECK(restored.EXECUTION_TS.empty());
 }
 
 // cleanSymbols normalises one symbol group for the run side, which splits
@@ -185,23 +300,16 @@ TEST_CASE("resolveSymbolGroups prefers the sweep override", "[sweep]") {
     }
 }
 
-// The shipped kSymbolGroupsOverride narrows the sweep to EURUSD — widening it
-// back to the full kSymbolGroups set is a deliberate source edit in
-// randomStrategySweep (empty the override), never a silent default.
-TEST_CASE("buildRandomStrategySweep narrows the symbols to EURUSD", "[sweep]") {
-    CHECK(sweep::buildRandomStrategySweep().symbolGroups() ==
-          std::vector<std::string>{"EURUSD"});
-}
-
 // RandomStrategy ignores everything in its config, so default-constructed
 // StrategyConfig is enough — selectStrategy only needs the name, and these tests
 // construct the class directly.
 TEST_CASE("RandomStrategy always returns a signal", "[sweep]") {
     RandomStrategy strategy{tradingDefinitions::StrategyConfig{}};
     PriceData tick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
+    const bars::BarStore noBars;  // RandomStrategy never reads it
 
     for (int i = 0; i < 100; ++i) {
-        const auto signal = strategy.decide(tick);
+        const auto signal = strategy.decide(tick, noBars);
         REQUIRE(signal.has_value());
         CHECK((*signal == Direction::LONG || *signal == Direction::SHORT));
     }
@@ -212,11 +320,12 @@ TEST_CASE("RandomStrategy always returns a signal", "[sweep]") {
 TEST_CASE("RandomStrategy produces both directions", "[sweep]") {
     RandomStrategy strategy{tradingDefinitions::StrategyConfig{}};
     PriceData tick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
+    const bars::BarStore noBars;  // RandomStrategy never reads it
 
     bool sawLong = false;
     bool sawShort = false;
     for (int i = 0; i < 1000 && !(sawLong && sawShort); ++i) {
-        const auto signal = strategy.decide(tick);
+        const auto signal = strategy.decide(tick, noBars);
         sawLong = sawLong || (signal == Direction::LONG);
         sawShort = sawShort || (signal == Direction::SHORT);
     }
@@ -233,7 +342,7 @@ TEST_CASE("RandomStrategy::during leaves open trades alone", "[sweep]") {
     PriceData tick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
     manager.openTrade(tick, 1, Direction::LONG);
 
-    strategy.during(tick, manager);
+    strategy.during(tick, bars::BarStore{}, manager);
 
     CHECK(manager.getActiveTrades().size() == 1);
     CHECK(manager.getClosedTrades().size() == 0);
@@ -296,10 +405,10 @@ TEST_CASE("buildStrategyChunk keys each payload by run id and its UUID", "[sweep
               queue_keys::strategyPayloadKey(runId, config.UUID));
 
         const auto combo = generator.combinationAt(begin + offset);
-        CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_PIPS ==
-              static_cast<int>(combo.get("STOP_DISTANCE_IN_PIPS")));
-        CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_PIPS ==
-              static_cast<int>(combo.get("LIMIT_DISTANCE_IN_PIPS")));
+        CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR ==
+              static_cast<int>(combo.get("STOP_DISTANCE_IN_ATR")));
+        CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR ==
+              static_cast<int>(combo.get("LIMIT_DISTANCE_IN_ATR")));
     }
 
     // An empty range (how the stream terminates) yields an empty chunk.
@@ -310,11 +419,75 @@ TEST_CASE("buildStrategyChunk keys each payload by run id and its UUID", "[sweep
 // Names the OhlcBreakout sweep registers and makeOhlcBreakoutStrategy reads
 // back; the two must stay in lockstep or the mapper throws at load time.
 namespace {
-const std::array<std::string, 7> kBreakoutParameterNames = {
+const std::array<std::string, 8> kBreakoutParameterNames = {
     "BREAKOUT_OHLC_MINUTES", "BREAKOUT_OHLC_COUNT",
     "TREND_OHLC_MINUTES",    "TREND_OHLC_COUNT",
-    "BUFFER_PIPS",           "STOP_DISTANCE_IN_PIPS",
-    "LIMIT_DISTANCE_IN_PIPS"};
+    "BUFFER_PIPS",           "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR", "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the FVG sweep and makeFvgStrategy. No OHLC
+// counts: the mapper derives them from LOOKBACK_BARS / HTF_SMA_PERIOD.
+const std::array<std::string, 9> kFvgParameterNames = {
+    "FVG_OHLC_MINUTES",  "HTF_OHLC_MINUTES",
+    "LOOKBACK_BARS",     "MIN_GAP_PIPS",
+    "HTF_SMA_PERIOD",    "MIN_GAP_AGE_BARS",
+    "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR", "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the KeltnerFade sweep and
+// makeKeltnerFadeStrategy. No OHLC count: the mapper derives it from
+// BAND_SMA_PERIOD.
+const std::array<std::string, 6> kKeltnerFadeParameterNames = {
+    "OHLC_MINUTES", "BAND_SMA_PERIOD", "BAND_ATR_MULT_TENTHS",
+    "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR", "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the SessionRangeBreakout sweep and
+// makeSessionRangeBreakoutStrategy. No OHLC count: the mapper derives it from
+// OHLC_MINUTES / ENTRY_WINDOW_MINUTES.
+const std::array<std::string, 6> kSessionRangeBreakoutParameterNames = {
+    "OHLC_MINUTES",          "BUFFER_PIPS",
+    "ENTRY_WINDOW_MINUTES",  "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR",  "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the SqueezeBreakout sweep and
+// makeSqueezeBreakoutStrategy. No signal OHLC count: the mapper derives it
+// from VALID_BARS / NR_LOOKBACK.
+const std::array<std::string, 9> kSqueezeBreakoutParameterNames = {
+    "OHLC_MINUTES",       "NR_LOOKBACK",
+    "VALID_BARS",         "BUFFER_PIPS",
+    "MAX_TRADE_DURATION_MINUTES",
+    "TREND_OHLC_MINUTES", "TREND_OHLC_COUNT",
+    "STOP_DISTANCE_IN_ATR", "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the NyOpenRangeBreakout sweep and
+// makeNyOpenRangeBreakoutStrategy. No OHLC count: the mapper derives it from
+// RANGE_HOURS / OHLC_MINUTES / ENTRY_WINDOW_MINUTES.
+const std::array<std::string, 7> kNyOpenRangeBreakoutParameterNames = {
+    "OHLC_MINUTES",          "RANGE_HOURS",
+    "BUFFER_PIPS",           "ENTRY_WINDOW_MINUTES",
+    "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR",  "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the LiquiditySweepReversal sweep and
+// makeLiquiditySweepReversalStrategy. No OHLC count: the mapper derives it
+// from LOOKBACK_BARS / PIVOT_BARS / VALID_BARS.
+const std::array<std::string, 9> kLiquiditySweepReversalParameterNames = {
+    "OHLC_MINUTES",   "PIVOT_BARS",
+    "LOOKBACK_BARS",  "MIN_SWEEP_PIPS",
+    "DISPLACEMENT_ATR_TENTHS", "VALID_BARS",
+    "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR", "LIMIT_DISTANCE_IN_ATR"};
+
+// Same lockstep contract for the RangeVelocity sweep and
+// makeRangeVelocityStrategy. No RANGE_COUNT: the mapper derives it from
+// RUN_BARS / SPEED_LOOKBACK_BARS / EXIT_RUN_BARS.
+const std::array<std::string, 9> kRangeVelocityParameterNames = {
+    "RANGE_ATR_TICK_WINDOW", "RANGE_ATR_PERCENT",
+    "RUN_BARS",              "SPEED_LOOKBACK_BARS",
+    "SPEED_RATIO_PERCENT",   "EXIT_RUN_BARS",
+    "MAX_TRADE_DURATION_MINUTES",
+    "STOP_DISTANCE_IN_ATR",  "LIMIT_DISTANCE_IN_ATR"};
 
 // Stride of each parameter's axis in expansion order (later-registered ranges
 // vary fastest): stepping combinationAt's index by strides[k] walks parameter
@@ -329,7 +502,7 @@ std::vector<std::size_t> axisStrides(
 }
 }
 
-TEST_CASE("buildOhlcBreakoutStrategySweep registers all seven parameters", "[sweep]") {
+TEST_CASE("buildOhlcBreakoutStrategySweep registers every mapped parameter", "[sweep]") {
     const auto generator = sweep::buildOhlcBreakoutStrategySweep();
     CHECK(generator.parameterCount() == kBreakoutParameterNames.size());
 
@@ -382,14 +555,6 @@ TEST_CASE("buildOhlcBreakoutStrategySweep generates the full cartesian product",
     CHECK(uniqueCombinations.size() == sampled);
 }
 
-// The breakout sweep narrows itself to EURUSD while the strategy is being
-// validated (kOhlcBreakoutSymbolGroupsOverride) — widening it is a deliberate
-// source edit, never a silent default.
-TEST_CASE("buildOhlcBreakoutStrategySweep narrows the symbols to EURUSD", "[sweep]") {
-    const auto generator = sweep::buildOhlcBreakoutStrategySweep();
-    CHECK(generator.symbolGroups() == std::vector<std::string>{"EURUSD"});
-}
-
 TEST_CASE("makeOhlcBreakoutStrategy maps a combination onto the config", "[sweep]") {
     sweep::Combination combo;
     combo.set("BREAKOUT_OHLC_MINUTES", 15);
@@ -397,15 +562,16 @@ TEST_CASE("makeOhlcBreakoutStrategy maps a combination onto the config", "[sweep
     combo.set("TREND_OHLC_MINUTES", 60);
     combo.set("TREND_OHLC_COUNT", 50);
     combo.set("BUFFER_PIPS", 5);
-    combo.set("STOP_DISTANCE_IN_PIPS", 40);
-    combo.set("LIMIT_DISTANCE_IN_PIPS", 60);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 45);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
 
     const auto config = sweep::makeOhlcBreakoutStrategy(combo);
 
     // Must match the dispatch string in run/operations.cppm.
     CHECK(config.TRADING_VARIABLES.STRATEGY == "OhlcBreakoutStrategy");
-    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_PIPS == 40);
-    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_PIPS == 60);
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
     CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
     CHECK_FALSE(config.UUID.empty());
 
@@ -418,6 +584,8 @@ TEST_CASE("makeOhlcBreakoutStrategy maps a combination onto the config", "[sweep
 
     REQUIRE(config.STRATEGY_VARIABLES.OHLC_BREAKOUT_VARIABLES.has_value());
     CHECK(config.STRATEGY_VARIABLES.OHLC_BREAKOUT_VARIABLES->BUFFER_PIPS == 5);
+    CHECK(config.STRATEGY_VARIABLES.OHLC_BREAKOUT_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 45);
 }
 
 // End-to-end contract between the builder, the mapper and the strategy's
@@ -453,5 +621,879 @@ TEST_CASE("makeOhlcBreakoutStrategy accepts every swept parameter value", "[swee
         const auto config =
             sweep::makeOhlcBreakoutStrategy(generator.combinationAt(i));
         CHECK_NOTHROW(OhlcBreakoutStrategy{config});
+    }
+}
+
+TEST_CASE("buildFvgStrategySweep registers every mapped parameter", "[sweep]") {
+    const auto generator = sweep::buildFvgStrategySweep();
+    CHECK(generator.parameterCount() == kFvgParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kFvgParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildFvgStrategySweep generates the full cartesian product", "[sweep]") {
+    const auto generator = sweep::buildFvgStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeFvgStrategy maps a combination onto the config", "[sweep]") {
+    sweep::Combination combo;
+    combo.set("FVG_OHLC_MINUTES", 15);
+    combo.set("HTF_OHLC_MINUTES", 60);
+    combo.set("LOOKBACK_BARS", 20);
+    combo.set("MIN_GAP_PIPS", 5);
+    combo.set("HTF_SMA_PERIOD", 30);
+    combo.set("MIN_GAP_AGE_BARS", 2);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 90);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeFvgStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "FvgStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] FVG timeframe, [1] HTF trend timeframe, with
+    // the window counts DERIVED at the ctor minimums — the derivation is the
+    // mapper's contract, so it is pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 2);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == 20 + 3);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 15);
+    CHECK(config.OHLC_VARIABLES[1].OHLC_COUNT == 30 + 2);
+    CHECK(config.OHLC_VARIABLES[1].OHLC_MINUTES == 60);
+
+    REQUIRE(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES->LOOKBACK_BARS == 20);
+    CHECK(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES->MIN_GAP_PIPS == 5);
+    CHECK(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES->HTF_SMA_PERIOD == 30);
+    CHECK(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES->MIN_GAP_AGE_BARS == 2);
+    CHECK(config.STRATEGY_VARIABLES.FVG_STRATEGY_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 90);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config an
+// FvgStrategy accepts — the derived OHLC counts must satisfy the ctor
+// minimums for every swept LOOKBACK_BARS / HTF_SMA_PERIOD value. Sweeping
+// each parameter's axis exercises every distinct value; a strided sample of
+// full combinations guards the mapper against cross-field surprises.
+TEST_CASE("makeFvgStrategy accepts every swept parameter value", "[sweep]") {
+    const auto generator = sweep::buildFvgStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeFvgStrategy(combo);
+            CHECK_NOTHROW(FvgStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config = sweep::makeFvgStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(FvgStrategy{config});
+    }
+}
+
+TEST_CASE("buildKeltnerFadeStrategySweep registers every mapped parameter", "[sweep]") {
+    const auto generator = sweep::buildKeltnerFadeStrategySweep();
+    CHECK(generator.parameterCount() == kKeltnerFadeParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kKeltnerFadeParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildKeltnerFadeStrategySweep generates the full cartesian product", "[sweep]") {
+    const auto generator = sweep::buildKeltnerFadeStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeKeltnerFadeStrategy maps a combination onto the config", "[sweep]") {
+    sweep::Combination combo;
+    combo.set("OHLC_MINUTES", 15);
+    combo.set("BAND_SMA_PERIOD", 20);
+    combo.set("BAND_ATR_MULT_TENTHS", 25);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 90);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeKeltnerFadeStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "KeltnerFadeStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] is the signal timeframe, with the window count
+    // DERIVED at the ctor minimum — the derivation is the mapper's contract,
+    // so it is pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == 20 + 2);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 15);
+
+    REQUIRE(config.STRATEGY_VARIABLES.KELTNER_FADE_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.KELTNER_FADE_VARIABLES->BAND_SMA_PERIOD == 20);
+    CHECK(config.STRATEGY_VARIABLES.KELTNER_FADE_VARIABLES->BAND_ATR_MULT_TENTHS == 25);
+    CHECK(config.STRATEGY_VARIABLES.KELTNER_FADE_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 90);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// KeltnerFadeStrategy accepts — the derived OHLC count must satisfy the ctor
+// minimum for every swept BAND_SMA_PERIOD value. Sweeping each parameter's
+// axis exercises every distinct value; a strided sample of full combinations
+// guards the mapper against cross-field surprises.
+TEST_CASE("makeKeltnerFadeStrategy accepts every swept parameter value", "[sweep]") {
+    const auto generator = sweep::buildKeltnerFadeStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeKeltnerFadeStrategy(combo);
+            CHECK_NOTHROW(KeltnerFadeStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeKeltnerFadeStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(KeltnerFadeStrategy{config});
+    }
+}
+
+TEST_CASE("buildSessionRangeBreakoutStrategySweep registers every mapped parameter",
+          "[sweep]") {
+    const auto generator = sweep::buildSessionRangeBreakoutStrategySweep();
+    CHECK(generator.parameterCount() == kSessionRangeBreakoutParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kSessionRangeBreakoutParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildSessionRangeBreakoutStrategySweep generates the full cartesian product",
+          "[sweep]") {
+    const auto generator = sweep::buildSessionRangeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeSessionRangeBreakoutStrategy maps a combination onto the config",
+          "[sweep]") {
+    sweep::Combination combo;
+    combo.set("OHLC_MINUTES", 15);
+    combo.set("BUFFER_PIPS", 5);
+    combo.set("ENTRY_WINDOW_MINUTES", 120);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 240);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeSessionRangeBreakoutStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "SessionRangeBreakoutStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] is the signal timeframe, with the window count
+    // DERIVED to span midnight -> entry cutoff (ceil((480 + window)/minutes)
+    // + 2) — the derivation is the mapper's contract, so it is pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == (480 + 120 + 14) / 15 + 2);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 15);
+
+    REQUIRE(config.STRATEGY_VARIABLES.SESSION_RANGE_BREAKOUT_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.SESSION_RANGE_BREAKOUT_VARIABLES->BUFFER_PIPS == 5);
+    CHECK(config.STRATEGY_VARIABLES.SESSION_RANGE_BREAKOUT_VARIABLES
+              ->ENTRY_WINDOW_MINUTES == 120);
+    CHECK(config.STRATEGY_VARIABLES.SESSION_RANGE_BREAKOUT_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 240);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// SessionRangeBreakoutStrategy accepts — the derived OHLC count must satisfy
+// the ctor's midnight -> entry-cutoff span for every swept OHLC_MINUTES /
+// ENTRY_WINDOW_MINUTES pair. Sweeping each parameter's axis exercises every
+// distinct value; a strided sample of full combinations guards the mapper
+// against cross-field surprises.
+TEST_CASE("makeSessionRangeBreakoutStrategy accepts every swept parameter value",
+          "[sweep]") {
+    const auto generator = sweep::buildSessionRangeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeSessionRangeBreakoutStrategy(combo);
+            CHECK_NOTHROW(SessionRangeBreakoutStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeSessionRangeBreakoutStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(SessionRangeBreakoutStrategy{config});
+    }
+}
+
+TEST_CASE("buildSqueezeBreakoutStrategySweep registers every mapped parameter",
+          "[sweep]") {
+    const auto generator = sweep::buildSqueezeBreakoutStrategySweep();
+    CHECK(generator.parameterCount() == kSqueezeBreakoutParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kSqueezeBreakoutParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildSqueezeBreakoutStrategySweep generates the full cartesian product",
+          "[sweep]") {
+    const auto generator = sweep::buildSqueezeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeSqueezeBreakoutStrategy maps a combination onto the config",
+          "[sweep]") {
+    sweep::Combination combo;
+    combo.set("OHLC_MINUTES", 30);
+    combo.set("NR_LOOKBACK", 7);
+    combo.set("VALID_BARS", 3);
+    combo.set("BUFFER_PIPS", 2);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 90);
+    combo.set("TREND_OHLC_MINUTES", 60);
+    combo.set("TREND_OHLC_COUNT", 40);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeSqueezeBreakoutStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "SqueezeBreakoutStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] signal timeframe with the window count DERIVED
+    // at the ctor minimum (VALID_BARS + max(1, NR_LOOKBACK - 1) + 1), [1] the
+    // trend timeframe — the derivation is the mapper's contract, so it is
+    // pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 2);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == 3 + 6 + 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 30);
+    CHECK(config.OHLC_VARIABLES[1].OHLC_COUNT == 40);
+    CHECK(config.OHLC_VARIABLES[1].OHLC_MINUTES == 60);
+
+    REQUIRE(config.STRATEGY_VARIABLES.SQUEEZE_BREAKOUT_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.SQUEEZE_BREAKOUT_VARIABLES->NR_LOOKBACK == 7);
+    CHECK(config.STRATEGY_VARIABLES.SQUEEZE_BREAKOUT_VARIABLES->VALID_BARS == 3);
+    CHECK(config.STRATEGY_VARIABLES.SQUEEZE_BREAKOUT_VARIABLES->BUFFER_PIPS == 2);
+    CHECK(config.STRATEGY_VARIABLES.SQUEEZE_BREAKOUT_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 90);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// SqueezeBreakoutStrategy accepts — the derived signal count must satisfy the
+// ctor minimum for every swept NR_LOOKBACK / VALID_BARS pair (including the
+// inside-bar 0 mode, never the rejected NR-1). Sweeping each parameter's axis
+// exercises every distinct value; a strided sample of full combinations
+// guards the mapper against cross-field surprises.
+TEST_CASE("makeSqueezeBreakoutStrategy accepts every swept parameter value",
+          "[sweep]") {
+    const auto generator = sweep::buildSqueezeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeSqueezeBreakoutStrategy(combo);
+            CHECK_NOTHROW(SqueezeBreakoutStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeSqueezeBreakoutStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(SqueezeBreakoutStrategy{config});
+    }
+}
+
+TEST_CASE("buildNyOpenRangeBreakoutStrategySweep registers every mapped parameter",
+          "[sweep]") {
+    const auto generator = sweep::buildNyOpenRangeBreakoutStrategySweep();
+    CHECK(generator.parameterCount() == kNyOpenRangeBreakoutParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kNyOpenRangeBreakoutParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildNyOpenRangeBreakoutStrategySweep generates the full cartesian product",
+          "[sweep]") {
+    const auto generator = sweep::buildNyOpenRangeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeNyOpenRangeBreakoutStrategy maps a combination onto the config",
+          "[sweep]") {
+    sweep::Combination combo;
+    combo.set("OHLC_MINUTES", 15);
+    combo.set("RANGE_HOURS", 8);
+    combo.set("BUFFER_PIPS", 4);
+    combo.set("ENTRY_WINDOW_MINUTES", 120);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 240);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeNyOpenRangeBreakoutStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "NyOpenRangeBreakoutStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] is the signal timeframe, with the window count
+    // DERIVED to span range start -> entry cutoff (ceil((RANGE_HOURS x 60 +
+    // window)/minutes) + 2) — the derivation is the mapper's contract, so it
+    // is pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == (8 * 60 + 120 + 14) / 15 + 2);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 15);
+
+    REQUIRE(config.STRATEGY_VARIABLES.NY_OPEN_RANGE_BREAKOUT_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.NY_OPEN_RANGE_BREAKOUT_VARIABLES->RANGE_HOURS == 8);
+    CHECK(config.STRATEGY_VARIABLES.NY_OPEN_RANGE_BREAKOUT_VARIABLES->BUFFER_PIPS == 4);
+    CHECK(config.STRATEGY_VARIABLES.NY_OPEN_RANGE_BREAKOUT_VARIABLES
+              ->ENTRY_WINDOW_MINUTES == 120);
+    CHECK(config.STRATEGY_VARIABLES.NY_OPEN_RANGE_BREAKOUT_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 240);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// NyOpenRangeBreakoutStrategy accepts — the derived OHLC count must satisfy
+// the ctor's range-start -> entry-cutoff span for every swept RANGE_HOURS /
+// OHLC_MINUTES / ENTRY_WINDOW_MINUTES triple (and every RANGE_HOURS must
+// clear the previous-midnight cap). Sweeping each parameter's axis exercises
+// every distinct value; a strided sample of full combinations guards the
+// mapper against cross-field surprises.
+TEST_CASE("makeNyOpenRangeBreakoutStrategy accepts every swept parameter value",
+          "[sweep]") {
+    const auto generator = sweep::buildNyOpenRangeBreakoutStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeNyOpenRangeBreakoutStrategy(combo);
+            CHECK_NOTHROW(NyOpenRangeBreakoutStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeNyOpenRangeBreakoutStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(NyOpenRangeBreakoutStrategy{config});
+    }
+}
+
+TEST_CASE("buildLiquiditySweepReversalStrategySweep registers every mapped parameter",
+          "[sweep]") {
+    const auto generator = sweep::buildLiquiditySweepReversalStrategySweep();
+    CHECK(generator.parameterCount() == kLiquiditySweepReversalParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kLiquiditySweepReversalParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildLiquiditySweepReversalStrategySweep generates the full cartesian product",
+          "[sweep]") {
+    const auto generator = sweep::buildLiquiditySweepReversalStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeLiquiditySweepReversalStrategy maps a combination onto the config",
+          "[sweep]") {
+    sweep::Combination combo;
+    combo.set("OHLC_MINUTES", 30);
+    combo.set("PIVOT_BARS", 3);
+    combo.set("LOOKBACK_BARS", 48);
+    combo.set("MIN_SWEEP_PIPS", 5);
+    combo.set("DISPLACEMENT_ATR_TENTHS", 10);
+    combo.set("VALID_BARS", 4);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 90);
+    combo.set("STOP_DISTANCE_IN_ATR", 40);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 60);
+
+    const auto config = sweep::makeLiquiditySweepReversalStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "LiquiditySweepReversalStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 40);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 60);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Positional contract: [0] is the signal timeframe, with the window count
+    // DERIVED at the ctor minimum (max(LOOKBACK_BARS + PIVOT_BARS + 1,
+    // VALID_BARS + 11)) — the derivation is the mapper's contract, so it is
+    // pinned here.
+    REQUIRE(config.OHLC_VARIABLES.size() == 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_COUNT == 48 + 3 + 1);
+    CHECK(config.OHLC_VARIABLES[0].OHLC_MINUTES == 30);
+
+    REQUIRE(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES->PIVOT_BARS == 3);
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES
+              ->LOOKBACK_BARS == 48);
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES
+              ->MIN_SWEEP_PIPS == 5);
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES
+              ->DISPLACEMENT_ATR_TENTHS == 10);
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES
+              ->VALID_BARS == 4);
+    CHECK(config.STRATEGY_VARIABLES.LIQUIDITY_SWEEP_REVERSAL_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 90);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// LiquiditySweepReversalStrategy accepts — the derived OHLC count must
+// satisfy the ctor minimum for every swept PIVOT_BARS / LOOKBACK_BARS /
+// VALID_BARS triple. Sweeping each parameter's axis exercises every distinct
+// value; a strided sample of full combinations guards the mapper against
+// cross-field surprises.
+TEST_CASE("makeLiquiditySweepReversalStrategy accepts every swept parameter value",
+          "[sweep]") {
+    const auto generator = sweep::buildLiquiditySweepReversalStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeLiquiditySweepReversalStrategy(combo);
+            CHECK_NOTHROW(LiquiditySweepReversalStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeLiquiditySweepReversalStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(LiquiditySweepReversalStrategy{config});
+    }
+}
+
+TEST_CASE("buildRangeVelocityStrategySweep registers every mapped parameter",
+          "[sweep]") {
+    const auto generator = sweep::buildRangeVelocityStrategySweep();
+    CHECK(generator.parameterCount() == kRangeVelocityParameterNames.size());
+
+    // Every combination carries every registered range by construction, so
+    // probing the two ends of the grid proves the names are registered.
+    REQUIRE(generator.combinationCount() > 0);
+    for (const auto& combo : {generator.combinationAt(0),
+                              generator.combinationAt(generator.combinationCount() - 1)}) {
+        for (const auto& name : kRangeVelocityParameterNames) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+}
+
+// Config-agnostic (same idea as the breakout product test): walking each
+// parameter's axis must yield that range's declared number of DISTINCT
+// values, their product must equal combinationCount(), and a strided sample
+// of full combinations must contain no duplicates.
+TEST_CASE("buildRangeVelocityStrategySweep generates the full cartesian product",
+          "[sweep]") {
+    const auto generator = sweep::buildRangeVelocityStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    std::size_t product = 1;
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        std::set<double> axisValues;
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            axisValues.insert(generator.combinationAt(j * strides[k]).get(counts[k].first));
+        }
+        INFO(counts[k].first << " expands to duplicate values");
+        CHECK(axisValues.size() == counts[k].second);
+        product *= axisValues.size();
+    }
+    CHECK(product == total);
+
+    constexpr std::size_t kSamples = 1000;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    std::set<std::map<std::string, double>> uniqueCombinations;
+    std::size_t sampled = 0;
+    for (std::size_t i = 0; i < total; i += sampleStride, ++sampled) {
+        uniqueCombinations.insert(generator.combinationAt(i).values());
+    }
+    CHECK(uniqueCombinations.size() == sampled);
+}
+
+TEST_CASE("makeRangeVelocityStrategy maps a combination onto the config",
+          "[sweep]") {
+    sweep::Combination combo;
+    combo.set("RANGE_ATR_TICK_WINDOW", 5000);
+    combo.set("RANGE_ATR_PERCENT", 40);
+    combo.set("RUN_BARS", 3);
+    combo.set("SPEED_LOOKBACK_BARS", 32);
+    combo.set("SPEED_RATIO_PERCENT", 60);
+    combo.set("EXIT_RUN_BARS", 2);
+    combo.set("MAX_TRADE_DURATION_MINUTES", 240);
+    combo.set("STOP_DISTANCE_IN_ATR", 2);
+    combo.set("LIMIT_DISTANCE_IN_ATR", 5);
+
+    const auto config = sweep::makeRangeVelocityStrategy(combo);
+
+    // Must match the dispatch string in strategyFactory.
+    CHECK(config.TRADING_VARIABLES.STRATEGY == "RangeVelocityStrategy");
+    CHECK(config.TRADING_VARIABLES.STOP_DISTANCE_IN_ATR == 2);
+    CHECK(config.TRADING_VARIABLES.LIMIT_DISTANCE_IN_ATR == 5);
+    CHECK(config.TRADING_VARIABLES.TRADING_SIZE == 1);
+    CHECK_FALSE(config.UUID.empty());
+
+    // Deliberately no OHLC series — the ATR entry gate falls back to its
+    // default timeframe; the strategy trades range bars only.
+    CHECK(config.OHLC_VARIABLES.empty());
+
+    // Positional contract: [0] is THE range series, with the window count
+    // DERIVED at the ctor minimum + margin (max(RUN_BARS +
+    // SPEED_LOOKBACK_BARS, EXIT_RUN_BARS) + 2) — the derivation is the
+    // mapper's contract, so it is pinned here.
+    REQUIRE(config.RANGE_VARIABLES.size() == 1);
+    CHECK(config.RANGE_VARIABLES[0].RANGE_ATR_TICK_WINDOW == 5000);
+    CHECK(config.RANGE_VARIABLES[0].RANGE_ATR_PERCENT == 40);
+    CHECK(config.RANGE_VARIABLES[0].RANGE_COUNT == 3 + 32 + 2);
+
+    REQUIRE(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES.has_value());
+    CHECK(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES->RUN_BARS == 3);
+    CHECK(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES
+              ->SPEED_LOOKBACK_BARS == 32);
+    CHECK(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES
+              ->SPEED_RATIO_PERCENT == 60);
+    CHECK(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES
+              ->EXIT_RUN_BARS == 2);
+    CHECK(config.STRATEGY_VARIABLES.RANGE_VELOCITY_VARIABLES
+              ->MAX_TRADE_DURATION_MINUTES == 240);
+}
+
+// End-to-end contract between the builder, the mapper and the strategy's
+// fail-fast ctor: every combination the sweep queues must produce a config a
+// RangeVelocityStrategy accepts — the derived RANGE_COUNT must satisfy the
+// ctor minimum for every swept RUN_BARS / SPEED_LOOKBACK_BARS /
+// EXIT_RUN_BARS triple. Sweeping each parameter's axis exercises every
+// distinct value; a strided sample of full combinations guards the mapper
+// against cross-field surprises.
+TEST_CASE("makeRangeVelocityStrategy accepts every swept parameter value",
+          "[sweep]") {
+    const auto generator = sweep::buildRangeVelocityStrategySweep();
+    const auto counts = generator.rangeValueCounts();
+    const auto total = generator.combinationCount();
+    REQUIRE(total > 0);
+    REQUIRE(!counts.empty());
+
+    const auto strides = axisStrides(counts);
+    for (std::size_t k = 0; k < counts.size(); ++k) {
+        for (std::size_t j = 0; j < counts[k].second; ++j) {
+            const auto combo = generator.combinationAt(j * strides[k]);
+            INFO(counts[k].first << " = " << combo.get(counts[k].first)
+                                 << " produced a config the ctor rejects");
+            const auto config = sweep::makeRangeVelocityStrategy(combo);
+            CHECK_NOTHROW(RangeVelocityStrategy{config});
+        }
+    }
+
+    constexpr std::size_t kSamples = 500;
+    const std::size_t sampleStride = total > kSamples ? total / kSamples : 1;
+    for (std::size_t i = 0; i < total; i += sampleStride) {
+        const auto config =
+            sweep::makeRangeVelocityStrategy(generator.combinationAt(i));
+        CHECK_NOTHROW(RangeVelocityStrategy{config});
     }
 }

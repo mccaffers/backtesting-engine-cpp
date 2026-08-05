@@ -20,9 +20,9 @@ export namespace sweep {
 
 // Map one swept parameter combination onto an OhlcBreakoutStrategy config.
 // Every parameter is read with getInt and no has() fallback: the sweep
-// registers all seven names (buildOhlcBreakoutStrategySweep), so a missing one
-// is a bug that should throw at load time, matching the strategy ctor's
-// fail-fast validation on the run side.
+// registers every name read here (buildOhlcBreakoutStrategySweep), so a
+// missing one is a bug that should throw at load time, matching the strategy
+// ctor's fail-fast validation on the run side.
 tradingDefinitions::StrategyConfig makeOhlcBreakoutStrategy(
     const sweep::Combination& combo) {
     using namespace tradingDefinitions;
@@ -32,8 +32,8 @@ tradingDefinitions::StrategyConfig makeOhlcBreakoutStrategy(
         .TRADING_VARIABLES = TradingVariables{
             // Must match the dispatch string in run/operations.cppm.
             .STRATEGY = "OhlcBreakoutStrategy",
-            .STOP_DISTANCE_IN_PIPS = combo.getInt("STOP_DISTANCE_IN_PIPS"),
-            .LIMIT_DISTANCE_IN_PIPS = combo.getInt("LIMIT_DISTANCE_IN_PIPS"),
+            .STOP_DISTANCE_IN_ATR = combo.getInt("STOP_DISTANCE_IN_ATR"),
+            .LIMIT_DISTANCE_IN_ATR = combo.getInt("LIMIT_DISTANCE_IN_ATR"),
             .TRADING_SIZE = 1,
         },
         // Positional contract with OhlcBreakoutStrategy: [0] is the breakout
@@ -51,6 +51,8 @@ tradingDefinitions::StrategyConfig makeOhlcBreakoutStrategy(
         .STRATEGY_VARIABLES = StrategyVariables{
             .OHLC_BREAKOUT_VARIABLES = OHLCBreakoutVariables{
                 .BUFFER_PIPS = combo.getInt("BUFFER_PIPS"),
+                .MAX_TRADE_DURATION_MINUTES =
+                    combo.getInt("MAX_TRADE_DURATION_MINUTES"),
             },
         },
     };

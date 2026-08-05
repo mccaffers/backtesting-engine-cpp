@@ -9,10 +9,14 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include "shared/tradingDefinitions.hpp"
+#include "shared/experiments/experimentConfig.hpp"
+#include "shared/experiments/experimentRunConfiguration.hpp"
 
 class JsonParser {
 public:
     static tradingDefinitions::Configuration parseConfigurationFromBase64(const std::string& input);
     static tradingDefinitions::RunConfiguration parseRunConfigurationFromBase64(const std::string& input);
     static tradingDefinitions::StrategyConfig parseStrategyFromBase64(const std::string& input);
+    static experiments::ExperimentRunConfiguration parseExperimentRunFromBase64(const std::string& input);
+    static experiments::ExperimentConfig parseExperimentFromBase64(const std::string& input);
 };

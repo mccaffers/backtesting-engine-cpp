@@ -2,8 +2,25 @@
 
 git submodule update --init --recursive
 
-if [ -z "$(ls -A ./external/boost-decimal 2>/dev/null)" ] || [ -z "$(ls -A ./external/libpqxx 2>/dev/null)" ]; then
-    ./scripts/build_dep.sh
+# An AWS SDK install produced by the old default-toolchain build (GCC/
+# libstdc++ on Linux) satisfies the AWSSDKConfig.cmake gate below but fails
+# the engine's libc++ link with undefined std::__cxx11 references. Delete it
+# here so the gate re-runs build_dep.sh, which rebuilds with clang/libc++.
+# (build_dep.sh has the same heal, but it only helps if it actually runs.)
+if ! command -v brew &>/dev/null; then
+    AWS_CORE_LIB="./external/aws-install/lib/libaws-cpp-sdk-core.a"
+    [ -f "$AWS_CORE_LIB" ] || AWS_CORE_LIB="./external/aws-install/lib64/libaws-cpp-sdk-core.a"
+    if [ -f "$AWS_CORE_LIB" ] && nm "$AWS_CORE_LIB" 2>/dev/null | grep -q '__cxx11'; then
+        echo "build.sh: existing AWS SDK install was built against libstdc++ — rebuilding with libc++" >&2
+        rm -rf ./external/aws-install ./external/aws/build
+    fi
+fi
+
+if [ -z "$(ls -A ./external/boost-decimal 2>/dev/null)" ] || [ -z "$(ls -A ./external/libpqxx 2>/dev/null)" ] \
+    || [ ! -f ./external/aws-install/lib/cmake/AWSSDK/AWSSDKConfig.cmake ]; then
+    # bash (not ./) so a lost exec bit can't break the build; abort on failure
+    # rather than cascading into a confusing find_package(AWSSDK) error later.
+    bash ./scripts/build_dep.sh || { echo "build.sh: dependency build failed" >&2; exit 1; }
 fi
 
 BUILD_DIR="build"

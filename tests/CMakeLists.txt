@@ -4,14 +4,50 @@
 # they propagate here through the link below.
 add_executable(unit_tests
     symbolScale.cpp
+    marketHours.cpp
     jsonParser.cpp
     ohlc.cpp
     ema.cpp
+    atr.cpp
+    barStore.cpp
+    rangeBar.cpp
+    rangeVelocity.cpp
+    entryConditions.cpp
     ohlcBreakout.cpp
+    fvg.cpp
+    keltnerFade.cpp
+    sessionRangeBreakout.cpp
+    squeezeBreakout.cpp
+    nyOpenRangeBreakout.cpp
+    swingPivots.cpp
+    liquiditySweepReversal.cpp
     db.cpp
+    sqlManager.cpp
     sweep.cpp
+    chainMatcher.cpp
+    experimentConfig.cpp
+    experimentSweep.cpp
+    rollingWindow.cpp
+    outcomeIndices.cpp
+    tickCache.cpp
     tradeManager.cpp
+    tradeDocument.cpp
     tickPacket.cpp
+    dealPacket.cpp
+    liveWinners.cpp
+    liveRunner.cpp
+    liveStrategyCache.cpp
+    liveTrace.cpp
+    tradeLocks.cpp
+    positionManager.cpp
+    positionClustering.cpp
+    positionSync.cpp
+    trackingReport.cpp
+    orderRequest.cpp
+    orderChannel.cpp
+    igRequests.cpp
+    positionBook.cpp
+    positionCounterCache.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE

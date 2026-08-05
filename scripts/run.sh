@@ -40,7 +40,7 @@ start_time=$(date +%s%N)
 # Invoke the `run` subcommand: BacktestingEngine pops a Base64-encoded
 # strategy off the Redis `strategy_queue` and executes it against the
 # QuestDB host passed as the second argument (here, localhost).
-./"$BUILD_DIR/$EXECUTABLE_NAME" run localhost
+ELASTIC_TRADES_ENABLED=0 ./"$BUILD_DIR/$EXECUTABLE_NAME" run localhost
 end_time=$(date +%s%N)
 elapsed=$(( (end_time - start_time) / 1000000 ))
 echo "Execution time: ${elapsed}ms"

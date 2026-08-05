@@ -28,8 +28,8 @@ tradingDefinitions::StrategyConfig makeStrategy(const sweep::Combination& combo)
         .UUID = boost::uuids::to_string(boost::uuids::random_generator()()),
         .TRADING_VARIABLES = TradingVariables{
             .STRATEGY = "RandomStrategy",
-            .STOP_DISTANCE_IN_PIPS = combo.getInt("STOP_DISTANCE_IN_PIPS"),
-            .LIMIT_DISTANCE_IN_PIPS = combo.getInt("LIMIT_DISTANCE_IN_PIPS"),
+            .STOP_DISTANCE_IN_ATR = combo.getInt("STOP_DISTANCE_IN_ATR"),
+            .LIMIT_DISTANCE_IN_ATR = combo.getInt("LIMIT_DISTANCE_IN_ATR"),
             .TRADING_SIZE = 1,
         },
         .OHLC_VARIABLES = {

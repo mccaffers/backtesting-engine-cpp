@@ -68,10 +68,24 @@ nlohmann::json reportConfigJson(const tradingDefinitions::Configuration& c) {
     j["MAX_LOSS_PERCENT"] = decimalToJsonNumber(c.MAX_LOSS_PERCENT);
     const auto& v = c.STRATEGY.TRADING_VARIABLES;
     auto& tv = j["STRATEGY"]["TRADING_VARIABLES"];
-    tv["STOP_DISTANCE_IN_PIPS"]  = v.STOP_DISTANCE_IN_PIPS;
-    tv["LIMIT_DISTANCE_IN_PIPS"] = v.LIMIT_DISTANCE_IN_PIPS;
+    tv["STOP_DISTANCE_IN_ATR"]  = v.STOP_DISTANCE_IN_ATR;
+    tv["LIMIT_DISTANCE_IN_ATR"] = v.LIMIT_DISTANCE_IN_ATR;
     tv["TRADING_SIZE"]           = v.TRADING_SIZE;
     return j;
+}
+
+// Top-level copies of the batch identity (also present under config.*) so
+// Kibana filters and aggregations don't have to reach into the config object.
+// Omitted entirely for pre-batch configs — absent keys, not empty strings, so
+// legacy documents keep their exact shape.
+void appendBatchMetadata(nlohmann::json& j,
+                         const tradingDefinitions::Configuration& c) {
+    if (!c.EXECUTION_TS.empty()) {
+        j["executionTimestamp"] = c.EXECUTION_TS;
+    }
+    if (!c.BATCH.empty()) {
+        j["batch"] = c.BATCH;
+    }
 }
 }  // namespace
 
@@ -84,6 +98,7 @@ void to_json(nlohmann::json& j, const TradingResults& r) {
         {"config", reportConfigJson(r.config)},
         {"results", r.results},
     };
+    appendBatchMetadata(j, r.config);
 }
 
 void to_json(nlohmann::json& j, const TradingFailure& f) {
@@ -92,10 +107,13 @@ void to_json(nlohmann::json& j, const TradingFailure& f) {
         {"@timestamp", f.timestamp},
         {"durationSeconds", f.durationSeconds},
         {"reason", f.reason},
+        {"breachPnlPips", f.breachPnlPips},
+        {"lossFloorPips", f.lossFloorPips},
         {"hostname", f.hostname},
         {"config", reportConfigJson(f.config)},
         {"results", f.results},
     };
+    appendBatchMetadata(j, f.config);
 }
 
 void to_json(nlohmann::json& j, const TradeFinal& f) {
@@ -104,7 +122,9 @@ void to_json(nlohmann::json& j, const TradeFinal& f) {
         {"@timestamp", f.timestamp},
         {"durationSeconds", f.durationSeconds},
         {"success", f.success},
+        {"status", f.status},
         {"hostname", f.hostname},
         {"config", reportConfigJson(f.config)},
     };
+    appendBatchMetadata(j, f.config);
 }

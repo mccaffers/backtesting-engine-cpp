@@ -27,6 +27,8 @@ import reviewStopAndLimit;  // trading::reviewStopAndLimit
 import runLoop;             // trading::runTicks, RiskLimits, RunStatus
 import operations;          // Operations::run
 import strategy;            // IStrategy
+import barStore;            // bars::BarStore — decide() interface + gate tests
+import entryConditions;     // conditions gate for the runTicks ATR tests
 import priceData;           // PriceData
 import trade;               // Direction, Trade
 
@@ -57,21 +59,24 @@ tradingDefinitions::Configuration makeRandomStrategyConfig() {
     config.STRATEGY.UUID = "test-strategy-uuid";
     auto& vars = config.STRATEGY.TRADING_VARIABLES;
     vars.STRATEGY = "RandomStrategy";
-    vars.STOP_DISTANCE_IN_PIPS = 10;
-    vars.LIMIT_DISTANCE_IN_PIPS = 10;
+    vars.STOP_DISTANCE_IN_ATR = 10;
+    vars.LIMIT_DISTANCE_IN_ATR = 10;
     vars.TRADING_SIZE = 1;
     return config;
 }
 
 // Per-test TradingVariables so each runTicks case can dial SL/TP independently
 // (e.g. stop=0 to isolate the take-profit path). STRATEGY is unused by runTicks.
+// With the ATR gate off (these tests don't pass one), runTicks forwards the
+// values to openTrade as literal pip distances, so the scripted SL/TP geometry
+// below stays exact.
 tradingDefinitions::TradingVariables makeVars(int32_t stopPips,
                                                int32_t limitPips,
                                                int32_t size) {
     tradingDefinitions::TradingVariables vars;
     vars.STRATEGY = "Scripted";
-    vars.STOP_DISTANCE_IN_PIPS = stopPips;
-    vars.LIMIT_DISTANCE_IN_PIPS = limitPips;
+    vars.STOP_DISTANCE_IN_ATR = stopPips;
+    vars.LIMIT_DISTANCE_IN_ATR = limitPips;
     vars.TRADING_SIZE = size;
     return vars;
 }
@@ -87,19 +92,39 @@ struct ScriptedStrategy : IStrategy {
     explicit ScriptedStrategy(std::vector<std::optional<Direction>> signals)
         : script(std::move(signals)) {}
 
-    std::optional<Direction> decide(const PriceData& /*tick*/) override {
+    std::optional<Direction> decide(const PriceData& /*tick*/,
+                                    const bars::BarStore& /*barStore*/) override {
         return index < script.size() ? script[index++] : std::nullopt;
     }
-    void during(const PriceData& /*tick*/, TradeManager& /*tradeManager*/) override {}
+    void during(const PriceData& /*tick*/, const bars::BarStore& /*barStore*/,
+                TradeManager& /*tradeManager*/) override {}
 };
 
 // Always signals LONG — used to probe re-entry behaviour (gating while a
 // position is open; same-tick re-entry after a stop-out).
 struct AlwaysLongStrategy : IStrategy {
-    std::optional<Direction> decide(const PriceData& /*tick*/) override {
+    std::optional<Direction> decide(const PriceData& /*tick*/,
+                                    const bars::BarStore& /*barStore*/) override {
         return Direction::LONG;
     }
-    void during(const PriceData& /*tick*/, TradeManager& /*tradeManager*/) override {}
+    void during(const PriceData& /*tick*/, const bars::BarStore& /*barStore*/,
+                TradeManager& /*tradeManager*/) override {}
+};
+
+// AlwaysLongStrategy that counts its calls — lets the peak-hours tests prove
+// decide() was skipped on an out-of-session tick while during() still ran.
+struct CountingLongStrategy : IStrategy {
+    int decideCalls = 0;
+    int duringCalls = 0;
+    std::optional<Direction> decide(const PriceData& /*tick*/,
+                                    const bars::BarStore& /*barStore*/) override {
+        ++decideCalls;
+        return Direction::LONG;
+    }
+    void during(const PriceData& /*tick*/, const bars::BarStore& /*barStore*/,
+                TradeManager& /*tradeManager*/) override {
+        ++duringCalls;
+    }
 };
 
 // Seeds a closed EURUSD trade with an exact realized PnL. A zero-spread tick at
@@ -205,6 +230,83 @@ TEST_CASE("LONG stops out when bid drops one pip below entry bid", "[tradeManage
     auto exit = trading::exit_rules::checkExit(trade->second, laterTick);
     REQUIRE(exit.has_value());
     CHECK(*exit == 109990);
+}
+
+// ENTRY_SLIPPAGE_TENTH_PIPS stress toggle: the haircut worsens what the entry
+// PAID and nothing else. EURUSD is 10 points/pip, so 3 tenths = 3 points. The
+// SL/TP anchors stay on the raw tick (exitReferencePrice), so a stressed and
+// an unstressed run see identical market levels — only the PnL differs.
+TEST_CASE("entry slippage worsens the LONG fill and leaves the anchors alone",
+          "[tradeManager]") {
+    TradeManager manager;
+    manager.entrySlippageTenthPips = 3;
+    PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
+    manager.openTrade(entryTick, 1, Direction::LONG, 1, 1);
+    auto trades = manager.getActiveTrades();
+    auto trade = trades.find(entryTick.symbol);
+    REQUIRE(trade != trades.end());
+
+    CHECK(trade->second.entryPrice == 110013);  // ask + 0.3 pip against us
+    CHECK(trade->second.entryAsk == 110010);    // raw tick preserved (audit)
+    CHECK(trade->second.entryBid == 110000);
+    CHECK(trade->second.exitReferencePrice == 110000);   // anchor untouched
+    CHECK(trade->second.stopPrice == 110000 - 10);       // same as unslipped
+    CHECK(trade->second.limitPrice == 110000 + 10);
+    // Open-tick equity dips by spread (10) + slippage (3).
+    CHECK(trade->second.floatingPnl == -13);
+    CHECK(manager.unrealizedPnl() == -13);
+}
+
+TEST_CASE("entry slippage worsens the SHORT fill symmetrically",
+          "[tradeManager]") {
+    TradeManager manager;
+    manager.entrySlippageTenthPips = 3;
+    PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
+    manager.openTrade(entryTick, 1, Direction::SHORT, 1, 1);
+    auto trades = manager.getActiveTrades();
+    auto trade = trades.find(entryTick.symbol);
+    REQUIRE(trade != trades.end());
+
+    CHECK(trade->second.entryPrice == 109997);  // bid - 0.3 pip against us
+    CHECK(trade->second.exitReferencePrice == 110010);   // anchor = raw ask
+    CHECK(trade->second.stopPrice == 110010 + 10);
+    CHECK(trade->second.limitPrice == 110010 - 10);
+    CHECK(trade->second.floatingPnl == -13);  // spread + slippage
+}
+
+// The realized cost of the stress is exactly slipPoints x size: same entry
+// tick, same close price, PnL differs by the haircut alone.
+TEST_CASE("entry slippage costs slipPoints times size on a closed round-trip",
+          "[tradeManager]") {
+    PriceData entryTick(110010, 110000, std::chrono::system_clock::now(), "EURUSD");
+    const std::int32_t closePrice = 110100;
+
+    TradeManager plain;
+    plain.openTrade(entryTick, 2, Direction::LONG);
+    plain.closeTrade(entryTick.symbol, closePrice, entryTick);
+
+    TradeManager stressed;
+    stressed.entrySlippageTenthPips = 3;
+    stressed.openTrade(entryTick, 2, Direction::LONG);
+    stressed.closeTrade(entryTick.symbol, closePrice, entryTick);
+
+    CHECK(plain.calculatePnl() == (110100 - 110010) * 2);
+    CHECK(plain.calculatePnl() - stressed.calculatePnl() == 3 * 2);
+}
+
+// Tenth-pips convert through the SYMBOL's points-per-pip: XAUUSD is 1000
+// points/pip, so the same 3-tenths setting is 300 points there, not 3.
+TEST_CASE("entry slippage scales per symbol (metals: 3 tenths = 300 points)",
+          "[tradeManager]") {
+    TradeManager manager;
+    manager.entrySlippageTenthPips = 3;
+    PriceData entryTick(2400500, 2400000, std::chrono::system_clock::now(), "XAUUSD");
+    manager.openTrade(entryTick, 1, Direction::LONG);
+    auto trades = manager.getActiveTrades();
+    auto trade = trades.find(entryTick.symbol);
+    REQUIRE(trade != trades.end());
+    CHECK(trade->second.entryPrice == 2400500 + 300);
+    CHECK(trade->second.exitReferencePrice == 2400000);
 }
 
 // LONG × SL/TP × flat tick: passing the entry tick itself back through
@@ -503,7 +605,9 @@ TEST_CASE("Operations::run processes a multi-tick stream without throwing", "[tr
 // so trade outcomes (entry side, exit side, realised PnL) can be asserted
 // directly. Units: EURUSD has 10 stored price-points per pip.
 
-// LONG entry executes at the ask; the stop/limit reference is the bid.
+// LONG entry executes at the ask; the stop/limit reference is the bid. The run
+// ends with the position still open, so end-of-data closes it at its last mark
+// (the entry bid) — an ordinary close realizing the spread, not a liquidation.
 TEST_CASE("runTicks: LONG opens at the ask", "[tradeManager]") {
     TradeManager tm;
     ScriptedStrategy strategy({Direction::LONG});
@@ -514,17 +618,21 @@ TEST_CASE("runTicks: LONG opens at the ask", "[tradeManager]") {
 
     trading::runTicks(tm, strategy, ticks, vars);
 
-    REQUIRE(tm.getActiveTrades().size() == 1);
-    CHECK(tm.getClosedTrades().size() == 0);
-    const Trade& trade = tm.getActiveTrades().begin()->second;
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    const Trade& trade = tm.getClosedTrades().front();
     CHECK(trade.direction == Direction::LONG);
     CHECK(trade.entryPrice == 110010);
     CHECK(trade.exitReferencePrice == 110000);
     CHECK(trade.entryAsk == 110010);
     CHECK(trade.entryBid == 110000);
+    CHECK(trade.closePrice == 110000);   // last mark: the entry bid
+    CHECK(trade.pnl == -10);             // the spread
+    CHECK_FALSE(trade.liquidated);
 }
 
-// Symmetric SHORT: executes at the bid, exit reference is the ask.
+// Symmetric SHORT: executes at the bid, exit reference is the ask; end-of-data
+// closes it at the entry ask for the spread.
 TEST_CASE("runTicks: SHORT opens at the bid", "[tradeManager]") {
     TradeManager tm;
     ScriptedStrategy strategy({Direction::SHORT});
@@ -535,13 +643,17 @@ TEST_CASE("runTicks: SHORT opens at the bid", "[tradeManager]") {
 
     trading::runTicks(tm, strategy, ticks, vars);
 
-    REQUIRE(tm.getActiveTrades().size() == 1);
-    const Trade& trade = tm.getActiveTrades().begin()->second;
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    const Trade& trade = tm.getClosedTrades().front();
     CHECK(trade.direction == Direction::SHORT);
     CHECK(trade.entryPrice == 110000);
     CHECK(trade.exitReferencePrice == 110010);
     CHECK(trade.entryAsk == 110010);
     CHECK(trade.entryBid == 110000);
+    CHECK(trade.closePrice == 110010);   // last mark: the entry ask
+    CHECK(trade.pnl == -10);             // the spread
+    CHECK_FALSE(trade.liquidated);
 }
 
 // No signal -> no position, across many ticks.
@@ -564,7 +676,8 @@ TEST_CASE("runTicks: no signal opens nothing", "[tradeManager]") {
 
 // Re-entry is gated while a position is open: an always-signalling strategy on
 // flat ticks (price never reaches the 10-pip SL/TP) must still open only one
-// trade for the symbol, not one per tick.
+// trade for the symbol, not one per tick. The single position is then closed
+// by end-of-data, so exactly one trade exists in total.
 TEST_CASE("runTicks: re-entry gated while active", "[tradeManager]") {
     TradeManager tm;
     AlwaysLongStrategy strategy;
@@ -578,8 +691,8 @@ TEST_CASE("runTicks: re-entry gated while active", "[tradeManager]") {
 
     trading::runTicks(tm, strategy, ticks, vars);
 
-    CHECK(tm.getActiveTrades().size() == 1);
-    CHECK(tm.getClosedTrades().size() == 0);
+    CHECK(tm.getActiveTrades().size() == 0);
+    CHECK(tm.getClosedTrades().size() == 1);
 }
 
 // LONG take-profit: a 10-pip favourable move nets only 90 points (9 pips)
@@ -646,6 +759,123 @@ TEST_CASE("runTicks: LONG SL closes at bid, negative PnL", "[tradeManager]") {
     CHECK(closed.pnl == -110);
 }
 
+// Peak-hours filter: an out-of-session tick skips decide() entirely (never
+// deferred) while during() still runs; the in-session tick enters as normal.
+// EURUSD is a Europe symbol, and Wed 2026-07-15 is under BST, so the window
+// is 07:00-10:00 UTC.
+TEST_CASE("runTicks: peak-hours filter blocks out-of-session entries",
+          "[tradeManager]") {
+    TradeManager tm;
+    CountingLongStrategy strategy;
+    const auto vars = makeVars(0, 0, 1);   // no SL/TP — end-of-data closes
+    const auto day = std::chrono::sys_days{std::chrono::year{2026} / 7 / 15};
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, day + std::chrono::hours{6}, "EURUSD"),
+        PriceData(110020, 110010, day + std::chrono::hours{8}, "EURUSD"),
+    };
+    const trading::RiskLimits limits{.peakHoursOnly = true};
+
+    trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    CHECK(strategy.decideCalls == 1);   // 06:00 tick never reached decide()
+    CHECK(strategy.duringCalls == 2);   // during() is never gated
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    CHECK(tm.getClosedTrades().front().entryPrice == 110020);  // the 08:00 ask
+}
+
+// The filter gates ENTRIES only: a stop-loss still fires on an out-of-session
+// tick. USDJPY is an Asia symbol (00:00-06:00 UTC), so the 12:00 tick is
+// outside its window — yet it closes the trade opened at 01:00.
+TEST_CASE("runTicks: peak-hours filter never gates exits", "[tradeManager]") {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});
+    const auto vars = makeVars(10, 0, 1);   // SL only
+    const auto day = std::chrono::sys_days{std::chrono::year{2026} / 7 / 15};
+    const std::vector<PriceData> ticks{
+        // open LONG @ ask 110010, SL ref 110000 - 100 points
+        PriceData(110010, 110000, day + std::chrono::hours{1}, "USDJPY"),
+        // out-of-session, but bid 109900 hits the stop
+        PriceData(109910, 109900, day + std::chrono::hours{12}, "USDJPY"),
+    };
+    const trading::RiskLimits limits{.peakHoursOnly = true};
+
+    trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    const Trade& closed = tm.getClosedTrades().front();
+    CHECK(closed.closePrice == 109900);
+    CHECK_FALSE(closed.liquidated);
+}
+
+// ATR entry conditions, cold store: with the gate wired but the gate series
+// short of the 11 bars ATR(10) needs, every entry is skipped BEFORE decide()
+// while during() still runs on every tick. Ticks a minute apart never roll a
+// second 15m bar, so the store stays cold for the whole run.
+TEST_CASE("runTicks: cold ATR gate skips decide() while during() still runs",
+          "[tradeManager]") {
+    setenv("OHLC_PREPOPULATE", "0", 1);  // hermetic: no QuestDB warm-up query
+    TradeManager tm;
+    CountingLongStrategy strategy;
+    const auto vars = makeVars(1, 3, 1);  // ATR multipliers
+    bars::BarStore store;
+    const bars::SeriesSpec gate{std::chrono::minutes{15}, 11};
+    store.registerSeries(gate.minutes, gate.count);
+
+    const auto day = std::chrono::sys_days{std::chrono::year{2026} / 7 / 15};
+    std::vector<PriceData> ticks;
+    for (int i = 0; i < 5; ++i) {
+        ticks.emplace_back(110000, 110000, day + std::chrono::minutes{i},
+                           "EURUSD");
+    }
+
+    trading::runTicks(tm, strategy, ticks, vars, {}, &store, gate);
+
+    CHECK(strategy.decideCalls == 0);   // gate failed pre-decide on every tick
+    CHECK(strategy.duringCalls == 5);   // during() is never gated
+    CHECK(tm.getActiveTrades().empty());
+    CHECK(tm.getClosedTrades().empty());
+}
+
+// ATR entry conditions, warm store: zero-spread ticks 16 minutes apart each
+// roll a fresh 15m bar and step the price 200 points (20 EURUSD pips), so
+// every true range is 200 and ATR(10) reads exactly 200 points. The store
+// updates BEFORE the gates, so the gate on tick i sees i+1 bars: tick 10 is
+// the first warm one, and its entry carries the dynamic distances
+// (stop = 20 pips x 1, limit = 20 pips x 3), not the raw multipliers.
+TEST_CASE("runTicks: warm ATR gate opens with dynamic distances",
+          "[tradeManager]") {
+    setenv("OHLC_PREPOPULATE", "0", 1);
+    TradeManager tm;
+    CountingLongStrategy strategy;
+    const auto vars = makeVars(1, 3, 1);  // ATR multipliers
+    bars::BarStore store;
+    const bars::SeriesSpec gate{std::chrono::minutes{15}, 11};
+    store.registerSeries(gate.minutes, gate.count);
+
+    const auto day = std::chrono::sys_days{std::chrono::year{2026} / 7 / 15};
+    std::vector<PriceData> ticks;
+    for (int i = 0; i < 12; ++i) {
+        const std::int32_t price = 110000 + i * 200;
+        ticks.emplace_back(price, price, day + std::chrono::minutes{16 * i},
+                           "EURUSD");
+    }
+
+    trading::runTicks(tm, strategy, ticks, vars, {}, &store, gate);
+
+    // Ticks 0-9 skipped pre-decide; tick 10 enters; tick 11 is gated by the
+    // open position, so decide() ran exactly once.
+    CHECK(strategy.decideCalls == 1);
+    // The end-of-data close settles the position; the closed trade still
+    // carries the ATR-derived distances the entry was opened with.
+    CHECK(tm.getActiveTrades().empty());
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    const Trade& closed = tm.getClosedTrades().front();
+    CHECK(closed.entryPrice == 112000);  // tick 10's ask
+    CHECK(closed.stopDistancePips == 20);
+    CHECK(closed.limitDistancePips == 60);
+}
+
 // Exit-before-entry ordering within a single tick: on the tick that stops the
 // first LONG out, reviewStopAndLimit closes it first, the symbol frees, and the
 // always-LONG strategy immediately re-enters on that same tick.
@@ -661,17 +891,20 @@ TEST_CASE("runTicks: exit then same-tick re-entry", "[tradeManager]") {
 
     trading::runTicks(tm, strategy, ticks, vars);
 
-    REQUIRE(tm.getClosedTrades().size() == 1);
-    REQUIRE(tm.getActiveTrades().size() == 1);
+    // Two trades in close order: the stop-out, then the same-tick re-entry
+    // (closed by end-of-data at its last mark).
+    REQUIRE(tm.getClosedTrades().size() == 2);
+    CHECK(tm.getActiveTrades().size() == 0);
 
     const Trade& closed = tm.getClosedTrades().front();
     CHECK(closed.entryPrice == 110010);
     CHECK(closed.closePrice == 109900);
 
-    const Trade& reentry = tm.getActiveTrades().begin()->second;
+    const Trade& reentry = tm.getClosedTrades().back();
     CHECK(reentry.direction == Direction::LONG);
     CHECK(reentry.entryPrice == 109910);
     CHECK(reentry.exitReferencePrice == 109900);
+    CHECK_FALSE(reentry.liquidated);
 }
 
 // Two symbols open simultaneously, each entering on the correct side of its own
@@ -688,10 +921,13 @@ TEST_CASE("runTicks: multi-symbol", "[tradeManager]") {
 
     trading::runTicks(tm, strategy, ticks, vars);
 
-    REQUIRE(tm.getActiveTrades().size() == 2);
+    // Both positions persist to end-of-data, where each closes at its own
+    // symbol's last mark.
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 2);
     const Trade* eur = nullptr;
     const Trade* aus = nullptr;
-    for (const auto& [id, trade] : tm.getActiveTrades()) {
+    for (const auto& trade : tm.getClosedTrades()) {
         if (trade.symbol == "EURUSD") eur = &trade;
         else if (trade.symbol == "AUSIDXAUD") aus = &trade;
     }
@@ -699,14 +935,17 @@ TEST_CASE("runTicks: multi-symbol", "[tradeManager]") {
     REQUIRE(aus != nullptr);
     CHECK(eur->entryPrice == 110010);
     CHECK(aus->entryPrice == 700050);
+    CHECK_FALSE(eur->liquidated);
+    CHECK_FALSE(aus->liquidated);
 }
 
 // --- Account loss limit (fail fast) ---
 
 // FLOATING drawdown alone must trigger the cutoff: no stop-loss, so the open
 // LONG's mark-to-market loss is the only thing the limit can see. The crash
-// tick marks the trade at -1010 points; the floor is 10000 * 1% = 100 pips =
-// 1000 points (pointsPerPip 10), so it breaches and the trade is liquidated.
+// tick marks the trade at -1010 points; the pip BUDGET (balance × percent read
+// directly as pips — no pip-value model) is 10000 × 1% = 100 pips = 1000 points
+// (pointsPerPip 10), so it breaches and the trade is liquidated.
 TEST_CASE("runTicks: floating drawdown breach liquidates at mark", "[tradeManager]") {
     TradeManager tm;
     ScriptedStrategy strategy({Direction::LONG});
@@ -786,14 +1025,72 @@ TEST_CASE("runTicks: max-open-trades cap blocks the second entry", "[tradeManage
     const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
 
     CHECK(status == trading::RunStatus::Completed);
-    REQUIRE(tm.getActiveTrades().size() == 1);
-    CHECK(tm.getActiveTrades().begin()->second.symbol == std::string("EURUSD"));
+    CHECK(tm.getActiveTrades().size() == 0);
+    // Only the EURUSD entry got through the cap; end-of-data closed it.
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    CHECK(tm.getClosedTrades().front().symbol == std::string("EURUSD"));
+}
+
+// MAX_TRADES_PER_MINUTE is a sliding window over TICK time: with a cap of 1,
+// the AUSIDXAUD signal 30s after the EURUSD entry is skipped (the window still
+// holds that entry), but exactly 60s after it the entry has aged out (the
+// window is half-open) and AUSIDXAUD enters — at THAT tick's price, proving
+// the capped attempt was skipped outright, not deferred. A skipped tick never
+// reaches decide(), so it doesn't consume a scripted signal either.
+TEST_CASE("runTicks: trade rate cap enforces a sliding one-minute window", "[tradeManager]") {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG});
+    const auto vars = makeVars(0, 0, 1);    // no exits — both persist to end
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),                               // opens
+        PriceData(700050, 700000, now + std::chrono::seconds{30}, "AUSIDXAUD"), // capped
+        PriceData(700150, 700100, now + std::chrono::seconds{60}, "AUSIDXAUD"), // opens
+    };
+    const trading::RiskLimits limits{.maxTradesPerMinute = 1};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    CHECK(status == trading::RunStatus::Completed);
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 2);
+    const Trade* aus = nullptr;
+    for (const auto& trade : tm.getClosedTrades()) {
+        if (trade.symbol == "AUSIDXAUD") aus = &trade;
+    }
+    REQUIRE(aus != nullptr);
+    // Entered on the third tick, not the capped second one.
+    CHECK(aus->entryPrice == 700150);
+}
+
+// A same-instant burst counts against the cap too: three signals on one
+// timestamp with a cap of 2 opens exactly two trades (the window can never
+// slide within a single tick's timestamp).
+TEST_CASE("runTicks: trade rate cap blocks a same-instant burst", "[tradeManager]") {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG, Direction::LONG});
+    const auto vars = makeVars(0, 0, 1);    // no exits
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),
+        PriceData(700050, 700000, now, "AUSIDXAUD"),
+        PriceData(130010, 130000, now, "GBPUSD"),   // capped
+    };
+    const trading::RiskLimits limits{.maxTradesPerMinute = 2};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    CHECK(status == trading::RunStatus::Completed);
+    REQUIRE(tm.getClosedTrades().size() == 2);
+    for (const auto& trade : tm.getClosedTrades()) {
+        CHECK(trade.symbol != std::string("GBPUSD"));
+    }
 }
 
 // A stop-out that breaches the loss limit must end the run on that tick, BEFORE
 // the entry phase — so the always-LONG strategy gets no same-tick re-entry, and
-// later ticks never run. Floor: 10000 * 0.1% = 10 pips = 100 points; the single
-// stop-out loses 110 points (incl. spread), so it breaches.
+// later ticks never run. Pip budget: 10000 × 0.1% = 10 pips = 100 points; the
+// single stop-out loses 110 points (incl. spread), so it breaches.
 TEST_CASE("runTicks: loss-limit breach stops run before re-entry", "[tradeManager]") {
     TradeManager tm;
     AlwaysLongStrategy strategy;
@@ -818,8 +1115,9 @@ TEST_CASE("runTicks: loss-limit breach stops run before re-entry", "[tradeManage
 }
 
 // A realized loss inside the limit must not stop the run: same stop-out, but a
-// 5% limit (floor 5000 points) comfortably absorbs the -110-point loss, so the
-// run completes and the same-tick re-entry happens.
+// 5% budget (500 pips = 5000 points) comfortably absorbs the -110-point loss,
+// so the run completes and the same-tick re-entry happens (and is then closed
+// by end-of-data as an ordinary, non-liquidated close).
 TEST_CASE("runTicks: loss within limit runs to completion", "[tradeManager]") {
     TradeManager tm;
     AlwaysLongStrategy strategy;
@@ -836,8 +1134,9 @@ TEST_CASE("runTicks: loss within limit runs to completion", "[tradeManager]") {
     const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
 
     CHECK(status == trading::RunStatus::Completed);
-    CHECK(tm.getClosedTrades().size() == 1);
-    CHECK(tm.getActiveTrades().size() == 1);
+    REQUIRE(tm.getClosedTrades().size() == 2);   // stop-out + end-of-data close
+    CHECK(tm.getActiveTrades().size() == 0);
+    CHECK_FALSE(tm.getClosedTrades().back().liquidated);
 }
 
 // maxLossPercent <= 0 disables the check entirely — losses far past any
@@ -861,8 +1160,111 @@ TEST_CASE("runTicks: loss limit disabled for zero and negative", "[tradeManager]
         const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
 
         CHECK(status == trading::RunStatus::Completed);
-        CHECK(tm.getActiveTrades().size() == 1);
+        // Stop-out plus the end-of-data close of the same-tick re-entry.
+        CHECK(tm.getClosedTrades().size() == 2);
+        CHECK(tm.getActiveTrades().size() == 0);
     }
+}
+
+// --- runTicks performance gate ---
+
+// The thresholds below are deliberately test-local: they exercise the gate
+// machinery (strict more-than comparisons, each check independently
+// disableable, the Underperformed status) — not the production values
+// Operations configures.
+
+namespace {
+
+// Deterministic two-winner fixture for the gate tests: two TP exits (+90 each,
+// see the TP cases above for the unit conventions) with zero drawdown, giving
+// exactly 2 decisive trades and a modest positive performance score.
+trading::RunStatus runTwoWinnerFixture(const trading::RiskLimits& limits) {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG, Direction::LONG});
+    const auto vars = makeVars(0, 10, 1);   // TP only
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),  // LONG#1 @ ask 110010
+        PriceData(110110, 110100, now, "EURUSD"),  // TP#1; re-enter @ 110110
+        PriceData(110210, 110200, now, "EURUSD"),  // TP#2; script exhausted
+    };
+    return trading::runTicks(tm, strategy, ticks, vars, limits);
+}
+
+}  // namespace
+
+TEST_CASE("runTicks: performance gate off by default", "[tradeManager]") {
+    CHECK(runTwoWinnerFixture({}) == trading::RunStatus::Completed);
+}
+
+// The floor is a strict more-than on decisive (winner/loser) trades: with 2
+// decisive trades a floor of 1 passes, a floor of 2 does not.
+TEST_CASE("runTicks: decisive-trade floor gates completion", "[tradeManager]") {
+    CHECK(runTwoWinnerFixture({.minDecisiveTrades = 1})
+          == trading::RunStatus::Completed);
+    CHECK(runTwoWinnerFixture({.minDecisiveTrades = 2})
+          == trading::RunStatus::Underperformed);
+}
+
+// The two-winner fixture scores comfortably above 1 and nowhere near 1000
+// (zero drawdown, positive expectancy); lastMonths supplies the annualisation
+// horizon the score needs whenever the score threshold is active.
+TEST_CASE("runTicks: performance-score threshold gates completion", "[tradeManager]") {
+    CHECK(runTwoWinnerFixture({.minPerformanceScore = "1"_dd, .lastMonths = 1})
+          == trading::RunStatus::Completed);
+    CHECK(runTwoWinnerFixture({.minPerformanceScore = "1000"_dd, .lastMonths = 1})
+          == trading::RunStatus::Underperformed);
+}
+
+// End-of-data close realizes the CURRENT mark, not the entry: the open LONG has
+// floated +90 (bid 110100 vs entry ask 110010) when the data runs out, so the
+// forced close books +90 and the account carries no dangling floating PnL into
+// reporting (finalPnl and max drawdown now describe the same equity curve).
+TEST_CASE("runTicks: end of data closes open trades at their last mark", "[tradeManager]") {
+    TradeManager tm;
+    ScriptedStrategy strategy({Direction::LONG});
+    const auto vars = makeVars(0, 0, 1);    // no SL/TP: only end-of-data can close
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),   // open LONG @ ask 110010
+        PriceData(110110, 110100, now, "EURUSD"),   // mark at bid 110100: +90
+    };
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars);
+
+    CHECK(status == trading::RunStatus::Completed);
+    CHECK(tm.getActiveTrades().size() == 0);
+    REQUIRE(tm.getClosedTrades().size() == 1);
+    const Trade& closed = tm.getClosedTrades().front();
+    CHECK(closed.closePrice == 110100);
+    CHECK(closed.pnl == 90);
+    CHECK_FALSE(closed.liquidated);
+    CHECK(tm.calculatePnl() == 90);
+    CHECK(tm.unrealizedPnl() == 0);
+}
+
+// The loss floor is a budget on PRICE MOVEMENT, so it scales with trade size:
+// PnL is tracked in points × size, and an unscaled floor would silently shrink
+// to budget/size pips. Size 2 with a 15-pip budget (150 points, scaled floor
+// -300): the stop-out books -110 points × 2 = -220, inside the scaled floor —
+// an unscaled floor (-150) would have (wrongly) ended this run.
+TEST_CASE("runTicks: loss floor scales with trade size", "[tradeManager]") {
+    TradeManager tm;
+    AlwaysLongStrategy strategy;
+    const auto vars = makeVars(10, 0, 2);   // SL only, size 2
+    const auto now = std::chrono::system_clock::now();
+    const std::vector<PriceData> ticks{
+        PriceData(110010, 110000, now, "EURUSD"),
+        PriceData(109910, 109900, now, "EURUSD"),   // stop-out: -110 points × 2
+    };
+    const trading::RiskLimits limits{.startingBalance = "10000"_dd,
+                                     .maxLossPercent = "0.15"_dd,
+                                     .pointsPerPip = 10};
+
+    const auto status = trading::runTicks(tm, strategy, ticks, vars, limits);
+
+    CHECK(status == trading::RunStatus::Completed);
+    CHECK(tm.calculatePnl() == -240);   // -220 stop-out, -20 re-entry spread ×2
 }
 
 // --- Performance score (ResultsSummary::collect) ---
@@ -913,6 +1315,48 @@ TEST_CASE("score: all winners pin winRate=1 and tradeRatio=100", "[score]") {
     CHECK(static_cast<double>(stats.performanceScore) > 0.0);
 }
 
+// winRate is the share of ALL closed trades that won — breakevens count in the
+// denominator, so one winner among three breakevens is 25%, not a forced 100%
+// (previously a run with zero losers pinned winRate to 1.0 no matter how many
+// breakevens it had).
+TEST_CASE("score: breakevens dilute winRate", "[score]") {
+    TradeManager tm;
+    seedClosedTrade(tm, 100);   // +10 pips
+    seedClosedTrade(tm, 0);     // breakeven
+    seedClosedTrade(tm, 0);     // breakeven
+    seedClosedTrade(tm, 0);     // breakeven
+    const auto config = makeRandomStrategyConfig();
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.winners == 1);
+    CHECK(stats.breakeven == 3);
+    CHECK(static_cast<double>(stats.winRate) == Catch::Approx(0.25));
+    // Still no losers, so tradeRatio stays pinned at the cap.
+    CHECK(static_cast<double>(stats.tradeRatio) == 100.0);
+}
+
+// A closed trade on a symbol with no known scale (scalingFactor == 0) cannot be
+// expressed in pips: it is excluded from winners/losers/breakeven and the pip
+// sums alike — counting it as a winner that contributes zero pips would skew
+// the averages (and could zero averageLoss into a divide-by-Inf tradeRatio).
+TEST_CASE("score: unknown-symbol trades are excluded from pip metrics", "[score]") {
+    TradeManager tm;
+    seedClosedTrade(tm, 100);   // +10 pips on EURUSD (known scale)
+    PriceData tick(500, 500, std::chrono::system_clock::now(), "ZZZTEST");
+    tm.openTrade(tick, 1, Direction::LONG);
+    tm.closeTrade("ZZZTEST", 600, tick);   // +100 points on an unknown scale
+    const auto config = makeRandomStrategyConfig();
+
+    const auto stats = ResultsSummary::collect(tm, config);
+
+    CHECK(stats.tradesClosed == 2);
+    CHECK(stats.winners == 1);   // only the EURUSD winner is measurable
+    CHECK(stats.losers == 0);
+    CHECK(stats.breakeven == 0);
+    CHECK(static_cast<double>(stats.finalPnl) == Catch::Approx(10.0));
+}
+
 // Mixed run pins the derived stats to hand-computable values. PnL sequence in
 // pips: +10, -4, -3, +2 -> cumulative 10, 6, 3, 5, so the realized peak-to-trough
 // is 10 - 3 = 7 pips. Against a 10000 balance that is 0.07%. winRate = 2/4 = 0.5;
@@ -939,9 +1383,10 @@ TEST_CASE("score: drawdown and ratios match a hand-computed run", "[score]") {
 // because the only closed trade is a winner — the mark-to-market tracker must
 // still see the trough the open position sat through. Open @ ask 110010, mark
 // down to bid 109000 (floating -1010 points = -101 pips), then TP-close at +90.
+// Scripted (single-shot) so no same-tick re-entry muddies the trade count.
 TEST_CASE("score: drawdown captures an intra-trade float, not just closes", "[score]") {
     TradeManager tm;
-    AlwaysLongStrategy strategy;
+    ScriptedStrategy strategy({Direction::LONG});
     const auto vars = makeVars(0, 10, 1);   // TP only, no SL — let it float
     const auto now = std::chrono::system_clock::now();
     const std::vector<PriceData> ticks{

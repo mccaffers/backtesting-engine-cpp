@@ -6,8 +6,8 @@
 //
 // OhlcBreakoutStrategy — range breakout with an EMA trend filter.
 //
-// Two OHLC timeframes are built per symbol from the tick stream (both from the
-// ask, matching the C# original):
+// Two OHLC timeframes are read per symbol from the loop owner's shared
+// BarStore (built from the ask — see barStore):
 //
 //   OHLC_VARIABLES[0] — the breakout timeframe. The highest high / lowest low
 //                       of its CLOSED candles (the in-progress bar is excluded)
@@ -16,18 +16,32 @@
 //                       half the candle count) is the macro trend filter.
 //
 // Entry: bid breaks above the range top in a macro uptrend -> LONG; ask breaks
-// below the range bottom in a macro downtrend -> SHORT. Exits stay central
-// (SL/TP pip distances enforced by Operations), so during() only builds bars.
+// below the range bottom in a macro downtrend -> SHORT. SL/TP exits stay
+// central (ATR-derived pip distances enforced by Operations); the one
+// strategy-driven exit is the optional time cap: when
+// MAX_TRADE_DURATION_MINUTES > 0, during() closes the symbol's trade once it
+// has been open strictly longer than that, at the exit-side price (bid for
+// LONG, ask for SHORT — the exit_rules convention). In live the runner's
+// close-diff turns that closeTrade into a broker CloseIntent, so the strategy
+// needs no environment awareness.
 //
 // Two structural notes that differ from the C# framework:
-//  - Bars are built in during(), not decide(): the run loop skips decide() for
-//    a symbol while it has an open trade, but during() runs on every tick, so
-//    the bar history never gaps. decide() therefore sees bars as of the
-//    previous tick — immaterial, because the range comes from closed candles
-//    only and is compared against the current tick's bid/ask.
+//  - The strategy owns NO bar state. The loop owner (runLoop / a live worker)
+//    registers this strategy's timeframes on its BarStore and updates it once
+//    per tick BEFORE decide(), so bar state here already includes the tick
+//    being judged: the in-progress trend bar's close IS the current tick,
+//    which makes the trend filter read "current price vs trailing EMA" (a
+//    tick's own move counts as trend evidence — deliberate; the old
+//    in-during() building lagged this by one tick). The breakout range is
+//    unaffected in spirit: it still uses CLOSED candles only, though a
+//    bar-rolling tick promotes the previous in-progress bar into the range
+//    one tick sooner. The same histories feed the pre-decide ATR entry
+//    conditions, and the store may hold a deeper window than OHLC_COUNT when
+//    the gate registered one on the same timeframe — decide() reads only its
+//    own tail.
 //  - One strategy instance sees every symbol's ticks interleaved by timestamp
-//    (SYMBOLS = "EURUSD,AUDUSD"), so all bar state is per-symbol, keyed by
-//    tick.symbol — the C# "persistent list per instrument" requirement.
+//    (SYMBOLS = "EURUSD,AUDUSD"), and the BarStore keys its histories by
+//    symbol — the C# "persistent list per instrument" requirement.
 
 module;
 
@@ -35,15 +49,15 @@ module;
 
 export module ohlcBreakoutStrategy;
 
-import std;           // replaces <algorithm>, <chrono>, <cstdint>, <functional>,
-                      // <optional>, <stdexcept>, <string>, <string_view>,
-                      // <unordered_map>, <vector>
+import std;           // replaces <algorithm>, <chrono>, <cstdint>, <optional>,
+                      // <span>, <stdexcept>, <vector>
 import strategy;      // IStrategy base class
+import barStore;      // bars::BarStore — shared per-symbol bar histories
 import priceData;     // PriceData
 import trade;         // Direction
 import tradeManager;  // TradeManager
+import timeCapExit;   // strategy_exits::closeIfPastCap — the shared time cap
 import ohlcObject;    // OhlcObject bar record
-import ohlcBuilder;   // ohlc::calculateOHLC
 import ema;           // ema::calculate (integer EMA)
 import symbolScale;   // symbol_scale::get — points-per-pip for the buffer
 
@@ -54,32 +68,26 @@ public:
     // should die loudly at construction, not trade silently wrong.
     explicit OhlcBreakoutStrategy(const tradingDefinitions::StrategyConfig& strategyConfig);
 
-    std::optional<Direction> decide(const PriceData& tick) override;
+    std::optional<Direction> decide(const PriceData& tick,
+                                    const bars::BarStore& barStore) override;
 
-    // Builds the per-symbol bars every tick. TradeManager is unused — exits
-    // are driven centrally by the configured SL/TP distances.
-    void during(const PriceData& price, TradeManager& tradeManager) override;
+    // Strategy-driven exit hook. Bars are built centrally (BarStore, updated
+    // by the loop owner every tick), so all that remains here is the optional
+    // time cap: close this symbol's trade once it has outlived
+    // MAX_TRADE_DURATION_MINUTES. SL/TP exits remain central.
+    void during(const PriceData& price, const bars::BarStore& barStore,
+                TradeManager& tradeManager) override;
 
 private:
-    struct SymbolState {
-        std::vector<OhlcObject> breakoutBars;
-        std::vector<OhlcObject> trendBars;
-    };
-
-    // Transparent hasher (same pattern as TradeManager::activeTrades) so the
-    // per-tick find() takes a string_view and never allocates a temporary key.
-    struct SymbolHash {
-        using is_transparent = void;
-        std::size_t operator()(std::string_view symbol) const noexcept {
-            return std::hash<std::string_view>{}(symbol);
-        }
-    };
-
-    tradingDefinitions::OHLCVariables breakoutCfg;
-    tradingDefinitions::OHLCVariables trendCfg;
-    std::int32_t bufferPips;
-
-    std::unordered_map<std::string, SymbolState, SymbolHash, std::equal_to<>> stateBySymbol;
+    // `{}` value-initializes: OHLCVariables is an aggregate of plain ints with
+    // no defaults of its own, so without this the fields would hold
+    // indeterminate values until the constructor body assigns them (reading
+    // one before that is undefined behaviour). The constructor can't use a
+    // member-init list here because it must validate the config first.
+    tradingDefinitions::OHLCVariables breakoutCfg{};
+    tradingDefinitions::OHLCVariables trendCfg{};
+    std::int32_t bufferPips{};
+    std::chrono::minutes maxTradeDuration{};  // <= 0 disables the time cap
 
     // Scratch buffers reused every decide() — cleared, never shrunk, so the
     // per-tick path stops allocating once their capacity settles.
@@ -87,32 +95,24 @@ private:
     std::vector<std::int32_t> emaScratch;
 };
 
-namespace {
-
-// Feed the tick into one timeframe's bars, then trim the history from the
-// front to OHLC_COUNT — a rolling window, oldest bars dropped first. The last
-// element is always the in-progress bar (see ohlcBuilder).
-void updateBars(const PriceData& tick, const tradingDefinitions::OHLCVariables& cfg,
-                std::vector<OhlcObject>& bars) {
-    ohlc::calculateOHLC(tick, tick.ask, std::chrono::minutes{cfg.OHLC_MINUTES}, bars);
-    const auto cap = static_cast<std::size_t>(cfg.OHLC_COUNT);
-    if (bars.size() > cap) {
-        bars.erase(bars.begin(), bars.end() - static_cast<std::ptrdiff_t>(cap));
-    }
-}
-
-}  // namespace
-
+// Config fields are assigned in the body, not a member-init list: the size
+// check must run first to throw a descriptive error (an init list would have
+// to use ohlcVars.at(0), dying with an unhelpful out_of_range instead). Their
+// in-class {} initializers keep them defined in the meantime.
 OhlcBreakoutStrategy::OhlcBreakoutStrategy(
     const tradingDefinitions::StrategyConfig& strategyConfig) {
+
     const auto& ohlcVars = strategyConfig.OHLC_VARIABLES;
+
     if (ohlcVars.size() < 2) {
         throw std::invalid_argument(
             "OhlcBreakoutStrategy: OHLC_VARIABLES needs two entries "
             "(breakout timeframe, trend timeframe)");
     }
+
     breakoutCfg = ohlcVars[0];
     trendCfg = ohlcVars[1];
+
     for (const auto& cfg : {breakoutCfg, trendCfg}) {
         // COUNT >= 2 so the breakout list always has a closed candle besides
         // the in-progress one, and the trend EMA period (count/2) is >= 1.
@@ -128,39 +128,51 @@ OhlcBreakoutStrategy::OhlcBreakoutStrategy(
             "(BUFFER_PIPS)");
     }
     bufferPips = breakoutVars->BUFFER_PIPS;
+    maxTradeDuration =
+        std::chrono::minutes{breakoutVars->MAX_TRADE_DURATION_MINUTES};
 }
 
-void OhlcBreakoutStrategy::during(const PriceData& price, TradeManager& /*tradeManager*/) {
-    // This symbol's entry in stateBySymbol (its two bar histories), inserted
-    // empty on the symbol's first tick. Heterogeneous find first: only that
-    // first tick pays for the std::string key construction.
-    auto stateIt = stateBySymbol.find(std::string_view{price.symbol});
-    if (stateIt == stateBySymbol.end()) {
-        stateIt = stateBySymbol.emplace(price.symbol, SymbolState{}).first;
-    }
-    updateBars(price, breakoutCfg, stateIt->second.breakoutBars);
-    updateBars(price, trendCfg, stateIt->second.trendBars);
+void OhlcBreakoutStrategy::during(const PriceData& price,
+                                  const bars::BarStore& /*barStore*/,
+                                  TradeManager& tradeManager) {
+    // Time cap (shared closeIfPastCap mechanics): close this symbol's trade
+    // once open STRICTLY longer than maxTradeDuration; <= 0 disables. Only
+    // the current tick's symbol is checked — each symbol's trade meets its
+    // own next tick, which also supplies the right close price. decide() may
+    // re-enter on a later tick while the breakout condition still holds (the
+    // documented re-fire behaviour).
+    strategy_exits::closeIfPastCap(price, tradeManager, maxTradeDuration);
 }
 
-std::optional<Direction> OhlcBreakoutStrategy::decide(const PriceData& tick) {
-    // This symbol's bar histories; absent means during() has not seen a tick
-    // for the symbol yet, so there is nothing to decide on.
-    const auto stateIt = stateBySymbol.find(std::string_view{tick.symbol});
-    if (stateIt == stateBySymbol.end()) {
+std::optional<Direction> OhlcBreakoutStrategy::decide(const PriceData& tick,
+                                                      const bars::BarStore& barStore) {
+    // This symbol's bar histories; nullptr means the timeframe was never
+    // registered on the store or the symbol has not ticked yet — either way
+    // there is nothing to decide on.
+    const std::vector<OhlcObject>* breakoutSeries = barStore.find(
+        tick.symbol, std::chrono::minutes{breakoutCfg.OHLC_MINUTES});
+    const std::vector<OhlcObject>* trendSeries =
+        barStore.find(tick.symbol, std::chrono::minutes{trendCfg.OHLC_MINUTES});
+    if (breakoutSeries == nullptr || trendSeries == nullptr) {
         return std::nullopt;
     }
-    const SymbolState& state = stateIt->second;
 
     // Warm-up gate: no signals until both timeframes have a full window
     // (C#: `if (ohlcList.Count < totalOHLCCount) return`).
-    if (state.breakoutBars.size() < static_cast<std::size_t>(breakoutCfg.OHLC_COUNT) ||
-        state.trendBars.size() < static_cast<std::size_t>(trendCfg.OHLC_COUNT)) {
+    const auto breakoutCount = static_cast<std::size_t>(breakoutCfg.OHLC_COUNT);
+    const auto trendCount = static_cast<std::size_t>(trendCfg.OHLC_COUNT);
+    if (breakoutSeries->size() < breakoutCount ||
+        trendSeries->size() < trendCount) {
         return std::nullopt;
     }
 
-    // No upper-bound check to pair with the gate above: updateBars trims each
-    // history to OHLC_COUNT (oldest bars dropped from the front) on every
-    // tick, so past the gate both windows hold exactly OHLC_COUNT bars.
+    // Read only this strategy's tail of each history: the store keeps the
+    // LARGEST window registered per timeframe, so another consumer (the ATR
+    // entry gate) may have deepened a series beyond OHLC_COUNT.
+    const std::span<const OhlcObject> breakoutBars =
+        std::span(*breakoutSeries).last(breakoutCount);
+    const std::span<const OhlcObject> trendBars =
+        std::span(*trendSeries).last(trendCount);
 
     // --- 1. THE BREAKOUT LOGIC ---
     // Range from the CLOSED breakout candles (drop the in-progress last bar —
@@ -170,19 +182,35 @@ std::optional<Direction> OhlcBreakoutStrategy::decide(const PriceData& tick) {
     // just disables the buffer rather than corrupting the levels.
     std::int32_t highestHigh = std::numeric_limits<std::int32_t>::min();
     std::int32_t lowestLow = std::numeric_limits<std::int32_t>::max();
-    for (auto bar = state.breakoutBars.begin(); bar != state.breakoutBars.end() - 1; ++bar) {
-        highestHigh = std::max(highestHigh, bar->high);
-        lowestLow = std::min(lowestLow, bar->low);
+    for (const OhlcObject& bar : breakoutBars.first(breakoutBars.size() - 1)) {
+        highestHigh = std::max(highestHigh, bar.high);
+        lowestLow = std::min(lowestLow, bar.low);
     }
     const std::int32_t bufferPoints = bufferPips * symbol_scale::get(tick.symbol);
 
     // --- 2. THE TREND FILTER LOGIC ---
     // EMA over the trend timeframe's closes (chronological, in-progress bar
     // included, like the C#). Period = half the window (C#: count * 0.5m,
-    // truncated). Both the close and the EMA are read at the last index so
-    // today's price is compared against today's moving average.
+    // truncated). Both the close and the EMA are read at the last index —
+    // and since the store updated before decide(), that last close is the
+    // current tick itself: the comparison is "current price vs trailing
+    // EMA" (algebraically, close > EMA-including-it iff close >
+    // EMA-excluding-it).
+    //
+    // KNOWN RISK (accepted): the tick being judged supplies its own trend
+    // evidence. An EMA step can never drag the average past the new point,
+    // so a single-tick spike above the PRIOR EMA always reads as "uptrend"
+    // — there is no way for the spike itself to be on the wrong side of an
+    // EMA that includes it. With dense ticking this is indistinguishable
+    // from the old one-tick-lagged filter; it diverges exactly at price
+    // discontinuities (news, thin liquidity, session opens), where the
+    // strategy may buy the very tick of a spike out of a falling market.
+    // Two live mitigations: a steep prior fall keeps the trailing EMA far
+    // overhead (the spike must clear it, not just the local range), and the
+    // pre-decide spread-vs-ATR gate (entryConditions) rejects most news
+    // ticks because their spreads blow out before their prices do.
     closesScratch.clear();
-    for (const auto& bar : state.trendBars) {
+    for (const OhlcObject& bar : trendBars) {
         closesScratch.push_back(bar.close);
     }
     const int emaPeriod = static_cast<int>(closesScratch.size() / 2);
