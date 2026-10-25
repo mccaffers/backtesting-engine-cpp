@@ -29,4 +29,5 @@ int AnalysisCommand::run(const int argc, const char* argv[]) {
 
     // Redis host from the environment, mirroring `run` (runCommand.cppm).
     return AnalysisRunner::run(argv[2], env::getOr("REDIS_HOST", "127.0.0.1"));
+    
 }

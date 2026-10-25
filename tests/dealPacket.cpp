@@ -159,8 +159,8 @@ TEST_CASE("decodeDeal rejects wrong-sized datagrams", "[dealPacket]") {
         std::array<std::byte, deal_packet::kPacketSize + 1> tooLarge{};
         CHECK_FALSE(deal_packet::decodeDeal(tooLarge).has_value());
     }
-    SECTION("a 40-byte tick packet is not a deal") {
-        std::array<std::byte, 40> tick{};
+    SECTION("a 48-byte tick packet is not a deal") {
+        std::array<std::byte, 48> tick{};
         CHECK_FALSE(deal_packet::decodeDeal(tick).has_value());
     }
 }

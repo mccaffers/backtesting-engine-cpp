@@ -25,10 +25,17 @@ One table per symbol, table name == symbol (`EURUSD`, ...):
 
 - `ask`, `bid` — scaled fixed-point INT32 "points", **not** floats: the real price times the symbol's multiplier (FX majors ×100000, JPY pairs & metals ×1000, indices/commodities ×100 — `source/shared/models/priceData.cppm`, `source/shared/utilities/symbolScale.cppm`). e.g. EURUSD 1.10001 is stored as 110001.
 - designated `timestamp` — written in nanoseconds, the QuestDB HTTP default precision.
+- `source` — `SYMBOL`, the feed the tick came from: `IG` (IG Markets) or `MX` (Massive, formerly Polygon). Rows from before source tracking, and any tick with an empty or unrecognised source, are `NULL`.
 
-The write side emits ILP lines of the form `{symbol} ask={..}i,bid={..}i {tsNanos}` (`ingestCommand.cppm`). The read side names columns explicitly and parses positionally as (symbol, ask, bid, timestamp) (`source/shared/questdb/sqlManager.cppm`), so tables must serve exactly those columns.
+The write side emits ILP lines of the form `{symbol},source={IG|MX} ask={..}i,bid={..}i {tsNanos}` (`source/ingest/tickLine.cppm`), omitting the `source` tag when the feed id isn't one of the two known values. The read side names columns explicitly and parses positionally as (symbol, ask, bid, timestamp) (`source/shared/questdb/sqlManager.cppm`), so tables must serve those columns; `source` is not read yet, so backtests see both feeds' ticks together.
 
 Symbols are whitelisted: `SqlManager` throws `std::invalid_argument` for any symbol not in the `symbolScale` table, so a table named outside the whitelist is unreadable by the engine.
+
+### How the `source` column appears
+
+- `source` must stay an ILP **tag**, which QuestDB stores as `SYMBOL`. If it were ever sent as a field (`source="IG"`), a new table would get a string column and every later tagged write to it would fail (counted as `post-failed`).
+- QuestDB adds the column to an existing table on that table's first tagged line; no migration is needed. Existing rows are not rewritten and read as `NULL`. Backfilling them with `UPDATE` would rewrite every affected partition, so it is slow on large tables.
+- A table created from scratch by `ingest` gets `source` from its first line.
 
 ## Reachability
 

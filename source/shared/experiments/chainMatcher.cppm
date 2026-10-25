@@ -6,23 +6,31 @@
 //
 // chainMatcher — the pure half of the analysis worker (trackingReport style):
 // counts non-overlapping occurrences of an experiment's activity chain in a
-// tick stream. Everything here is I/O-free — ticks arrive as (mid, timestamp)
-// pairs, the return values are plain data — so the unit tests need no servers.
+// tick stream. Everything here is I/O-free — ticks arrive as (ask, bid, timestamp)
+// tuples, the return values are plain data — so the unit tests need no servers.
 //
 // Matcher semantics (pinned by tests/chainMatcher.cpp):
 //
 //  - Touch-within-window: a leg completes at the FIRST tick where its
 //    condition holds with tickTs - anchorTs <= WINDOW_SECONDS. "Drops 1% in
 //    10m" = touches -1% at any tick inside the window.
-//  - Leg 1 is rolling, not anchored: tracked via trailing-window extremes
-//    (monotonic max/min deques with TIMESTAMP-based expiry — the
+//  - Leg 1 triggers on mid: rolling, not anchored, tracked via trailing-window
+//    extremes (monotonic max/min deques with TIMESTAMP-based expiry — the
 //    rangeBarBuilder.cppm deque pattern adapted from tick-count to time
 //    expiry; legitimate here because experiments are explicitly time-window
 //    questions, and evaluation still advances only on tick timestamps — no
 //    clock anywhere).
-//  - Anchoring: leg N+1 anchors at leg N's completion tick (price = that
-//    tick's mid, window from its timestamp); evaluation of leg N+1 starts on
-//    the NEXT tick, so a chain can never telescope through one tick.
+//  - Real execution prices:
+//    - Long entry fills at ask, take-profit triggers on bid, stop-loss /
+//      excursions measured on bid.
+//    - Short entry fills at bid, take-profit triggers on ask, stop-loss /
+//      excursions measured on ask.
+//    - Excursion / MAE immediately reflects spread at entry (entry_ask - bid
+//      for long, ask - entry_bid for short).
+//  - Anchoring: leg N+1 anchors at leg N's completion tick (entry fill price
+//    at leg 1 completion, completion price for subsequent legs; window from its
+//    timestamp); evaluation of leg N+1 starts on the NEXT tick, so a chain
+//    can never telescope through one tick.
 //  - Expiry: the first tick past the window fails the whole chain (the
 //    condition can no longer be touched inside the window) — reset to
 //    scanning-for-leg-1 and re-evaluate leg 1 on that same tick. Leg-1
@@ -33,8 +41,8 @@
 //  - Serial attempts: a single anchor in flight; new leg-1 triggers are
 //    picked up only after the current attempt fails (documented v1
 //    undercount vs multi-anchor).
-//  - Per-attempt recorder (phase 2): every attempt tracks its excursion
-//    above/below the LEG-1 anchor mid from the anchor tick to resolution
+//  - Per-attempt recorder: every attempt tracks its excursion
+//    above/below the leg-1 entry price from the anchor tick to resolution
 //    (the resolving tick included, pre-anchor and post-resolution prices
 //    excluded), the anchor->completion duration for completed attempts, and
 //    the ask-bid spread at the anchor tick. Samples are exact up to
@@ -82,106 +90,10 @@ export module chainMatcher;
 
 import std;
 import priceData;  // PriceData — evaluateExperiment's input stream
-
-namespace {
+import rollingTracker;  // chain_matcher::Tracker — trailing-window extremes
 
 using TimePoint = std::chrono::system_clock::time_point;
 using Seconds = std::chrono::seconds;
-
-// Trailing time-window extremes plus tick coverage, the rangeBarBuilder
-// monotonic-deque pattern with timestamp expiry. Entries are valid while
-// entry.ts + window >= ts (boundary inclusive, matching the anchored legs'
-// tickTs - anchorTs <= WINDOW test).
-class Tracker {
-public:
-    explicit Tracker(const Seconds window) : window_(window) {}
-
-    // Feed one tick: expire, snapshot the pre-insert extremes (NewExtreme's
-    // strict "beats every PRIOR tick in the lookback" test), insert, and
-    // record the inter-tick gap for the coverage measure.
-    void feed(const TimePoint ts, const std::int32_t mid) {
-        // Expire entries (and gap records) older than the trailing window.
-        while (!maxDeque_.empty() && maxDeque_.front().ts + window_ < ts) {
-            maxDeque_.pop_front();
-        }
-        while (!minDeque_.empty() && minDeque_.front().ts + window_ < ts) {
-            minDeque_.pop_front();
-        }
-        while (!gapDeque_.empty() && gapDeque_.front().ts + window_ < ts) {
-            gapDeque_.pop_front();
-        }
-
-        preMax_ = maxDeque_.empty() ? std::optional<std::int32_t>{}
-                                    : maxDeque_.front().price;
-        preMin_ = minDeque_.empty() ? std::optional<std::int32_t>{}
-                                    : minDeque_.front().price;
-
-        // Monotonic insert: popping equals keeps the newer entry, which
-        // survives expiry longer (rangeBarBuilder's rule).
-        while (!maxDeque_.empty() && maxDeque_.back().price <= mid) {
-            maxDeque_.pop_back();
-        }
-        maxDeque_.push_back({ts, mid});
-        while (!minDeque_.empty() && minDeque_.back().price >= mid) {
-            minDeque_.pop_back();
-        }
-        minDeque_.push_back({ts, mid});
-
-        // Coverage: track the largest inter-tick gap still inside the window
-        // via its own monotonic max deque. The first tick ever fed counts as
-        // an infinite gap, so covered() only turns true once a full window of
-        // gap-free ticks has accumulated — warm-up and weekend gaps take the
-        // same path.
-        const auto gap = lastTick_ ? ts - *lastTick_
-                                   : std::chrono::system_clock::duration::max();
-        lastTick_ = ts;
-        while (!gapDeque_.empty() && gapDeque_.back().gap <= gap) {
-            gapDeque_.pop_back();
-        }
-        gapDeque_.push_back({ts, gap});
-    }
-
-    [[nodiscard]] bool hasData() const { return !maxDeque_.empty(); }
-    [[nodiscard]] std::int32_t max() const { return maxDeque_.front().price; }
-    [[nodiscard]] std::int32_t min() const { return minDeque_.front().price; }
-    [[nodiscard]] std::optional<std::int32_t> preMax() const { return preMax_; }
-    [[nodiscard]] std::optional<std::int32_t> preMin() const { return preMin_; }
-
-    // A full window of real tick history: no gap as long as the window itself
-    // remains inside it (the first-tick infinite gap covers warm-up).
-    [[nodiscard]] bool covered() const {
-        return !gapDeque_.empty() && gapDeque_.front().gap < window_;
-    }
-
-    void reset() {
-        maxDeque_.clear();
-        minDeque_.clear();
-        gapDeque_.clear();
-        lastTick_.reset();
-        preMax_.reset();
-        preMin_.reset();
-    }
-
-private:
-    struct Entry {
-        TimePoint ts;
-        std::int32_t price;
-    };
-    struct GapEntry {
-        TimePoint ts;
-        std::chrono::system_clock::duration gap;
-    };
-
-    Seconds window_;
-    std::deque<Entry> maxDeque_;
-    std::deque<Entry> minDeque_;
-    std::deque<GapEntry> gapDeque_;
-    std::optional<TimePoint> lastTick_;
-    std::optional<std::int32_t> preMax_;
-    std::optional<std::int32_t> preMin_;
-};
-
-}  // namespace
 
 export namespace chain_matcher {
 
@@ -190,14 +102,57 @@ export namespace chain_matcher {
 // the outcome's samplesTruncated flag says so.
 inline constexpr std::size_t kMaxAttemptSamples = 100'000;
 
+namespace detail {
+
+// Which excursion side counts as FAVORABLE (MFE), from the final leg's
+// implied direction. StaysInBand has none — "up" is the documented default.
+inline bool favorableUp(const experiments::Activity& finalLeg) {
+    switch (finalLeg.TYPE) {
+        case experiments::ActivityType::DirectionalMove:
+            return finalLeg.MOVE_PERCENT >= 0.0;
+        case experiments::ActivityType::NewExtreme:
+        case experiments::ActivityType::RangeRelativeMove:
+            return finalLeg.DIRECTION >= 0;
+        case experiments::ActivityType::StaysInBand:
+            return true;
+    }
+    return true;
+}
+
+// Determines whether the trade entered upon Leg 1 completion is Long or Short.
+// For a multi-leg chain, the trade is entered to capture Leg 2 (and any
+// subsequent legs), so its direction is defined by the first directional leg
+// after Leg 1. For a single-leg chain, defaults to the single leg's direction.
+inline bool isLongTrade(const std::vector<experiments::Activity>& chain) {
+    if (chain.empty()) {
+        return true;
+    }
+    for (std::size_t i = 1; i < chain.size(); ++i) {
+        const auto& leg = chain[i];
+        switch (leg.TYPE) {
+            case experiments::ActivityType::DirectionalMove:
+                return leg.MOVE_PERCENT >= 0.0;
+            case experiments::ActivityType::NewExtreme:
+            case experiments::ActivityType::RangeRelativeMove:
+                return leg.DIRECTION >= 0;
+            case experiments::ActivityType::StaysInBand:
+                continue;
+        }
+    }
+    return favorableUp(chain.back());
+}
+
+}  // namespace detail
+
 // One resolved attempt's excursion record: max points above/below the leg-1
-// anchor over the attempt's lifetime, plus the anchor itself so percent
+// entry price over the attempt's lifetime, plus the entry price itself so percent
 // variants can be derived at aggregation time (FP once per attempt at most,
 // never per tick).
 struct ExcursionSample {
     std::int64_t abovePoints = 0;
     std::int64_t belowPoints = 0;
-    std::int32_t anchorMid = 0;
+    std::int32_t entryPrice = 0;
+    std::int32_t anchorMid = 0;  // backwards-compatibility alias
 };
 
 struct MatchStats {
@@ -243,11 +198,15 @@ public:
             legs_.push_back(makeLeg(config.CHAIN[i], i));
         }
         stats_.failuresByLeg.assign(legs_.size(), 0);
+        isLong_ = detail::isLongTrade(config.CHAIN);
     }
 
-    void onTick(const std::int32_t mid, const std::int32_t spread,
+    void onTick(const std::int32_t ask, const std::int32_t bid,
                 const TimePoint ts) {
-        // All legs' rolling trackers are fed every tick (so a failed attempt
+        const auto mid = static_cast<std::int32_t>(
+            (static_cast<std::int64_t>(ask) + bid) / 2);
+
+        // All legs' rolling trackers are fed every tick with mid (so a failed attempt
         // can re-evaluate leg 1 with no re-scan, and a chained leg's basis is
         // already warm when its turn comes); the state machine below consults
         // only the active leg.
@@ -261,12 +220,19 @@ public:
         }
 
         if (active_ > 0) {
-            // The in-flight attempt's excursion vs its LEG-1 anchor — this
+            // The in-flight attempt's excursion vs its entry price — this
             // tick included, whether it advances, resolves, or expires the
             // attempt.
-            const auto cur = static_cast<std::int64_t>(mid);
-            attemptAbove_ = std::max(attemptAbove_, cur - attemptAnchorMid_);
-            attemptBelow_ = std::max(attemptBelow_, attemptAnchorMid_ - cur);
+            // Long: measured on bid. Short: measured on ask.
+            if (isLong_) {
+                const auto cur = static_cast<std::int64_t>(bid);
+                attemptAbove_ = std::max(attemptAbove_, cur - attemptAnchorPrice_);
+                attemptBelow_ = std::max(attemptBelow_, attemptAnchorPrice_ - cur);
+            } else {
+                const auto cur = static_cast<std::int64_t>(ask);
+                attemptAbove_ = std::max(attemptAbove_, cur - attemptAnchorPrice_);
+                attemptBelow_ = std::max(attemptBelow_, attemptAnchorPrice_ - cur);
+            }
 
             const LegRuntime& leg = legs_[active_];
             if (ts - anchorTs_ > leg.window) {
@@ -277,18 +243,24 @@ public:
                 recordAttempt(/*completed=*/false, ts);
                 ++stats_.failuresByLeg[active_];
                 active_ = 0;
-            } else if (conditionHolds(active_, mid)) {
-                completeActiveLeg(mid, spread, ts);
+                anchorThresholdValid_ = false;
+                anchorThreshold_ = 0;
+            } else if (conditionHolds(active_, isLong_ ? bid : ask)) {
+                completeActiveLeg(ask, bid, ts);
                 return;
             } else {
                 return;
             }
         }
 
-        // Scanning for leg 1 (rolling, no anchor).
+        // Scanning for leg 1 (rolling, no anchor, evaluates on mid).
         if (conditionHolds(0, mid)) {
-            completeActiveLeg(mid, spread, ts);
+            completeActiveLeg(ask, bid, ts);
         }
+    }
+
+    void onTick(const std::int32_t price, const TimePoint ts) {
+        onTick(price, price, ts);
     }
 
     [[nodiscard]] const MatchStats& stats() const { return stats_; }
@@ -437,7 +409,7 @@ private:
                     return (cur - rollMin) * 100'000'000 >=
                            rollMin * leg.pctScaled;
                 }
-                const auto anchor = static_cast<std::int64_t>(anchorMid_);
+                const auto anchor = static_cast<std::int64_t>(anchorPrice_);
                 if (leg.negativeMove) {
                     return (anchor - cur) * 100'000'000 >= anchor * leg.pctScaled;
                 }
@@ -489,7 +461,7 @@ private:
                 if (!anchorThresholdValid_) {
                     return false;
                 }
-                const auto anchor = static_cast<std::int64_t>(anchorMid_);
+                const auto anchor = static_cast<std::int64_t>(anchorPrice_);
                 if (leg.direction < 0) {
                     return anchor - cur >= anchorThreshold_;
                 }
@@ -510,7 +482,8 @@ private:
             return;
         }
         samples.push_back({attemptAbove_, attemptBelow_,
-                           static_cast<std::int32_t>(attemptAnchorMid_)});
+                           static_cast<std::int32_t>(attemptAnchorPrice_),
+                           static_cast<std::int32_t>(attemptAnchorPrice_)});
         if (completed) {
             stats_.completionSeconds.push_back(
                 std::chrono::duration_cast<std::chrono::seconds>(
@@ -523,20 +496,30 @@ private:
     // (count it, clear everything, resume next tick) or the next leg anchors
     // here — and, since evaluation returns to the caller, it is first
     // evaluated on the NEXT tick, never its own anchor tick.
-    void completeActiveLeg(const std::int32_t mid, const std::int32_t spread,
+    void completeActiveLeg(const std::int32_t ask, const std::int32_t bid,
                            const TimePoint ts) {
         if (active_ == 0) {
             ++stats_.attempts;  // a leg-1 completion IS an attempt
-            // Arm the attempt recorder at the leg-1 anchor: excursions are
-            // measured from HERE for the whole chain (anchorMid_ moves at
-            // every later leg; this baseline must not), and the spread is
-            // sampled at this tick only.
-            attemptAnchorMid_ = mid;
-            attemptAnchorTs_ = ts;
-            attemptAbove_ = 0;
-            attemptBelow_ = 0;
+            const auto spread =
+                std::max<std::int64_t>(0, static_cast<std::int64_t>(ask) - bid);
             stats_.spreadAtTriggerSum += spread;
             ++stats_.spreadAtTriggerCount;
+
+            attemptAnchorTs_ = ts;
+            attemptAnchorPrice_ = isLong_ ? ask : bid;
+
+            if (legs_.size() > 1) {
+                if (isLong_) {
+                    attemptAbove_ = 0;
+                    attemptBelow_ = spread;
+                } else {
+                    attemptAbove_ = spread;
+                    attemptBelow_ = 0;
+                }
+            } else {
+                attemptAbove_ = 0;
+                attemptBelow_ = 0;
+            }
         }
         if (active_ + 1 == legs_.size()) {
             ++stats_.occurrences;
@@ -545,7 +528,8 @@ private:
             return;
         }
         ++active_;
-        anchorMid_ = mid;
+        anchorPrice_ =
+            (active_ == 1) ? (isLong_ ? ask : bid) : (isLong_ ? bid : ask);
         anchorTs_ = ts;
 
         // RangeRelativeMove anchored legs freeze their threshold from the
@@ -569,6 +553,8 @@ private:
     // (documented slight undercount).
     void resetAfterMatch() {
         active_ = 0;
+        anchorThresholdValid_ = false;
+        anchorThreshold_ = 0;
         for (LegRuntime& leg : legs_) {
             if (leg.moveTracker) {
                 leg.moveTracker->reset();
@@ -583,12 +569,13 @@ private:
     MatchStats stats_;
     std::size_t maxSamples_ = kMaxAttemptSamples;
     std::size_t active_ = 0;         // index of the leg currently sought
-    std::int32_t anchorMid_ = 0;     // active leg's anchor (legs > 0)
+    std::int32_t anchorPrice_ = 0;   // active leg's anchor price (legs > 0)
     TimePoint anchorTs_{};
     std::int64_t anchorThreshold_ = 0;      // frozen RangeRelativeMove threshold
     bool anchorThresholdValid_ = false;
-    // The in-flight attempt's recorder state (leg-1 anchor baseline).
-    std::int64_t attemptAnchorMid_ = 0;
+    bool isLong_ = true;
+    // The in-flight attempt's recorder state (leg-1 entry baseline).
+    std::int64_t attemptAnchorPrice_ = 0;
     TimePoint attemptAnchorTs_{};
     std::int64_t attemptAbove_ = 0;
     std::int64_t attemptBelow_ = 0;
@@ -610,21 +597,6 @@ inline experiments::QuantilePair quantiles(std::vector<double>& values) {
     return {nearestRank(values, 0.5), nearestRank(values, 0.9)};
 }
 
-// Which excursion side counts as FAVORABLE (MFE), from the final leg's
-// implied direction. StaysInBand has none — "up" is the documented default.
-inline bool favorableUp(const experiments::Activity& finalLeg) {
-    switch (finalLeg.TYPE) {
-        case experiments::ActivityType::DirectionalMove:
-            return finalLeg.MOVE_PERCENT >= 0.0;
-        case experiments::ActivityType::NewExtreme:
-        case experiments::ActivityType::RangeRelativeMove:
-            return finalLeg.DIRECTION >= 0;
-        case experiments::ActivityType::StaysInBand:
-            return true;
-    }
-    return true;
-}
-
 // Summarise one attempt population; nullopt when empty (the doc then reads
 // null, never fake zeros).
 inline std::optional<experiments::ExcursionStats> summariseExcursions(
@@ -644,8 +616,9 @@ inline std::optional<experiments::ExcursionStats> summariseExcursions(
             static_cast<double>(up ? s.belowPoints : s.abovePoints);
         mfePoints.push_back(favorable);
         maePoints.push_back(adverse);
-        mfePercent.push_back(100.0 * favorable / s.anchorMid);
-        maePercent.push_back(100.0 * adverse / s.anchorMid);
+        const auto base = s.entryPrice != 0 ? s.entryPrice : s.anchorMid;
+        mfePercent.push_back(base != 0 ? 100.0 * favorable / base : 0.0);
+        maePercent.push_back(base != 0 ? 100.0 * adverse / base : 0.0);
     }
     return experiments::ExcursionStats{
         .samples = samples.size(),
@@ -689,8 +662,6 @@ experiments::ExperimentOutcome evaluateExperiment(
     TimePoint minTs = TimePoint::max();
     TimePoint maxTs = TimePoint::min();
     for (const PriceData& tick : ticks) {
-        const auto mid = static_cast<std::int32_t>(
-            (static_cast<std::int64_t>(tick.ask) + tick.bid) / 2);
         ChainMatcher& matcher =
             matchers.try_emplace(tick.symbol, config).first->second;
         // Delta-detection: a matcher completes at most one occurrence per
@@ -698,7 +669,7 @@ experiments::ExperimentOutcome evaluateExperiment(
         // calendar bucketing lives HERE, keeping the matcher core free of
         // it.
         const std::uint64_t before = matcher.stats().occurrences;
-        matcher.onTick(mid, tick.ask - tick.bid, tick.timestamp);
+        matcher.onTick(tick.ask, tick.bid, tick.timestamp);
         if (matcher.stats().occurrences > before) {
             const auto day =
                 std::chrono::floor<std::chrono::days>(tick.timestamp);
@@ -763,7 +734,7 @@ experiments::ExperimentOutcome evaluateExperiment(
             outcome.samplesTruncated || stats.samplesTruncated;
     }
 
-    const bool up = detail::favorableUp(config.CHAIN.back());
+    const bool up = detail::isLongTrade(config.CHAIN);
     outcome.excursionOrientation = up ? "up" : "down";
     outcome.completedAttempts = detail::summariseExcursions(completed, up);
     outcome.failedAttempts = detail::summariseExcursions(failed, up);

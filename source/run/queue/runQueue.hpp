@@ -6,6 +6,10 @@
 
 #pragma once
 
+// Boost.Redis's libc++ double converter uses HUGE_VAL and std::strtod without
+// including <cmath>/<cstdlib>; include them first so this header stands alone.
+#include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <string>

@@ -18,6 +18,7 @@
 // thread and flushed in batches by an internal worker thread, so a slow QuestDB
 // never stalls the UDP receive loop.
 //
+//
 // The libcurl implementation and the worker thread live entirely in the .cpp
 // (pimpl), keeping this header light enough to #include from a module's global
 // module fragment.

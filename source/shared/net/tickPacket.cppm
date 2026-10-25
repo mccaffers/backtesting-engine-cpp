@@ -15,7 +15,10 @@
 //     8     8   double  ask
 //    16     8   int64   tsMicros     // Unix epoch microseconds, UTC
 //    24    16   char    symbol[16]   // ASCII, NUL-padded, e.g. "EURUSD\0\0..."
-//                                    // total = 40 bytes
+//    40     8   char    source[8]    // ASCII, NUL-padded feed id: "IG" | "MX"
+//                                    // total = 48 bytes
+//
+// The C# producer is vortex/shared/TickSerializer.cs (feed ids in TickSource.cs).
 //
 // x86-64 and ARM64 (the only deploy targets) are little-endian, so the bytes map
 // straight onto the native scalars with no byte-swapping; the C# sender writes
@@ -24,8 +27,10 @@
 // decodeTick turns those bytes into the engine's existing PriceData: it scales
 // the real bid/ask into the stored INT32 "points" via the symbol's price
 // multiplier (symbol_scale::getPriceScale) so the ingest writes exactly what the
-// backtester's read path already expects. Shared by the ingest and live
-// subcommands — both consume the same wire format, on different ports.
+// backtester's read path already expects. The source rides alongside in
+// DecodedTick rather than in PriceData, so the backtester's per-tick storage
+// doesn't grow. Shared by the ingest and live subcommands — both consume the
+// same wire format, on different ports.
 
 export module tickPacket;
 
@@ -42,7 +47,20 @@ inline constexpr std::size_t kAskOffset    = 8;
 inline constexpr std::size_t kTsOffset     = 16;
 inline constexpr std::size_t kSymbolOffset = 24;
 inline constexpr std::size_t kSymbolSize   = 16;
-inline constexpr std::size_t kPacketSize   = 40;
+inline constexpr std::size_t kSourceOffset = 40;
+inline constexpr std::size_t kSourceSize   = 8;
+inline constexpr std::size_t kPacketSize   = 48;
+
+// Feed ids the producers send (== vortex/shared/TickSource.cs).
+inline constexpr std::string_view kSourceIG      = "IG";  // IG Markets Lightstreamer
+inline constexpr std::string_view kSourceMassive = "MX";  // Massive (formerly Polygon)
+
+// A decoded datagram: the engine's PriceData plus the feed it came from
+// ("IG", "MX"; empty if the producer left the field blank).
+struct DecodedTick {
+    PriceData price;
+    std::string source;
+};
 
 namespace detail {
 
@@ -56,11 +74,23 @@ template <class T>
     return std::bit_cast<T>(raw);
 }
 
+// Copy a fixed-width NUL-padded ASCII field out of `bytes`, trimming at the
+// first NUL (a field filled to full width has no NUL and is taken whole).
+[[nodiscard]] inline std::string readString(std::span<const std::byte> bytes) {
+    std::string out(bytes.size(), '\0');
+    std::ranges::transform(bytes, out.begin(),
+                           [](std::byte b) { return static_cast<char>(b); });
+    if (const auto nul = out.find('\0'); nul != std::string::npos) {
+        out.resize(nul);
+    }
+    return out;
+}
+
 }  // namespace detail
 
-// Decode one datagram into a PriceData. Returns nullopt — i.e. "drop this tick"
-// rather than a hard error, since UDP is best-effort and a stray/garbled or
-// malformed datagram must not take the ingest down — for any of:
+// Decode one datagram into a DecodedTick. Returns nullopt — i.e. "drop this
+// tick" rather than a hard error, since UDP is best-effort and a stray/garbled
+// or malformed datagram must not take the ingest down — for any of:
 //   - a wrong-sized packet,
 //   - a bid or ask that isn't finite and strictly positive — zero is the
 //     bad-data signature found in the historical feed (the C# producer already
@@ -73,7 +103,7 @@ template <class T>
 //   - an unknown symbol (multiplier 0),
 //   - a scaled price that overflows INT32 (latent: real prices sit ~300x below
 //     the limit, but we never silently store a truncated value).
-[[nodiscard]] inline std::optional<PriceData> decodeTick(std::span<const std::byte> bytes) {
+[[nodiscard]] inline std::optional<DecodedTick> decodeTick(std::span<const std::byte> bytes) {
     if (bytes.size() != kPacketSize) {
         return std::nullopt;
     }
@@ -100,13 +130,8 @@ template <class T>
         return std::nullopt;
     }
 
-    // Symbol: NUL-padded ASCII in a fixed 16-byte field. Copy out the bytes and
-    // trim at the first NUL.
-    std::array<char, kSymbolSize> symBuf{};
-    std::ranges::transform(bytes.subspan(kSymbolOffset, kSymbolSize), symBuf.begin(),
-                           [](std::byte b) { return static_cast<char>(b); });
-    const auto nul = std::ranges::find(symBuf, '\0');
-    const std::string symbol(symBuf.begin(), nul);
+    // Symbol: NUL-padded ASCII in a fixed 16-byte field.
+    const std::string symbol = detail::readString(bytes.subspan(kSymbolOffset, kSymbolSize));
 
     const int multiplier = symbol_scale::getPriceScale(symbol);
     if (multiplier == symbol_scale::kUnknown) {
@@ -138,7 +163,13 @@ template <class T>
         std::chrono::duration_cast<std::chrono::system_clock::duration>(
             std::chrono::microseconds(tsMicros)));
 
-    return PriceData(*askScaled, *bidScaled, timestamp, symbol);
+    // Source: NUL-padded ASCII feed id. Not validated against a list — an
+    // unexpected id is still a good tick; the ingest writes it with a NULL
+    // source and counts it (see tickLine).
+    std::string source = detail::readString(bytes.subspan(kSourceOffset, kSourceSize));
+
+    return DecodedTick{PriceData(*askScaled, *bidScaled, timestamp, symbol),
+                       std::move(source)};
 }
 
 }  // namespace tick_packet

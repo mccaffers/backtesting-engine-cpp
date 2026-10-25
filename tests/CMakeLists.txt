@@ -6,6 +6,7 @@ add_executable(unit_tests
     symbolScale.cpp
     marketHours.cpp
     jsonParser.cpp
+    base64.cpp
     ohlc.cpp
     ema.cpp
     atr.cpp
@@ -33,6 +34,7 @@ add_executable(unit_tests
     tradeManager.cpp
     tradeDocument.cpp
     tickPacket.cpp
+    tickLine.cpp
     dealPacket.cpp
     liveWinners.cpp
     liveRunner.cpp

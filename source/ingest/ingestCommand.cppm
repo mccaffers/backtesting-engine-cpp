@@ -5,9 +5,10 @@
 // ---------------------------------------
 //
 // ingestCommand — the `ingest` subcommand. Receives tick datagrams over UDP,
-// decodes them (tickPacket) and persists each into the local QuestDB via ILP
-// over HTTP (questdbIngestClient), so the backtester's `run` path can read them
-// back through the unchanged DatabaseConnection.
+// decodes them (tickPacket), formats each as an ILP line tagged with its feed
+// source (tickLine) and persists it into the local QuestDB via ILP over HTTP
+// (questdbIngestClient), so the backtester's `run` path can read them back
+// through the unchanged DatabaseConnection.
 //
 // The GMF only #includes Asio-/curl-free headers (the receiver and writer hide
 // those behind pimpls), so it is safe to `import std` here.
@@ -23,8 +24,8 @@ export module ingestCommand;
 
 import std;
 import backtestLog; // backtest_log::logLine — timestamped, flushed stdout
-import priceData;   // PriceData
-import tickPacket;  // tick_packet::decodeTick
+import tickLine;    // tick_line::formatLine, isKnownSource
+import tickPacket;  // tick_packet::decodeTick, kSourceIG
 
 export class IngestCommand {
 public:
@@ -66,6 +67,12 @@ int IngestCommand::run(const int argc, const char* argv[]) {
     std::atomic<std::uint64_t> received{0};
     std::atomic<std::uint64_t> dropped{0};
 
+    // Ticks received per feed source, logged so the feed mix is visible.
+    // "other" = empty or unrecognised source, written with a NULL source.
+    std::atomic<std::uint64_t> fromIG{0};
+    std::atomic<std::uint64_t> fromMassive{0};
+    std::atomic<std::uint64_t> fromOther{0};
+
     net::UdpReceiver receiver(
         bindAddr, bindPort, [&](std::span<const std::byte> bytes) {
             const auto tick = tick_packet::decodeTick(bytes);
@@ -73,15 +80,13 @@ int IngestCommand::run(const int argc, const char* argv[]) {
                 dropped.fetch_add(1, std::memory_order_relaxed);
                 return;
             }
-            // ILP line: table = symbol, integer fields ask/bid, designated
-            // timestamp in nanoseconds (QuestDB HTTP default precision). This
-            // yields exactly the ask/bid/timestamp columns the read path expects.
-            const auto tsNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                     tick->timestamp.time_since_epoch())
-                                     .count();
-            writer.enqueueLine(std::format("{} ask={}i,bid={}i {}\n",
-                                           tick->symbol, tick->ask, tick->bid, tsNanos));
+            writer.enqueueLine(tick_line::formatLine(*tick));
             received.fetch_add(1, std::memory_order_relaxed);
+
+            auto& bySource = !tick_line::isKnownSource(tick->source) ? fromOther
+                           : tick->source == tick_packet::kSourceIG   ? fromIG
+                                                                      : fromMassive;
+            bySource.fetch_add(1, std::memory_order_relaxed);
         });
 
     logLine("IngestCommand: starting; binding udp://{}:{} -> QuestDB ILP http://{}:{}/write",
@@ -108,8 +113,12 @@ int IngestCommand::run(const int argc, const char* argv[]) {
             const auto delta = total - lastReceived;
             lastReceived = total;
             logLine("IngestCommand: received={} (+{}, ~{}/s); "
+                    "sources IG={}, MX={}, other={}; "
                     "decode-dropped={}, queue-dropped={}, post-failed={}",
                     total, delta, delta / 60,
+                    fromIG.load(std::memory_order_relaxed),
+                    fromMassive.load(std::memory_order_relaxed),
+                    fromOther.load(std::memory_order_relaxed),
                     dropped.load(std::memory_order_relaxed), writer.droppedLines(),
                     writer.failedLines());
         }
@@ -127,9 +136,10 @@ int IngestCommand::run(const int argc, const char* argv[]) {
     // decode-dropped: bad size / unknown symbol. queue-dropped: shed by the
     // writer when QuestDB couldn't keep up and the buffer hit its cap.
     // post-failed: lines a POST couldn't persist (transport error / non-2xx).
-    logLine("IngestCommand: shutting down (received={}, decode-dropped={}, "
-            "queue-dropped={}, post-failed={})",
-            received.load(), dropped.load(), writer.droppedLines(),
+    logLine("IngestCommand: shutting down (received={}, sources IG={}, MX={}, "
+            "other={}, decode-dropped={}, queue-dropped={}, post-failed={})",
+            received.load(), fromIG.load(), fromMassive.load(), fromOther.load(),
+            dropped.load(), writer.droppedLines(),
             writer.failedLines());
     return 0;
 }
