@@ -70,10 +70,12 @@ bool isIsoUtcMillis(const std::string& ts) {
 
 }  // namespace
 
-// Declared first in this TU on purpose: in a single-process run it must see
-// the gate before any test below arms it (ctest runs each case in its own
-// process anyway).
+// Declared first in this TU on purpose. Catch2 randomises case order within a
+// single process, so tests below that call init() can leave global state
+// behind. This case calls reset() first to assert the true pre-init defaults
+// regardless of ordering.
 TEST_CASE("tracing is inert before init", "[liveTrace]") {
+    live_trace::reset();
     CHECK_FALSE(live_trace::enabled());
     CHECK(live_trace::tradingEnv() == "unknown");
     // emit while disarmed is a no-op — must not throw or touch the publisher.

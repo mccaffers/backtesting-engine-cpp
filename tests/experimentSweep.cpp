@@ -22,8 +22,10 @@
 #include "load/redisLoader.hpp"
 
 import experimentsCommand;  // sweep::buildExperimentChunk (+ re-exported
-                            // dipRecoverySweep: ExperimentSweepSpec, factory)
+                            // dipRecoverySweep, rangeRelativeDipRecoverySweep:
+                            // ExperimentSweepSpec, factory)
 import makeDipRecovery;     // sweep::makeDipRecoveryExperiment
+import makeRangeRelativeDipRecovery;  // sweep::makeRangeRelativeDipRecoveryExperiment
 
 using experiments::ActivityType;
 
@@ -144,4 +146,110 @@ TEST_CASE("buildExperimentChunk keys each payload by run id and its UUID",
     CHECK(sweep::buildExperimentChunk(spec.generator, spec.factory, runId, end,
                                       end)
               .empty());
+}
+
+TEST_CASE("buildRangeRelativeDipRecoverySweep expands to the product of its range sizes",
+          "[experimentSweep]") {
+    const auto spec = sweep::buildRangeRelativeDipRecoverySweep();
+    const auto counts = spec.generator.rangeValueCounts();
+    REQUIRE(!counts.empty());
+
+    // Config-agnostic: however the grid is tuned, its size must be the
+    // product of the declared range sizes.
+    std::size_t product = 1;
+    for (const auto& [name, count] : counts) {
+        INFO(name << " declares no values");
+        CHECK(count > 0);
+        product *= count;
+    }
+    CHECK(spec.generator.combinationCount() == product);
+    // 3 * 4 * 3 * 3 * 3 = 324 combinations
+    CHECK(product == 324);
+
+    for (const auto& combo :
+         {spec.generator.combinationAt(0),
+          spec.generator.combinationAt(spec.generator.combinationCount() - 1)}) {
+        for (const char* name :
+             {"LEG1_LOOKBACK_MINUTES", "LEG1_ATR_MULTIPLE",
+              "LEG1_WINDOW_MINUTES", "LEG2_ATR_MULTIPLE",
+              "LEG2_WINDOW_MINUTES"}) {
+            INFO("Combination is missing " << name);
+            CHECK(combo.has(name));
+        }
+    }
+
+    CHECK(spec.lastMonths == 9);
+    CHECK(spec.offsetMonths == 0);
+    CHECK(spec.factory == sweep::makeRangeRelativeDipRecoveryExperiment);
+}
+
+TEST_CASE("makeRangeRelativeDipRecoveryExperiment maps a combination onto the chain",
+          "[experimentSweep]") {
+    sweep::Combination combo;
+    combo.set("LEG1_LOOKBACK_MINUTES", 30);
+    combo.set("LEG1_ATR_MULTIPLE", 1.5);
+    combo.set("LEG1_WINDOW_MINUTES", 10);
+    combo.set("LEG2_ATR_MULTIPLE", 0.5);
+    combo.set("LEG2_WINDOW_MINUTES", 20);
+
+    const auto config = sweep::makeRangeRelativeDipRecoveryExperiment(combo);
+
+    CHECK_FALSE(config.UUID.empty());
+    CHECK(config.NAME == "rangeRelativeDipRecovery");
+    REQUIRE(config.CHAIN.size() == 2);
+
+    // Leg 1: RangeRelativeMove downwards (DIRECTION = -1)
+    CHECK(config.CHAIN[0].TYPE == ActivityType::RangeRelativeMove);
+    CHECK(config.CHAIN[0].DIRECTION == -1);
+    CHECK(config.CHAIN[0].ATR_MULTIPLE == 1.5);
+    CHECK(config.CHAIN[0].WINDOW_SECONDS == 10 * 60);
+    CHECK(config.CHAIN[0].LOOKBACK_SECONDS == 30 * 60);
+
+    // Leg 2: RangeRelativeMove upwards (DIRECTION = 1), shares leg 1's basis lookback
+    CHECK(config.CHAIN[1].TYPE == ActivityType::RangeRelativeMove);
+    CHECK(config.CHAIN[1].DIRECTION == 1);
+    CHECK(config.CHAIN[1].ATR_MULTIPLE == 0.5);
+    CHECK(config.CHAIN[1].WINDOW_SECONDS == 20 * 60);
+    CHECK(config.CHAIN[1].LOOKBACK_SECONDS == 30 * 60);
+
+    // Each call mints a FRESH UUID — payload keys must never collide.
+    CHECK(sweep::makeRangeRelativeDipRecoveryExperiment(combo).UUID != config.UUID);
+}
+
+TEST_CASE("buildExperimentChunk keys each payload by run id and its UUID for rangeRelativeDipRecovery",
+          "[experimentSweep]") {
+    const auto spec = sweep::buildRangeRelativeDipRecoverySweep();
+    const std::string runId = "test-run-rr";
+
+    const std::size_t begin = 10;
+    const std::size_t end = 15;
+    const auto chunk = sweep::buildExperimentChunk(spec.generator, spec.factory,
+                                                   runId, begin, end);
+    REQUIRE(chunk.size() == end - begin);
+
+    std::set<std::string> uuids;
+    for (std::size_t offset = 0; offset < chunk.size(); ++offset) {
+        const auto config = nlohmann::json::parse(chunk[offset].rawJson)
+                                .get<experiments::ExperimentConfig>();
+        CHECK_FALSE(config.UUID.empty());
+        uuids.insert(config.UUID);
+        CHECK(chunk[offset].key ==
+              queue_keys::experimentPayloadKey(runId, config.UUID));
+
+        const auto expected =
+            spec.factory(spec.generator.combinationAt(begin + offset));
+        CHECK(config.NAME == expected.NAME);
+        REQUIRE(config.CHAIN.size() == expected.CHAIN.size());
+        for (std::size_t leg = 0; leg < config.CHAIN.size(); ++leg) {
+            CHECK(config.CHAIN[leg].TYPE == expected.CHAIN[leg].TYPE);
+            CHECK(config.CHAIN[leg].DIRECTION == expected.CHAIN[leg].DIRECTION);
+            CHECK(config.CHAIN[leg].ATR_MULTIPLE ==
+                  expected.CHAIN[leg].ATR_MULTIPLE);
+            CHECK(config.CHAIN[leg].WINDOW_SECONDS ==
+                  expected.CHAIN[leg].WINDOW_SECONDS);
+            CHECK(config.CHAIN[leg].LOOKBACK_SECONDS ==
+                  expected.CHAIN[leg].LOOKBACK_SECONDS);
+        }
+    }
+    CHECK(uuids.size() == chunk.size());
 }

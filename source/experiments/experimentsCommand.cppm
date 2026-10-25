@@ -26,6 +26,7 @@ import backtestLog;             // backtest_log::logLine
 export import dipRecoverySweep; // sweep::ExperimentSweepSpec/ExperimentFactory,
                                 // buildDipRecoverySweep (re-exported so tests
                                 // reach the whole seam via one import)
+export import rangeRelativeDipRecoverySweep; // sweep::buildRangeRelativeDipRecoverySweep
 import runConfigurationBuilder; // sweep::resolveSymbolGroups, currentBatchStamp
 import symbolGroups;            // sweep::cleanSymbols
 
@@ -61,6 +62,7 @@ std::string withThousands(const std::size_t n) {
         s.insert(pos, ",");
     }
     return s;
+    
 }
 
 // Payloads per pipelined Redis request / progress heartbeat — LoadCommand's
@@ -155,10 +157,12 @@ int ExperimentsCommand::run(const int argc, const char* argv[]) {
     sweep::ExperimentSweepSpec spec;
     if (sweepName == "dipRecovery") {
         spec = sweep::buildDipRecoverySweep();
+    } else if (sweepName == "rangeRelativeDipRecovery") {
+        spec = sweep::buildRangeRelativeDipRecoverySweep();
     } else {
         std::println(stderr,
                      "ExperimentsCommand: unknown experiment sweep '{}' "
-                     "(valid: dipRecovery)",
+                     "(valid: dipRecovery, rangeRelativeDipRecovery)",
                      sweepName);
         return 1;
     }

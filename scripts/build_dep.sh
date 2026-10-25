@@ -85,6 +85,14 @@ if ! command -v brew &>/dev/null; then
         -DCMAKE_CXX_COMPILER="${CXX:-clang++}"
     )
     AWS_CXX_FLAGS="-w -stdlib=libc++"
+else
+    # Build s2n/aws-c-cal against OpenSSL 3, matching build.sh: Homebrew's
+    # default `openssl` is now 4.x, which dropped APIs s2n still uses.
+    OPENSSL_PREFIX="$(brew --prefix openssl@3)"
+    AWS_CMAKE_ARGS+=(
+        -DOPENSSL_ROOT_DIR="$OPENSSL_PREFIX"
+        -DCMAKE_PREFIX_PATH="$OPENSSL_PREFIX"
+    )
 fi
 
 AWS_SRC="$EXTERNAL_DIR/aws"

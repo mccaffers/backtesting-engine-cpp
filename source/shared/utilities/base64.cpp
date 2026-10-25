@@ -6,23 +6,40 @@
 
 #include "shared/utilities/base64.hpp"
 
-static const char* const B64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+#include <array>
+#include <cstdint>
+#include <stdexcept>
 
-static const int B64index[256] =
-{
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  62, 63, 62, 62, 63,
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  0,  0,  0,  0,
-    0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0,  0,  0,  0,  63,
-    0,  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
-};
+namespace {
 
-// Code adapted from Stack Overflow https://stackoverflow.com/a/37109258/20806857
+constexpr char B64chars[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+constexpr auto buildDecodeTable() {
+    std::array<int8_t, 256> table{};
+    table.fill(-1);
+    for (int i = 0; i < 26; ++i) {
+        table[static_cast<unsigned char>('A' + i)] = static_cast<int8_t>(i);
+        table[static_cast<unsigned char>('a' + i)] = static_cast<int8_t>(26 + i);
+    }
+    for (int i = 0; i < 10; ++i) {
+        table[static_cast<unsigned char>('0' + i)] = static_cast<int8_t>(52 + i);
+    }
+    table[static_cast<unsigned char>('+')] = 62;
+    table[static_cast<unsigned char>('-')] = 62;  // URL-safe alternative
+    table[static_cast<unsigned char>('/')] = 63;
+    table[static_cast<unsigned char>('_')] = 63;  // URL-safe alternative
+    return table;
+}
+
+constexpr auto B64decodeTable = buildDecodeTable();
+
+}  // namespace
+
 const std::string Base64::b64encode(const unsigned char* data, const size_t &len)
 {
+    if (data == nullptr || len == 0) return "";
+
     std::string result((len + 2) / 3 * 4, '=');
     const unsigned char *p = data;
     char *str = &result[0];
@@ -49,33 +66,70 @@ const std::string Base64::b64encode(const unsigned char* data, const size_t &len
 
 const std::string Base64::b64decode(const unsigned char* data, const size_t &len)
 {
-    if (len == 0) return "";
+    if (data == nullptr || len == 0) return "";
 
-    const unsigned char *p = data;
-    size_t j = 0,
-        pad1 = len % 4 || p[len - 1] == '=',
-        pad2 = pad1 && (len % 4 > 2 || p[len - 2] != '=');
-    const size_t last = (len - pad1) / 4 << 2;
-    std::string result(last / 4 * 3 + pad1 + pad2, '\0');
-    unsigned char *str = (unsigned char*) &result[0];
-
-    for (size_t i = 0; i < last; i += 4)
-    {
-        int n = B64index[p[i]] << 18 | B64index[p[i + 1]] << 12 | B64index[p[i + 2]] << 6 | B64index[p[i + 3]];
-        str[j++] = n >> 16;
-        str[j++] = n >> 8 & 0xFF;
-        str[j++] = n & 0xFF;
+    if (len % 4 != 0) {
+        throw std::invalid_argument(
+            "Base64::b64decode: input length must be a multiple of 4 (got "
+            + std::to_string(len) + ")");
     }
-    if (pad1)
-    {
-        int n = B64index[p[last]] << 18 | B64index[p[last + 1]] << 12;
-        str[j++] = n >> 16;
-        if (pad2)
-        {
-            n |= B64index[p[last + 2]] << 6;
-            str[j++] = n >> 8 & 0xFF;
+
+    size_t padCount = 0;
+    if (data[len - 1] == '=') ++padCount;
+    if (len >= 2 && data[len - 2] == '=') ++padCount;
+
+    if (padCount > 2) {
+        throw std::invalid_argument("Base64::b64decode: invalid padding");
+    }
+
+    const size_t outputSize = (len / 4) * 3 - padCount;
+    std::string result;
+    result.reserve(outputSize);
+
+    const size_t numChunks = len / 4;
+    for (size_t c = 0; c < numChunks; ++c) {
+        const size_t i = c * 4;
+        const unsigned char c0 = data[i];
+        const unsigned char c1 = data[i + 1];
+        const unsigned char c2 = data[i + 2];
+        const unsigned char c3 = data[i + 3];
+
+        const int8_t v0 = B64decodeTable[c0];
+        const int8_t v1 = B64decodeTable[c1];
+
+        if (v0 < 0 || v1 < 0) {
+            throw std::invalid_argument("Base64::b64decode: invalid character");
+        }
+
+        if (c == numChunks - 1 && padCount > 0) {
+            if (padCount == 2) {
+                if (c2 != '=' || c3 != '=') {
+                    throw std::invalid_argument(
+                        "Base64::b64decode: invalid padding sequence");
+                }
+                result.push_back(static_cast<char>((v0 << 2) | (v1 >> 4)));
+            } else {
+                const int8_t v2 = B64decodeTable[c2];
+                if (v2 < 0 || c3 != '=') {
+                    throw std::invalid_argument(
+                        "Base64::b64decode: invalid padding sequence or character");
+                }
+                result.push_back(static_cast<char>((v0 << 2) | (v1 >> 4)));
+                result.push_back(static_cast<char>(((v1 & 0x0F) << 4) | (v2 >> 2)));
+            }
+        } else {
+            const int8_t v2 = B64decodeTable[c2];
+            const int8_t v3 = B64decodeTable[c3];
+            if (v2 < 0 || v3 < 0) {
+                throw std::invalid_argument(
+                    "Base64::b64decode: invalid character or mid-stream padding");
+            }
+            result.push_back(static_cast<char>((v0 << 2) | (v1 >> 4)));
+            result.push_back(static_cast<char>(((v1 & 0x0F) << 4) | (v2 >> 2)));
+            result.push_back(static_cast<char>(((v2 & 0x03) << 6) | v3));
         }
     }
+
     return result;
 }
 

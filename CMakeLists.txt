@@ -16,7 +16,9 @@ endif()
 # before project()/CXX language enablement so the toolchain is detected with
 # import-std support. Requires the Ninja generator plus a toolchain that ships a
 # libc++ `std` module. Configure with: cmake -G Ninja -B build
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.3" AND CMAKE_VERSION VERSION_LESS "4.4")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.4" AND CMAKE_VERSION VERSION_LESS "4.5")
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "4.3" AND CMAKE_VERSION VERSION_LESS "4.4")
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "4.2" AND CMAKE_VERSION VERSION_LESS "4.3")
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
@@ -93,6 +95,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # module flags for loadCommand.cppm — are always present for the editor.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# The macOS 27 SDK's <math.h> includes <float.h> asking only for INFINITY/NAN
+# (__need_infinity_nan), but libc++'s float.h wrapper sets its include guard
+# anyway, so any later <cfloat> is skipped and the DBL_*/LDBL_* macros never
+# appear. Any TU that includes <cmath> before <cfloat> trips on it: Catch2's
+# reporter helpers lose DBL_MAX_10_EXP, and boost-decimal's bit_layouts.hpp
+# sees no LDBL_MANT_DIG, so it takes long double as unsupported and fails to
+# compile. Pre-including the full <float.h> sets the guard with every macro
+# defined. Set before the add_subdirectory() calls so vendored targets get it.
+if(APPLE)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include float.h>")
+endif()
+
 # Clang 22 made "reduced BMI" the default for C++20 modules, and reduced BMIs
 # drop the predeclared global operator new/delete from the global module
 # (llvm/llvm-project#166068). A TU that imports std alongside enough of this
@@ -112,7 +126,7 @@ set(PQXX_LIBRARIES_INSTALL ON)
 set(SKIP_BUILD_TEST ON)
 set(SKIP_CONFIGURE_LIBPQXX OFF)
 
-# Disable warningsfor external libraries
+# Disable warnings for external libraries
 set(PREV_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
@@ -142,6 +156,9 @@ find_package(PostgreSQL REQUIRED)
 # Build libpqxx from source
 add_subdirectory(external/libpqxx EXCLUDE_FROM_ALL)
 
+# Restore compiler flags for project targets
+set(CMAKE_CXX_FLAGS ${PREV_CMAKE_CXX_FLAGS})
+
 # Collect all .cpp files in the src directory. CONFIGURE_DEPENDS re-runs the
 # glob when .cpp files are added/removed (matching the MODULE_INTERFACES glob
 # below), so a new translation unit is picked up without a manual reconfigure.
@@ -168,6 +185,18 @@ target_sources(BacktestingEngineLib
 # so import-std support propagates to consumers that link this library.
 set_target_properties(BacktestingEngineLib PROPERTIES CXX_MODULE_STD ON)
 target_compile_features(BacktestingEngineLib PUBLIC cxx_std_23)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    # -Wmissing-designated-field-initializers (part of newer Clangs' -Wextra)
+    # fires on partial designated initializers, but every struct in this
+    # project default-initializes its fields, so omitted fields are always
+    # well-defined. Partial initializers are the intended style — e.g. the
+    # test mocks set only the field under test.
+    target_compile_options(BacktestingEngineLib PUBLIC
+        -Wall -Wextra -Wno-missing-designated-field-initializers)
+elseif(MSVC)
+    target_compile_options(BacktestingEngineLib PUBLIC /W4)
+endif()
 
 # Include directories — PUBLIC so they propagate to the executable (and any
 # other consumer) through target_link_libraries. Every project #include is
@@ -227,7 +256,12 @@ target_link_libraries(BacktestingEngineLib PUBLIC
     CURL::libcurl
     $<$<PLATFORM_ID:Linux>:rt>)
 
+set(SAVED_FLAGS ${CMAKE_CXX_FLAGS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
+endif()
 add_subdirectory(external/boost-decimal)
+set(CMAKE_CXX_FLAGS ${SAVED_FLAGS})
 target_link_libraries(BacktestingEngineLib PUBLIC Boost::decimal)
 
 target_link_libraries(BacktestingEngineLib PUBLIC pqxx OpenMP::OpenMP_CXX)
@@ -265,6 +299,11 @@ endif()
 # of the default `all` build until the test target pulls it in.
 include(CTest)
 if(BUILD_TESTING)
+    set(SAVED_FLAGS ${CMAKE_CXX_FLAGS})
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
+    endif()
     add_subdirectory(external/Catch2 EXCLUDE_FROM_ALL)
+    set(CMAKE_CXX_FLAGS ${SAVED_FLAGS})
     add_subdirectory(tests)
 endif()

@@ -48,9 +48,16 @@ if command -v brew &>/dev/null; then
 
     LLVM_PREFIX="$(brew --prefix llvm)"
     export COMPILER_PATH="$LLVM_PREFIX/lib/c++"
+    # Pin OpenSSL 3: Homebrew's default `openssl` is now 4.x, which dropped
+    # ASN1_STRING_data, and the AWS SDK's static s2n still calls it. The
+    # engine's FindOpenSSL and s2n's Findcrypto (via CMAKE_PREFIX_PATH) must
+    # both resolve here, or the link pulls in OpenSSL 4 and fails.
+    OPENSSL_PREFIX="$(brew --prefix openssl@3)"
     TOOLCHAIN_ARGS+=(
         -DCMAKE_C_COMPILER="$LLVM_PREFIX/bin/clang"
         -DCMAKE_CXX_COMPILER="$LLVM_PREFIX/bin/clang++"
+        -DOPENSSL_ROOT_DIR="$OPENSSL_PREFIX"
+        -DCMAKE_PREFIX_PATH="$OPENSSL_PREFIX"
     )
 else
     # Off Homebrew (Linux/CI): use Clang + libc++ so `import std` works, matching

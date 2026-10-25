@@ -157,7 +157,7 @@ int LiveCommand::run(const int argc, const char* argv[]) {
                 dropped.fetch_add(1, std::memory_order_relaxed);
                 return;
             }
-            runner.onTick(*tick);
+            runner.onTick(tick->price);
             received.fetch_add(1, std::memory_order_relaxed);
         });
 

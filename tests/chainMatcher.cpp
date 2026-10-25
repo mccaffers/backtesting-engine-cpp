@@ -54,22 +54,22 @@ Activity move(const double signedPercent, const int windowSeconds) {
 TEST_CASE("DirectionalMove fires on a touch within the trailing window",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99600, 0, at(60));
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99600, at(60));
     CHECK(matcher.stats().occurrences == 0);
     // Exactly -1% from the rolling max, well inside the 10-minute window.
-    matcher.onTick(99000, 0, at(120));
+    matcher.onTick(99000, at(120));
     CHECK(matcher.stats().occurrences == 1);
 }
 
 TEST_CASE("DirectionalMove does not fire when the drop is slower than the window",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99500, 0, at(550));
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99500, at(550));
     // The 100000 print expired from the trailing 600s window (deque expiry),
     // so the rolling max is 99500 and the remaining drop is only 0.5%.
-    matcher.onTick(99000, 0, at(1101));
+    matcher.onTick(99000, at(1101));
     CHECK(matcher.stats().occurrences == 0);
 }
 
@@ -79,22 +79,22 @@ TEST_CASE("split drop still fires via rolling extremes (anti-re-anchor)",
     // re-anchored at the first partial drop would miss this; the rolling max
     // sees the cumulative 1.1%.
     ChainMatcher matcher(chainOf({move(-1.0, 600)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99400, 0, at(100));
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99400, at(100));
     CHECK(matcher.stats().occurrences == 0);
-    matcher.onTick(98900, 0, at(200));
+    matcher.onTick(98900, at(200));
     CHECK(matcher.stats().occurrences == 1);
 }
 
 TEST_CASE("two-leg chain anchors at leg 1's completion tick", "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 600)}));
-    matcher.onTick(100000, 0, at(0));
+    matcher.onTick(100000, at(0));
     CHECK(matcher.activeLeg() == 0);
-    matcher.onTick(99000, 0, at(60));  // leg 1 completes: anchor (99000, 60)
+    matcher.onTick(99000, at(60));  // leg 1 completes: anchor (99000, 60)
     CHECK(matcher.activeLeg() == 1);
     CHECK(matcher.stats().occurrences == 0);
     // +0.5% from the ANCHOR (99000 -> 99495), inside leg 2's own window.
-    matcher.onTick(99495, 0, at(120));
+    matcher.onTick(99495, at(120));
     CHECK(matcher.stats().occurrences == 1);
     CHECK(matcher.activeLeg() == 0);
 }
@@ -111,27 +111,27 @@ TEST_CASE("a leg cannot complete on its own anchor tick", "[chainMatcher]") {
                  .LOOKBACK_SECONDS = 300},
     }));
     for (long t = 0; t <= 300; t += 30) {
-        matcher.onTick(100000, 0, at(t));
+        matcher.onTick(100000, at(t));
     }
     CHECK(matcher.activeLeg() == 0);
-    matcher.onTick(99000, 0, at(330));  // -1%: leg 1 completes here
+    matcher.onTick(99000, at(330));  // -1%: leg 1 completes here
     CHECK(matcher.activeLeg() == 1);
     // The band (range 1000 <= 5% of mid, fully covered) held at the anchor
     // tick too — but only the NEXT tick may complete the chain.
     CHECK(matcher.stats().occurrences == 0);
-    matcher.onTick(99000, 0, at(360));
+    matcher.onTick(99000, at(360));
     CHECK(matcher.stats().occurrences == 1);
 }
 
 TEST_CASE("an expired attempt counts a failure against the leg being sought",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 60)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99000, 0, at(100));  // leg 1 completes: attempt 1 anchors
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99000, at(100));  // leg 1 completes: attempt 1 anchors
     CHECK(matcher.stats().attempts == 1);
     // 61s > leg 2's window, and this tick is only -0.6% off the rolling max —
     // the chain dies (attributed to leg 2) WITHOUT re-anchoring.
-    matcher.onTick(99400, 0, at(161));
+    matcher.onTick(99400, at(161));
     CHECK(matcher.activeLeg() == 0);
     CHECK(matcher.stats().attempts == 1);
     CHECK(matcher.stats().occurrences == 0);
@@ -143,36 +143,36 @@ TEST_CASE("an expired attempt counts a failure against the leg being sought",
 TEST_CASE("mid-chain expiry fails the chain and the failing tick can start a new attempt",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 60)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99000, 0, at(100));  // leg 1 completes: anchor (99000, 100)
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99000, at(100));  // leg 1 completes: anchor (99000, 100)
     CHECK(matcher.activeLeg() == 1);
     // 61s > leg 2's 60s window: the attempt fails — and this same tick is a
     // fresh -2% off the still-live rolling max, so leg 1 completes AGAIN on
     // the failing tick (trackers were fed all along, no re-scan).
-    matcher.onTick(98000, 0, at(161));
+    matcher.onTick(98000, at(161));
     CHECK(matcher.stats().occurrences == 0);
     CHECK(matcher.activeLeg() == 1);
     // The failing tick counted BOTH the failure and the fresh attempt.
     CHECK(matcher.stats().attempts == 2);
     CHECK(matcher.stats().failuresByLeg[1] == 1);
     // The new attempt is anchored at (98000, 161): +0.5% completes it.
-    matcher.onTick(98490, 0, at(200));
+    matcher.onTick(98490, at(200));
     CHECK(matcher.stats().occurrences == 1);
 }
 
 TEST_CASE("non-overlap: back-to-back matches count, pre-match extremes cannot seed",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99000, 0, at(60));
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99000, at(60));
     CHECK(matcher.stats().occurrences == 1);  // first match clears ALL trackers
     // 1.5% below the PRE-match max — but that extreme is gone; the fresh
     // tracker's max is this tick itself, so nothing fires.
-    matcher.onTick(98500, 0, at(120));
+    matcher.onTick(98500, at(120));
     CHECK(matcher.stats().occurrences == 1);
     // A full -1% against the POST-match max (98500 -> 98515 needed; 985
     // points is exactly 1%): back-to-back occurrence number two.
-    matcher.onTick(97515, 0, at(180));
+    matcher.onTick(97515, at(180));
     CHECK(matcher.stats().occurrences == 2);
     // Single-leg chains: every leg-1 completion IS the whole chain, so
     // attempts == occurrences by construction (and nothing can expire).
@@ -183,15 +183,15 @@ TEST_CASE("non-overlap: back-to-back matches count, pre-match extremes cannot se
 TEST_CASE("serial attempts: an interleaved second trigger yields one occurrence",
           "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 600)}));
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99000, 0, at(60));   // attempt 1 anchors at 99000
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99000, at(60));   // attempt 1 anchors at 99000
     CHECK(matcher.activeLeg() == 1);
     // A further drop that would qualify as a NEW leg-1 trigger — ignored,
     // a single anchor is in flight (documented v1 undercount).
-    matcher.onTick(98000, 0, at(120));
+    matcher.onTick(98000, at(120));
     CHECK(matcher.activeLeg() == 1);
     // Recovery to +0.5% off the FIRST anchor completes exactly one chain.
-    matcher.onTick(99495, 0, at(240));
+    matcher.onTick(99495, at(240));
     CHECK(matcher.stats().occurrences == 1);
     CHECK(matcher.activeLeg() == 0);
 }
@@ -204,10 +204,10 @@ TEST_CASE("StaysInBand requires a full covered window before it can fire",
     // Dead flat from the first tick — but the band cannot fire until a full
     // 300s of real tick history has accumulated (warm-up is coverage too).
     for (long t = 0; t <= 300; t += 30) {
-        matcher.onTick(100000, 0, at(t));
+        matcher.onTick(100000, at(t));
         CHECK(matcher.stats().occurrences == 0);
     }
-    matcher.onTick(100000, 0, at(330));
+    matcher.onTick(100000, at(330));
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -219,7 +219,7 @@ TEST_CASE("StaysInBand: a gap voids coverage until a fresh window accumulates",
     // Oscillate outside the band (range ~5.8% > 5%) so nothing fires while
     // the tracker is warm and covered...
     for (long t = 0; t <= 600; t += 30) {
-        matcher.onTick(t % 60 == 0 ? 100000 : 106000, 0, at(t));
+        matcher.onTick(t % 60 == 0 ? 100000 : 106000, at(t));
     }
     CHECK(matcher.stats().occurrences == 0);
     // ...then a 400s silent gap (> the 300s window). The post-gap window
@@ -227,10 +227,10 @@ TEST_CASE("StaysInBand: a gap voids coverage until a fresh window accumulates",
     // gap must NOT satisfy "stays in band": coverage is void until 300s of
     // dense post-gap ticks accumulate.
     for (long t = 1000; t <= 1300; t += 30) {
-        matcher.onTick(100000, 0, at(t));
+        matcher.onTick(100000, at(t));
         CHECK(matcher.stats().occurrences == 0);
     }
-    matcher.onTick(100000, 0, at(1330));
+    matcher.onTick(100000, at(1330));
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -242,10 +242,10 @@ TEST_CASE("NewExtreme fires on a strict new high, never before coverage",
     // Steadily rising: every tick beats every prior print, but nothing may
     // fire until the lookback is fully covered.
     for (long t = 0; t <= 300; t += 30) {
-        matcher.onTick(static_cast<std::int32_t>(100000 + t / 3), 0, at(t));
+        matcher.onTick(static_cast<std::int32_t>(100000 + t / 3), at(t));
         CHECK(matcher.stats().occurrences == 0);
     }
-    matcher.onTick(100110, 0, at(330));
+    matcher.onTick(100110, at(330));
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -257,10 +257,10 @@ TEST_CASE("NewExtreme is strict: equalling the lookback high does not fire",
     // Dead flat, fully covered: the current mid always EQUALS the trailing
     // high — a new high must strictly exceed it.
     for (long t = 0; t <= 600; t += 30) {
-        matcher.onTick(100000, 0, at(t));
+        matcher.onTick(100000, at(t));
     }
     CHECK(matcher.stats().occurrences == 0);
-    matcher.onTick(100001, 0, at(630));  // strictly above: fires
+    matcher.onTick(100001, at(630));  // strictly above: fires
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -274,12 +274,12 @@ TEST_CASE("RangeRelativeMove clamps the threshold to >= 1 point", "[chainMatcher
     // would be 0 and a zero move would "fire" on every tick. The >= 1 clamp
     // keeps a flat market silent.
     for (long t = 0; t <= 600; t += 30) {
-        matcher.onTick(100000, 0, at(t));
+        matcher.onTick(100000, at(t));
         CHECK(matcher.stats().occurrences == 0);
     }
     // A 1-point drop: the basis range grows to 1, 1 x 0.3 rounds to 0, the
     // clamp lifts it back to 1 point — met exactly by this move.
-    matcher.onTick(99999, 0, at(630));
+    matcher.onTick(99999, at(630));
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -297,17 +297,17 @@ TEST_CASE("anchored RangeRelativeMove freezes its threshold at the anchor",
     // Basis range at the anchor = 101000 - 99980 = 1020, so leg 2's frozen
     // threshold is 2040 points below the anchor (99980).
     for (long t = 0; t <= 330; t += 30) {
-        matcher.onTick(101000, 0, at(t));
+        matcher.onTick(101000, at(t));
     }
-    matcher.onTick(99980, 0, at(360));
+    matcher.onTick(99980, at(360));
     CHECK(matcher.activeLeg() == 1);
     // 2020 points below the anchor: 20 short of the frozen threshold.
-    matcher.onTick(97960, 0, at(420));
+    matcher.onTick(97960, at(420));
     CHECK(matcher.stats().occurrences == 0);
     // 2040 points below the anchor fires. Had the threshold been recomputed
     // live, the drop itself would have widened the basis range to ~3060
     // (threshold 6120) and this could never fire — freezing is the contract.
-    matcher.onTick(97940, 0, at(480));
+    matcher.onTick(97940, at(480));
     CHECK(matcher.stats().occurrences == 1);
 }
 
@@ -414,10 +414,10 @@ TEST_CASE("the attempt recorder tracks excursions from anchor to resolution only
     // COMPLETED attempt: anchor at (99000, 60); dips 200 below, completes
     // 495 above at t=180 (duration 120s). The pre-anchor 100000 print must
     // not register as excursion.
-    matcher.onTick(100000, 0, at(0));
-    matcher.onTick(99000, 0, at(60));
-    matcher.onTick(98800, 0, at(120));
-    matcher.onTick(99495, 0, at(180));
+    matcher.onTick(100000, at(0));
+    matcher.onTick(99000, at(60));
+    matcher.onTick(98800, at(120));
+    matcher.onTick(99495, at(180));
     CHECK(matcher.stats().occurrences == 1);
     REQUIRE(matcher.stats().completedExcursions.size() == 1);
     CHECK(matcher.stats().completedExcursions[0].abovePoints == 495);
@@ -428,16 +428,16 @@ TEST_CASE("the attempt recorder tracks excursions from anchor to resolution only
 
     // Post-resolution tick: trackers were cleared, nothing may extend the
     // recorded sample or start an attempt on its own.
-    matcher.onTick(97000, 0, at(240));
+    matcher.onTick(97000, at(240));
     CHECK(matcher.stats().attempts == 1);
 
     // FAILED attempt: anchor at (96030, 300); rises 70, dips 230, then the
     // window expires at t=902 — the sample lands in the FAILED population.
-    matcher.onTick(96030, 0, at(300));
+    matcher.onTick(96030, at(300));
     CHECK(matcher.stats().attempts == 2);
-    matcher.onTick(96100, 0, at(400));
-    matcher.onTick(95800, 0, at(460));
-    matcher.onTick(96000, 0, at(902));
+    matcher.onTick(96100, at(400));
+    matcher.onTick(95800, at(460));
+    matcher.onTick(96000, at(902));
     CHECK(matcher.activeLeg() == 0);
     REQUIRE(matcher.stats().failedExcursions.size() == 1);
     CHECK(matcher.stats().failedExcursions[0].abovePoints == 70);
@@ -449,9 +449,9 @@ TEST_CASE("the attempt recorder tracks excursions from anchor to resolution only
 
 TEST_CASE("spread is sampled at the anchor tick only", "[chainMatcher]") {
     ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 600)}));
-    matcher.onTick(100000, 50, at(0));   // pre-anchor spread: ignored
-    matcher.onTick(99000, 30, at(60));   // ANCHOR: sampled
-    matcher.onTick(99495, 70, at(120));  // post-anchor spread: ignored
+    matcher.onTick(100025, 99975, at(0));   // pre-anchor spread: ignored (spread 50)
+    matcher.onTick(99015, 98985, at(60));   // ANCHOR: sampled (spread 30, mid 99000 -> -1%)
+    matcher.onTick(99585, 99515, at(120));  // post-anchor spread: ignored (bid 99515 >= 99015 + 496 -> +0.5%)
     CHECK(matcher.stats().occurrences == 1);
     CHECK(matcher.stats().spreadAtTriggerCount == 1);
     CHECK(matcher.stats().spreadAtTriggerSum == 30);
@@ -465,10 +465,10 @@ TEST_CASE("the sample cap stops sampling while counts stay exact",
     std::int32_t price = 100000;
     for (int i = 0; i < 3; ++i) {
         const long t = i * 200;
-        matcher.onTick(price, 0, at(t));
+        matcher.onTick(price, at(t));
         price -= price / 100 + 1;  // just over -1% off the fresh tracker
                                    // (+1 outruns the integer-division floor)
-        matcher.onTick(price, 0, at(t + 60));
+        matcher.onTick(price, at(t + 60));
     }
     CHECK(matcher.stats().occurrences == 3);
     CHECK(matcher.stats().attempts == 3);
@@ -489,7 +489,7 @@ TEST_CASE("evaluateExperiment summarises excursions oriented by the final leg",
         tick(100000, 0),
         tick(99000, 60),
         tick(98800, 120),
-        tick(99495, 180),
+        tick(99516, 180),
     };
 
     const auto outcome = chain_matcher::evaluateExperiment(
@@ -499,12 +499,13 @@ TEST_CASE("evaluateExperiment summarises excursions oriented by the final leg",
     CHECK(outcome.excursionOrientation == "up");
     REQUIRE(outcome.completedAttempts.has_value());
     CHECK(outcome.completedAttempts->samples == 1);
-    CHECK(outcome.completedAttempts->mfePoints.p50 == 495.0);
-    CHECK(outcome.completedAttempts->mfePoints.p90 == 495.0);
-    CHECK(outcome.completedAttempts->maePoints.p50 == 200.0);
-    // Percent variants are relative to the attempt's own anchor (99000).
-    CHECK(outcome.completedAttempts->mfePercent.p50 == 100.0 * 495 / 99000);
-    CHECK(outcome.completedAttempts->maePercent.p50 == 100.0 * 200 / 99000);
+    CHECK(outcome.completedAttempts->mfePoints.p50 == 496.0);
+    CHECK(outcome.completedAttempts->mfePoints.p90 == 496.0);
+    CHECK(outcome.completedAttempts->maePoints.p50 == 220.0);
+    CHECK(outcome.completedAttempts->maePoints.p90 == 220.0);
+    // Percent variants are relative to the attempt's entry price (99010).
+    CHECK(outcome.completedAttempts->mfePercent.p50 == 100.0 * 496 / 99010);
+    CHECK(outcome.completedAttempts->maePercent.p50 == 100.0 * 220 / 99010);
     // No failed attempts: null population, not fake zeros.
     CHECK_FALSE(outcome.failedAttempts.has_value());
     REQUIRE(outcome.completionSeconds.has_value());
@@ -566,4 +567,248 @@ TEST_CASE("evaluateExperiment reports per-symbol coverage alongside the v1 map",
     // Attempts aggregate across the demuxed matchers (single-leg chain:
     // attempts == occurrences).
     CHECK(outcome.attempts == 1);
+}
+
+TEST_CASE("real execution prices for long trade: entry at ask, TP on bid, MAE reflects spread",
+          "[chainMatcher]") {
+    ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 600)}));
+    // Pre-anchor
+    matcher.onTick(100010, 99990, at(0));
+    // Mid drops to 99000 (-1% from 100000): Leg 1 completes on mid.
+    // Spread is 30 (ask 99015, bid 98985). Long entry fills at ask = 99015.
+    matcher.onTick(99015, 98985, at(60));
+    CHECK(matcher.activeLeg() == 1);
+    CHECK(matcher.stats().attempts == 1);
+
+    // Mid rises to 99510 (+0.51% from 99000, would trigger on mid alone).
+    // But bid is only 99500 (99500 - 99015 = 485 < 496 points needed). TP must NOT trigger on mid.
+    matcher.onTick(99520, 99500, at(120));
+    CHECK(matcher.stats().occurrences == 0);
+    CHECK(matcher.activeLeg() == 1);
+
+    // Bid reaches 99515 (99515 - 99015 = 500 >= 496): TP triggers on bid.
+    matcher.onTick(99535, 99515, at(180));
+    CHECK(matcher.stats().occurrences == 1);
+    CHECK(matcher.activeLeg() == 0);
+
+    REQUIRE(matcher.stats().completedExcursions.size() == 1);
+    const auto& s = matcher.stats().completedExcursions[0];
+    CHECK(s.entryPrice == 99015);
+    CHECK(s.abovePoints == 500);
+    // MAE was 30 (spread at entry, since price never dipped below bid at entry)
+    CHECK(s.belowPoints == 30);
+}
+
+TEST_CASE("real execution prices for short trade: entry at bid, TP on ask, MAE reflects spread",
+          "[chainMatcher]") {
+    // Leg 1: rally (+1%), Leg 2: fade (-0.5%)
+    ChainMatcher matcher(chainOf({move(1.0, 600), move(-0.5, 600)}));
+    matcher.onTick(100010, 99990, at(0));
+    // Mid rises to 101000 (+1% from 100000): Leg 1 completes on mid.
+    // Spread is 40 (ask 101020, bid 100980). Short entry fills at bid = 100980.
+    matcher.onTick(101020, 100980, at(60));
+    CHECK(matcher.activeLeg() == 1);
+    CHECK(matcher.stats().attempts == 1);
+
+    // Mid drops to 100480 (-0.51% from 101000, would trigger on mid alone).
+    // But ask is only 100500 (100980 - 100500 = 480 < 505 points needed). TP must NOT trigger.
+    matcher.onTick(100500, 100460, at(120));
+    CHECK(matcher.stats().occurrences == 0);
+    CHECK(matcher.activeLeg() == 1);
+
+    // Ask drops to 100470 (100980 - 100470 = 510 >= 505): TP triggers on ask.
+    matcher.onTick(100470, 100430, at(180));
+    CHECK(matcher.stats().occurrences == 1);
+    CHECK(matcher.activeLeg() == 0);
+
+    REQUIRE(matcher.stats().completedExcursions.size() == 1);
+    const auto& s = matcher.stats().completedExcursions[0];
+    CHECK(s.entryPrice == 100980);
+    CHECK(s.belowPoints == 510);  // favorable excursion on ask
+    CHECK(s.abovePoints == 40);   // adverse excursion on ask immediately reflects spread at entry
+}
+
+TEST_CASE("failed attempt MAE immediately reflects spread at entry",
+          "[chainMatcher]") {
+    ChainMatcher matcher(chainOf({move(-1.0, 600), move(0.5, 60)}));
+    matcher.onTick(100010, 99990, at(0));
+    // Leg 1 completes on mid=99000. Entry ask = 99015, bid = 98985 (spread 30).
+    matcher.onTick(99015, 98985, at(60));
+    CHECK(matcher.stats().attempts == 1);
+
+    // Window expires and leg 1 rolling window expires (t=661).
+    // Price stayed flat at entry: ask=99015, bid=98985.
+    matcher.onTick(99015, 98985, at(661));
+    CHECK(matcher.activeLeg() == 0);
+    REQUIRE(matcher.stats().failedExcursions.size() == 1);
+    const auto& s = matcher.stats().failedExcursions[0];
+    CHECK(s.entryPrice == 99015);
+    CHECK(s.abovePoints == 0);
+    // MAE immediately reflected spread at entry (99015 - 98985 = 30) even with no further drop!
+    CHECK(s.belowPoints == 30);
+}
+
+TEST_CASE("real execution prices for RangeRelativeMove long trade: entry at ask, TP on bid, MAE reflects spread",
+          "[chainMatcher]") {
+    ChainMatcher matcher(chainOf({
+        Activity{.TYPE = ActivityType::RangeRelativeMove,
+                 .WINDOW_SECONDS = 600,
+                 .LOOKBACK_SECONDS = 300,
+                 .DIRECTION = -1,
+                 .ATR_MULTIPLE = 1.0},
+        Activity{.TYPE = ActivityType::RangeRelativeMove,
+                 .WINDOW_SECONDS = 600,
+                 .LOOKBACK_SECONDS = 300,
+                 .DIRECTION = 1,
+                 .ATR_MULTIPLE = 0.5},
+    }));
+    // Warm the basis flat at 101000
+    for (long t = 0; t <= 300; t += 30) {
+        matcher.onTick(101000, 101000, at(t));
+    }
+    CHECK(matcher.activeLeg() == 0);
+
+    // Drop to mid=99980 (1020 points drop >= 1020 basis range * 1.0 ATR).
+    // Leg 1 completes on mid. Spread is 30 (ask 99995, bid 99965).
+    // Long entry fills at ask = 99995.
+    matcher.onTick(99995, 99965, at(330));
+    CHECK(matcher.activeLeg() == 1);
+    CHECK(matcher.stats().attempts == 1);
+
+    // Leg 2 basis range was 1020, ATR_MULTIPLE = 0.5 -> threshold is 510.
+    // Price rises to mid=100495 (+515 from 99980, would trigger on mid alone).
+    // But bid is only 100480 (100480 - 99995 = 485 < 510 needed). TP must NOT trigger.
+    matcher.onTick(100510, 100480, at(360));
+    CHECK(matcher.stats().occurrences == 0);
+    CHECK(matcher.activeLeg() == 1);
+
+    // Bid reaches 100510 (100510 - 99995 = 515 >= 510): TP triggers on bid.
+    matcher.onTick(100540, 100510, at(390));
+    CHECK(matcher.stats().occurrences == 1);
+    CHECK(matcher.activeLeg() == 0);
+
+    REQUIRE(matcher.stats().completedExcursions.size() == 1);
+    const auto& s = matcher.stats().completedExcursions[0];
+    CHECK(s.entryPrice == 99995);
+    CHECK(s.abovePoints == 515);
+    // MAE was 30 (spread at entry, price never dipped below entry bid)
+    CHECK(s.belowPoints == 30);
+}
+
+TEST_CASE("real execution prices for RangeRelativeMove short trade: entry at bid, TP on ask, MAE reflects spread",
+          "[chainMatcher]") {
+    ChainMatcher matcher(chainOf({
+        Activity{.TYPE = ActivityType::RangeRelativeMove,
+                 .WINDOW_SECONDS = 600,
+                 .LOOKBACK_SECONDS = 300,
+                 .DIRECTION = 1,
+                 .ATR_MULTIPLE = 1.0},
+        Activity{.TYPE = ActivityType::RangeRelativeMove,
+                 .WINDOW_SECONDS = 600,
+                 .LOOKBACK_SECONDS = 300,
+                 .DIRECTION = -1,
+                 .ATR_MULTIPLE = 0.5},
+    }));
+    // Warm the basis flat at 99000
+    for (long t = 0; t <= 300; t += 30) {
+        matcher.onTick(99000, 99000, at(t));
+    }
+    CHECK(matcher.activeLeg() == 0);
+
+    // Rally to mid=100020 (1020 points rise >= 1020 basis range * 1.0 ATR).
+    // Leg 1 completes on mid. Spread is 40 (ask 100040, bid 100000).
+    // Short entry fills at bid = 100000.
+    matcher.onTick(100040, 100000, at(330));
+    CHECK(matcher.activeLeg() == 1);
+    CHECK(matcher.stats().attempts == 1);
+
+    // Leg 2 basis range was 1020, ATR_MULTIPLE = 0.5 -> threshold is 510.
+    // Price drops to mid=99490 (100020 - 99490 = 530 >= 510, would trigger on mid alone).
+    // But ask is 99510 (100000 - 99510 = 490 < 510 needed). TP must NOT trigger.
+    matcher.onTick(99510, 99470, at(360));
+    CHECK(matcher.stats().occurrences == 0);
+    CHECK(matcher.activeLeg() == 1);
+
+    // Ask drops to 99480 (100000 - 99480 = 520 >= 510): TP triggers on ask.
+    matcher.onTick(99480, 99440, at(390));
+    CHECK(matcher.stats().occurrences == 1);
+    CHECK(matcher.activeLeg() == 0);
+
+    REQUIRE(matcher.stats().completedExcursions.size() == 1);
+    const auto& s = matcher.stats().completedExcursions[0];
+    CHECK(s.entryPrice == 100000);
+    CHECK(s.belowPoints == 520);  // favorable excursion on ask
+    CHECK(s.abovePoints == 40);   // adverse excursion on ask immediately reflects spread at entry
+}
+
+TEST_CASE("3-leg chain with non-directional final leg determines trade direction from trade leg",
+          "[chainMatcher]") {
+    // Leg 1: rally (+1%), Leg 2: fade (-0.5%), Leg 3: StaysInBand (non-directional)
+    // The trade entered upon Leg 1 completion is SHORT (defined by Leg 2).
+    ChainMatcher matcher(chainOf({
+        move(1.0, 600),
+        move(-0.5, 600),
+        Activity{.TYPE = ActivityType::StaysInBand,
+                 .MOVE_PERCENT = 5.0,
+                 .WINDOW_SECONDS = 600,
+                 .LOOKBACK_SECONDS = 300},
+    }));
+    // Warm the basis tracker so StaysInBand is covered (needs 300s of ticks)
+    for (long t = 0; t <= 300; t += 30) {
+        matcher.onTick(100010, 99990, at(t));
+    }
+    CHECK(matcher.activeLeg() == 0);
+
+    // Leg 1 completes on mid=101000 (+1% rally from 100000).
+    // Spread is 40 (ask 101020, bid 100980). Short entry fills at bid = 100980.
+    matcher.onTick(101020, 100980, at(360));
+    CHECK(matcher.activeLeg() == 1);
+    CHECK(matcher.stats().attempts == 1);
+
+    // Ask drops to 100470 (100980 - 100470 = 510 >= 505 needed): Leg 2 TP triggers on ask.
+    matcher.onTick(100470, 100430, at(420));
+    CHECK(matcher.activeLeg() == 2);
+    CHECK(matcher.stats().occurrences == 0);
+
+    // Leg 3 StaysInBand evaluates on next tick (basis covered, range ~1020 <= 5% of mid).
+    matcher.onTick(100470, 100430, at(480));
+    CHECK(matcher.stats().occurrences == 1);
+    CHECK(matcher.activeLeg() == 0);
+
+    REQUIRE(matcher.stats().completedExcursions.size() == 1);
+    const auto& s = matcher.stats().completedExcursions[0];
+    CHECK(s.entryPrice == 100980);
+    CHECK(s.belowPoints >= 510);
+    CHECK(s.abovePoints == 40);  // entry spread adverse
+}
+
+TEST_CASE("evaluateExperiment correctly orients a multi-leg chain with trailing non-directional leg",
+          "[chainMatcher]") {
+    const auto tick = [](const std::int32_t mid, const long seconds) {
+        return PriceData(mid + 20, mid - 20, at(seconds), "EURUSD");
+    };
+    // 3-leg short trade: rally (+1%), fade (-0.5%), stays in band
+    std::vector<PriceData> ticks;
+    for (long t = 0; t <= 300; t += 30) {
+        ticks.push_back(tick(100000, t));
+    }
+    ticks.push_back(tick(101000, 360));  // rally +1%: entry at bid = 100980 (ask = 101020, spread 40)
+    ticks.push_back(tick(100450, 420));  // fade completes: ask = 100470 (100980 - 100470 = 510 >= 505)
+    ticks.push_back(tick(100450, 480));  // band completes
+
+    const auto outcome = chain_matcher::evaluateExperiment(
+        ticks, chainOf({
+            move(1.0, 600),
+            move(-0.5, 600),
+            Activity{.TYPE = ActivityType::StaysInBand,
+                     .MOVE_PERCENT = 5.0,
+                     .WINDOW_SECONDS = 600,
+                     .LOOKBACK_SECONDS = 300},
+        }));
+
+    CHECK(outcome.excursionOrientation == "down");
+    REQUIRE(outcome.completedAttempts.has_value());
+    CHECK(outcome.completedAttempts->samples == 1);
+    CHECK(outcome.completedAttempts->mfePoints.p50 >= 510.0);
+    CHECK(outcome.completedAttempts->maePoints.p50 == 40.0);  // entry spread
 }

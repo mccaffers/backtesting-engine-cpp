@@ -80,6 +80,10 @@ void init(std::string tradingEnv);
 // exercise init(); production never disarms.
 void disarm();
 
+// Restore the pre-init defaults — the test-only full reset so the "inert
+// before init" assertion holds regardless of Catch2's randomised ordering.
+void reset();
+
 // One relaxed atomic load. Call sites wrap emits in `if (enabled())` so a
 // disarmed trace also skips evaluating its field expressions.
 [[nodiscard]] bool enabled();
@@ -171,6 +175,13 @@ void init(std::string tradingEnv) {
 
 void disarm() {
     armedFlag().store(false, std::memory_order_release);
+    backtest_log::setSink(nullptr);
+}
+
+void reset() {
+    armedFlag().store(false, std::memory_order_release);
+    envName() = "unknown";
+    hostName() = "unknown";
     backtest_log::setSink(nullptr);
 }
 

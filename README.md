@@ -23,7 +23,7 @@ The engine is C++23 (modules, `import std;`) and one binary with eight subcomman
 
 I'm extracting results and creating various graphs for trend analyses using SciPy for calculations and Plotly for visualization.
 
-![alt text](documents/images/random-indices-sp500-variable.svg)
+![Equity curves for 25 random S&P 500 backtests across a 5×5 stop-loss/take-profit parameter sweep (20–100), growing portfolio equity from roughly 5k to 12k over the test window.](documents/images/random-indices-sp500-variable.svg)
 
 *Read more results on https://mccaffers.com/quantitative_analysis/randomly_trading/*
 
